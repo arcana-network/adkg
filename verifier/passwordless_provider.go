@@ -23,7 +23,7 @@ func NewPasswordlessProvider() *PasswordlessVerifier {
 	return &PasswordlessVerifier{
 		Version: "1.0",
 		// Endpoint: "http://host.docker.internal:3000/api/token/verify?id_token=",
-		Endpoint: "https://passwordless.dev.arcana.network/api/token/verify?id_token=",
+		Endpoint: "https://passwordless.arcana.network/api/token/verify?id_token=",
 		Timeout:  600 * time.Second,
 	}
 }
