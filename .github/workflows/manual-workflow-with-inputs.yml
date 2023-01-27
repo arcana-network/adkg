@@ -1,0 +1,14 @@
+# This is a basic workflow that is manually triggered
+
+
+name: Manual workflow with inputs
+on:
+  workflow_dispatch:
+    inputs:
+      server:
+        type: choice
+        required: true
+        description: Environment
+        options: 
+        - staging
+        - production

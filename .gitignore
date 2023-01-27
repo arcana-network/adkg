@@ -1,0 +1,6 @@
+assets/*.json
+config.json
+.DS_Store
+.envrc
+coverage.txt
+.idea

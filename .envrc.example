@@ -1,0 +1,9 @@
+export PRIVATE_KEY=
+export IP_ADDRESS=
+export ETH_CONN=
+export SERVER_PORT=
+export CONTRACT_ADDR=
+export TLS=
+export SERVER_CERT=
+export SERVER_KEY=
+export BASE_PATH=
