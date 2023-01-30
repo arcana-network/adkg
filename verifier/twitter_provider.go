@@ -80,7 +80,7 @@ func NewTwitterProvider() *TwitterVerifier {
 	return &TwitterVerifier{
 		Timeout: 60 * time.Second,
 		// SignatureUrl: "http://host.docker.internal:9000/oauth/twitter/signature",
-		SignatureUrl: "https://api.auth.arcana.network/oauth/twitter/signature",
+		SignatureUrl: "https://api-auth.arcana.network/oauth/twitter/signature",
 		UserInfoUrl:  "https://api.twitter.com/1.1/account/verify_credentials.json",
 	}
 }

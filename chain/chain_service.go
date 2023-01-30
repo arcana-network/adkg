@@ -306,15 +306,13 @@ func (s *ChainService) createTransactionOpts() (*bind.TransactOpts, error) {
 
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(4700000)
+	auth.GasLimit = 0
 
 	gasPrice, err := s.client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.WithError(err).Error("SuggestGasPrice()")
 		return nil, err
 	}
-	gasPrice.Add(gasPrice, gasPrice)
-	gasPrice.Add(gasPrice, gasPrice)
 	auth.GasPrice = gasPrice
 
 	return auth, nil
