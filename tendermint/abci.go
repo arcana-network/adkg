@@ -29,7 +29,6 @@ var (
 	appInfoKey                  = []byte("ai")
 )
 
-const KEY_BUFFER = 30
 const MAX_KEY_INIT = 50
 
 type ABCI struct {
