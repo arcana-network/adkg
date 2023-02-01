@@ -29,8 +29,6 @@ var (
 	appInfoKey                  = []byte("ai")
 )
 
-const MAX_KEY_INIT = 50
-
 type ABCI struct {
 	db          *tmdb.GoLevelDB
 	dbIterators *DBIteratorsSyncMap
@@ -199,10 +197,11 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 	}).Info("EndBlock")
 
 	buffer := abci.broker.ChainMethods().KeyBuffer()
+	maxKeyInit := buffer / 250
 
 	if int(abci.state.LastCreatedIndex)-int(abci.state.LastUnassignedIndex) < buffer {
 
-		end := MinOf(int(abci.state.LastCreatedIndex)+MAX_KEY_INIT, int(abci.state.LastUnassignedIndex)+buffer)
+		end := MinOf(int(abci.state.LastCreatedIndex)+maxKeyInit, int(abci.state.LastUnassignedIndex)+buffer)
 		log.WithFields(log.Fields{
 			"Start":  int(abci.state.LastCreatedIndex),
 			"End":    end,

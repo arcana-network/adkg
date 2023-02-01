@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"net/http"
-	"net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -234,9 +233,7 @@ func setUpRouter(eventBus eventbus.Bus) http.Handler {
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.Handle("/rpc", mr)
-	AttachProfiler(router)
-
-	// router.NewRoute().Subrouter()
+	// AttachProfiler(router)
 
 	router.Use(parseBodyMiddleware)
 	router.Use(augmentRequestMiddleware)
@@ -246,15 +243,15 @@ func setUpRouter(eventBus eventbus.Bus) http.Handler {
 	return handler
 }
 
-func AttachProfiler(router *mux.Router) {
-	router.HandleFunc("/debug/pprof/", pprof.Index)
-	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+// func AttachProfiler(router *mux.Router) {
+// 	router.HandleFunc("/debug/pprof/", pprof.Index)
+// 	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+// 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+// 	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 
-	// Manually add support for paths linked to by index page at /debug/pprof/
-	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-	router.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
-	router.Handle("/debug/pprof/block", pprof.Handler("block"))
-}
+// 	// Manually add support for paths linked to by index page at /debug/pprof/
+// 	router.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+// 	router.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+// 	router.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+// 	router.Handle("/debug/pprof/block", pprof.Handler("block"))
+// }
