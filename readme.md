@@ -1,5 +1,13 @@
 # Keygen Node
 
+> **Warning** *Limited Release*
+>
+> ADKG protocol is currently available only for trusted partners as a binary file.  We do not recommend building or editing this protocol and deploying a local build copy yet as listed in the developer guide below. 
+>
+> Trusted partners that are running validator nodes using [the latest binary](https://github.com/arcana-network/adkg/releases) can refer to [Validator Onboarding Guide](https://docs.arcana.network/validator_intro.html) and stay tuned on the special Slack channel for validators. 
+>
+> *Please report any issues immediately on the channel right away!*
+
 ## Pre-Requisites
 
 - [Go 1.6+](https://go.dev/doc/install)
@@ -70,9 +78,9 @@ make lint
 
 ## Local cluster deployment
 
-The config folders should have `config.local.${1..6}.json` in `config/` folder for cluster to start
+The config folders should have `config.local.${1..6}.json` in the `config/` folder for the cluster to start.
 
-The following `keys` are required in the json config:
+The following `keys` are required in the JSON config:
 
 ```json
 {
@@ -101,7 +109,7 @@ docker-compose down
 
 ## Quick start
 
-#### Prerequisits
+#### Prerequisites
 
 - [Docker](https://docs.docker.com/engine/install/)
 
@@ -109,9 +117,9 @@ docker-compose down
 ```
 git clone git@github.com:arcana-network/dkgnode.git
 ```
-2. Create config files for all the six nodes and move to config directory. Refer confluence page - [local-setup](https://team-1624093970686.atlassian.net/wiki/spaces/AN/pages/196608024/Local+environment+setup+for+developers+WIP)
+2. Create config files for all the nodes and move them to the config directory. Refer to instructions on the confluence page - [local-setup](https://team-1624093970686.atlassian.net/wiki/spaces/AN/pages/196608024/Local+environment+setup+for+developers+WIP). Note: We will be updating this link in the future as it may not be accessible externally, yet.
 
-3. Run local environment with DKG nodes
+3. Run the local environment with DKG nodes
 ```
 make run-local
 ```
