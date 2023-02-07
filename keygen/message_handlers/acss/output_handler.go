@@ -92,7 +92,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 			log.Debugf("acss_verified: share=%v", *share)
 			sessionStore.S[int(dealer.Int64())] = *share
 			sessionStore.TPrime = kcommon.SetBit(sessionStore.TPrime, int(dealer.Int64()))
-			sessionStore.C[int(dealer.Int64())] = verifier.Commitments
+			sessionStore.C[int(dealer.Int64())] = verifier.Commitments()
 
 			// Check proposals and emit
 			for key, v := range sessionStore.TProposals {
