@@ -102,6 +102,7 @@ require (
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/multiformats/go-multicodec v0.7.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.7.0 // indirect
@@ -120,6 +121,7 @@ require (
 	golang.org/x/tools v0.5.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
 require (
