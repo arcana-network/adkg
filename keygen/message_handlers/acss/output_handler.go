@@ -86,7 +86,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 		_, k, _ := self.Params()
 
 		curve := common.CurveFromName(m.Curve)
-		share, verifier, verified := acss.Predicate(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
+		share, verifier, verified := acss.Check(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
 
 		if verified {
 			log.Debugf("acss_verified: share=%v", *share)

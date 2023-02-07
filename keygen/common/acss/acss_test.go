@@ -196,7 +196,7 @@ func TestPredicate(t *testing.T) {
 	var scalar = new(curves.ScalarK256).New(8)
 	key := SharedKey(scalar, dealerPoint)
 	commit := dealerPoint.ToAffineCompressed()
-	_, _, b := Predicate(key[:], []byte("foobarfoobarfoobarfoobarfoobarfoobar"), commit, 1, curve)
+	_, _, b := Check(key[:], []byte("foobarfoobarfoobarfoobarfoobarfoobar"), commit, 1, curve)
 	t.Log(b)
 }
 
