@@ -11,15 +11,16 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
+
+	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
 )
 
-func Encrypt(share []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
+func Commit(share []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
 	key := public.Mul(priv)
 	keyHash := sha256.Sum256(key.ToAffineCompressed())
 	cipher, err := encryptAES(keyHash[:], share) // 52 bytes
@@ -163,8 +164,8 @@ func SharedKey(priv curves.Scalar, dealerPublicKey curves.Point) [32]byte {
 	return keyHash
 }
 
-// Predicate verifies if the share fits the polynomial commitments
-func Predicate(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
+// Check verifies if the share fits the polynomial commitments
+func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
 
 	shareBytes, err := decryptAES(key, cipher)
 	if err != nil {
