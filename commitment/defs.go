@@ -2,8 +2,10 @@ package commitment
 
 import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
 
-	"github.com/arcana-network/dkgnode/common/sharing"
+	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 )
 
 type Value struct {
@@ -13,17 +15,18 @@ type Value struct {
 type Commitment []byte
 type Opening []byte
 
-type SRS struct{}
-
 type Scheme interface {
 	GenerateCommitmentValue() Value
-	Setup() SRS
+	Setup() kzg.SRS
 	Commit(commitmentValue Value) Commitment
 	Open() Opening
 	Check(opening Opening) bool // == Verify()?
 }
 
 type Verifier interface {
-	Verify(share *sharing.ShamirShare) error
+	Open(polynomial *kryptsharing.Polynomial, point fr.Element, srs *kzg.SRS) (kzg.OpeningProof, error)
+	Verify(commitment *kzg.Digest, proof *kzg.OpeningProof, point fr.Element, srs *kzg.SRS) error
 	Commitments() []curves.Point
+	Polynomial() *kryptsharing.Polynomial
+	Curve() *curves.Curve
 }
