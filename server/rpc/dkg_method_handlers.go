@@ -18,13 +18,13 @@ import (
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/eventbus"
-	"github.com/intel-go/fastjson"
+	fastjson "github.com/goccy/go-json"
+	"github.com/osamingo/jsonrpc/v2"
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 
 	logger "github.com/arcana-network/groot/logger"
-	"github.com/osamingo/jsonrpc"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )

@@ -16,8 +16,8 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/intel-go/fastjson"
-	"github.com/osamingo/jsonrpc"
+	fastjson "github.com/goccy/go-json"
+	"github.com/osamingo/jsonrpc/v2"
 )
 
 type StoreParams struct {

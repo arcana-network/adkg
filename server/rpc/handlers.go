@@ -8,7 +8,7 @@ import (
 	"github.com/arcana-network/dkgnode/eventbus"
 	eth "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/osamingo/jsonrpc"
+	"github.com/osamingo/jsonrpc/v2"
 )
 
 const (
