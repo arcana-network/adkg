@@ -13,6 +13,9 @@ import (
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 
@@ -116,13 +119,13 @@ func GenerateSecret(c *curves.Curve) curves.Scalar {
 	return secret
 }
 
-func GenerateCommitmentAndShares(s curves.Scalar, k, n uint32, curve *curves.Curve) (commitment.Verifier, []sharing.ShamirShare, error) {
+func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (commitment.Verifier, []sharing.ShamirShare, error) {
 	f, err := sharing.NewFeldman(k, n, curve)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
 	}
 
-	commitment, shares, err := Split(s, f.Threshold, f.Limit, f.Curve, rand.Reader)
+	commitment, shares, err := Split(secret, f.Threshold, f.Limit, f.Curve, rand.Reader)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
 	}
@@ -136,11 +139,7 @@ func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, r
 	return verifier, shares, nil
 }
 
-func getPolyAndShares(
-	secret curves.Scalar,
-	threshold, limit uint32,
-	curve *curves.Curve,
-	reader io.Reader) ([]sharing.ShamirShare, *kryptsharing.Polynomial) {
+func getPolyAndShares(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, reader io.Reader) ([]sharing.ShamirShare, *kryptsharing.Polynomial) {
 	poly := new(kryptsharing.Polynomial).Init(secret, threshold, reader)
 	shares := make([]sharing.ShamirShare, limit)
 	for i := range shares {
@@ -167,15 +166,22 @@ func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve
 		log.Errorf("Error while decrypting share: err=%s", err)
 		return nil, nil, false
 	}
-	share := sharing.ShamirShare{Id: binary.BigEndian.Uint32(shareBytes[:4]), Value: shareBytes[4:]}
+	shareID := binary.BigEndian.Uint32(shareBytes[:4])
+	shareValue := shareBytes[4:]
+	share := sharing.ShamirShare{Id: shareID, Value: shareValue}
 	log.Debugf("share: id=%d, val=%v", share.Id, share.Value)
 	verifier, err := verifierFromCommits(k, commits, curve)
 	if err != nil {
 		log.Errorf("Error while getting verifier from commits=%s", err)
 		return nil, nil, false
 	}
-
-	if err = verifier.Verify(&share); err != nil {
+	shareElement := fr.Element{}
+	shareElement.SetBytes(shareValue)
+	openingProof, err := verifier.Open(verifier.Polynomial(), shareElement, nil)
+	var digest kzg.Digest
+	digest = bn254.G1Affine{}
+	digest.SetBytes(commits)
+	if err = verifier.Verify(&digest, &openingProof, shareElement, nil); err != nil {
 		log.Errorf("Error while verifying share=%s", err)
 		return nil, nil, false
 	}
