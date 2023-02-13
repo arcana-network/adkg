@@ -15,7 +15,7 @@ help:
 .PHONY: run
 run: build
 	@echo "Starting dkg service..."
-	dkg
+	adkg start
 	
 # ==================================================================================== # 
 # BUILD
@@ -25,7 +25,7 @@ run: build
 .PHONY: build
 build:
 	@echo 'Building binary...'
-	@go install cmd/dkg.go
+	@go install main.go -o adkg
 	
 # ==================================================================================== # 
 # QUALITY CONTROL

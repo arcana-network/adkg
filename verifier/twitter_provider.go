@@ -17,6 +17,7 @@ import (
 
 	"github.com/torusresearch/bijson"
 
+	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/keygen"
 )
 
@@ -77,10 +78,15 @@ func (t *TwitterVerifier) Verify(rawPayload *bijson.RawMessage, clientID string)
 }
 
 func NewTwitterProvider() *TwitterVerifier {
+	signatureUrl, err := url.Parse(config.GlobalConfig.OAuthUrl)
+	if err != nil {
+		panic(err)
+	}
+	signatureUrl.Path = "/oauth/twitter/signature"
+
 	return &TwitterVerifier{
-		Timeout: 60 * time.Second,
-		// SignatureUrl: "http://host.docker.internal:9000/oauth/twitter/signature",
-		SignatureUrl: "https://api-auth.arcana.network/oauth/twitter/signature",
+		Timeout:      60 * time.Second,
+		SignatureUrl: signatureUrl.String(),
 		UserInfoUrl:  "https://api.twitter.com/1.1/account/verify_credentials.json",
 	}
 }

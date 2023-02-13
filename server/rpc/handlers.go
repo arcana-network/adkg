@@ -3,11 +3,8 @@ package rpc
 import (
 	"time"
 
-	"github.com/arcana-network/dkgnode/config"
-
 	"github.com/arcana-network/dkgnode/eventbus"
 	eth "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/osamingo/jsonrpc/v2"
 )
 
@@ -17,26 +14,13 @@ const (
 	KeyCommitmentRequestMethod = "KeyCommitmentRequest"
 	KeyShareRequestMethod      = "KeyShareRequest"
 	PublicKeyLookupMethod      = "PublicKeyLookup"
-	StoreKeyShareMethod        = "StoreKeyShare"
-	RetrieveKeyShareMethod     = "RetrieveKeyShare"
 	HealthMethod               = "HealthCheck"
 )
 
 type (
-	KeyLookupHandler struct {
-		bus eventbus.Bus
-	}
-	ShareRequestHandler struct {
+	KeyShareRequestHandler struct {
 		bus     eventbus.Bus
 		TimeNow func() time.Time
-	}
-	StoreKeyRequestHandler struct {
-		bus    eventbus.Bus
-		client *ethclient.Client
-	}
-	RetrieveKeyRequestHandler struct {
-		bus    eventbus.Bus
-		client *ethclient.Client
 	}
 
 	ConnectionDetailsParams struct {
@@ -54,7 +38,7 @@ type (
 		TMP2PConnection string `json:"tm_p2p_connection"`
 		P2PConnection   string `json:"p2p_connection"`
 	}
-	CommitmentRequestHandler struct {
+	KeyCommitmentRequestHandler struct {
 		bus     eventbus.Bus
 		TimeNow func() time.Time
 	}
@@ -66,35 +50,26 @@ func SetUpJRPCHandler(eventBus eventbus.Bus) (*jsonrpc.MethodRepository, error) 
 	if err := mr.RegisterMethod(HealthMethod, HealthHandler{}, HealthParams{}, HealthResult{}); err != nil {
 		return nil, err
 	}
+
 	if err := mr.RegisterMethod(KeyAssignMethod, KeyAssignHandler{eventBus}, KeyAssignParams{}, KeyAssignResult{}); err != nil {
 		return nil, err
 	}
+
 	if err := mr.RegisterMethod(ConnectionDetailsMethod, ConnectionDetailsHandler{eventBus}, ConnectionDetailsParams{}, ConnectionDetailsResult{}); err != nil {
 		return nil, err
 	}
 
-	if err := mr.RegisterMethod(PublicKeyLookupMethod, VerifierLookupHandler{eventBus}, VerifierLookupParams{}, VerifierLookupResult{}); err != nil {
+	if err := mr.RegisterMethod(PublicKeyLookupMethod, PublicKeyLookupHandler{eventBus}, VerifierLookupParams{}, VerifierLookupResult{}); err != nil {
 		return nil, err
 	}
 
-	if err := mr.RegisterMethod(KeyCommitmentRequestMethod, CommitmentRequestHandler{bus: eventBus, TimeNow: time.Now}, CommitmentRequestParams{}, CommitmentRequestResult{}); err != nil {
+	if err := mr.RegisterMethod(KeyCommitmentRequestMethod, KeyCommitmentRequestHandler{bus: eventBus, TimeNow: time.Now}, CommitmentRequestParams{}, CommitmentRequestResult{}); err != nil {
 		return nil, err
 	}
 
-	if err := mr.RegisterMethod(KeyShareRequestMethod, ShareRequestHandler{bus: eventBus, TimeNow: time.Now}, ShareRequestParams{}, ShareRequestResult{}); err != nil {
+	if err := mr.RegisterMethod(KeyShareRequestMethod, KeyShareRequestHandler{bus: eventBus, TimeNow: time.Now}, ShareRequestParams{}, ShareRequestResult{}); err != nil {
 		return nil, err
 	}
 
-	client, err := ethclient.Dial(config.GlobalConfig.EthConnection)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := mr.RegisterMethod(StoreKeyShareMethod, StoreKeyRequestHandler{bus: eventBus, client: client}, StoreKeyRequestParams{}, StoreResult{}); err != nil {
-		return nil, err
-	}
-	if err := mr.RegisterMethod(RetrieveKeyShareMethod, RetrieveKeyRequestHandler{bus: eventBus, client: client}, RetrieveKeyRequestParams{}, RetrieveResult{}); err != nil {
-		return nil, err
-	}
 	return mr, nil
 }

@@ -45,7 +45,7 @@ type (
 		PubKeyY  string `json:"pub_key_Y"`
 		Address  string `json:"address"`
 	}
-	VerifierLookupHandler struct {
+	PublicKeyLookupHandler struct {
 		eventBus eventbus.Bus
 	}
 	CommitmentRequestParams struct {
@@ -172,10 +172,8 @@ func (c *CommitmentRequestResultData) ToString() string {
 	}, common.Delimiter1)
 }
 
-func (nodeSig *NodeSignature) NodeValidation(bus eventbus.Bus) (*common.NodeReference, error) {
+func (nodeSig *NodeSignature) NodeValidation(nodeList []common.NodeReference) (*common.NodeReference, error) {
 	var node *common.NodeReference
-	currentEpoch := common.NewServiceBroker(bus, "node_validation").ChainMethods().GetCurrentEpoch()
-	nodeList := common.NewServiceBroker(bus, "node_validation").ChainMethods().AwaitCompleteNodeList(currentEpoch)
 	for i, currNode := range nodeList {
 		log.WithFields(log.Fields{
 			"currNode": (currNode),
@@ -358,36 +356,10 @@ func checkTransactionResult(e []byte, query *tmquery.Query) error {
 	}
 	return errors.New("tx failed?")
 }
-func (h KeyLookupHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	serviceLibrary := common.NewServiceBroker(h.bus, "key_lookup_handler")
-	var p KeyLookupParams
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
-		return nil, err
-	}
-	if p.PubKeyX.Text(16) == "0" || p.PubKeyY.Text(16) == "0" {
-		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "pubkey is empty"}
-	}
+func (h PublicKeyLookupHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	pubKey := keygen.BigIntToPoint(&p.PubKeyX, &p.PubKeyY)
-
-	// prepare and send response
-	keyIndex, err := serviceLibrary.DBMethods().RetrievePublicKeyToIndex(pubKey)
-	if err != nil {
-		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "no log of public key"}
-	}
-	log.WithField("keyIndex", keyIndex).Info("KeyLookup")
-	keyAssignmentPublic, err := serviceLibrary.ABCIMethods().RetrieveKeyMapping(keyIndex)
-	if err != nil {
-		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "no key assignment found for public key"}
-	}
-
-	return KeyLookupResult{keyAssignmentPublic}, nil
-}
-
-func (h VerifierLookupHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
-	broker := common.NewServiceBroker(h.eventBus, "verifier_lookup_handler")
+	broker := common.NewServiceBroker(h.eventBus, "public_lookup_handler")
 	var p VerifierLookupParams
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
@@ -435,7 +407,7 @@ func (h VerifierLookupHandler) ServeJSONRPC(c context.Context, params *fastjson.
 	return result, nil
 }
 
-func (h CommitmentRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h KeyCommitmentRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
 	broker := common.NewServiceBroker(h.bus, "commitment_request_handler")
 	log.WithField("params", params).Debug("CommitmentRequestHandler")
@@ -474,8 +446,6 @@ func (h CommitmentRequestHandler) ServeJSONRPC(c context.Context, params *fastjs
 		strconv.FormatInt(time.Now().Unix(), 10),
 	}
 
-	log.WithField("CURRENTTIME", strconv.FormatInt(time.Now().Unix(), 10)).Debug()
-
 	k := broker.ChainMethods().GetSelfPrivateKey()
 	pk := broker.ChainMethods().GetSelfPublicKey()
 	sig := crypto.SignData([]byte(commitmentRequestResultData.ToString()), crypto.BigIntToECDSAPrivateKey(k))
@@ -489,11 +459,11 @@ func (h CommitmentRequestHandler) ServeJSONRPC(c context.Context, params *fastjs
 	return res, nil
 }
 
-func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
 	broker := common.NewServiceBroker(h.bus, "share_request_handler")
 	epoch := broker.ChainMethods().GetCurrentEpoch()
-	epockInfo, err := broker.ChainMethods().GetEpochInfo(epoch, false)
+	epochInfo, err := broker.ChainMethods().GetEpochInfo(epoch, true)
 	if err != nil {
 		return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while current epoch"}
 	}
@@ -503,10 +473,12 @@ func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		return nil, err
 	}
 
-	threshold := int(epockInfo.K.Int64())
+	threshold := int(epochInfo.K.Int64())
 	allKeyIndexes := make(map[string]big.Int)    // String keyindex => keyindex
 	allValidVerifierIDs := make(map[string]bool) // verifier + pcmn.Delimiter1 + verifierIDs => bool
 	var pubKey common.Point
+
+	nodeList := broker.ChainMethods().AwaitCompleteNodeList(epoch)
 
 	// For Each VerifierItem we check its validity
 	for _, rawItem := range p.Item {
@@ -515,12 +487,7 @@ func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while parsing sharerequestitem"}
 		}
-		log.WithField("parsedVerifierParams", (parsedVerifierParams)).Info("ShareRequestHandler:Unmarshal()")
-		// clientID, err := getVerifierClientID(serviceMapper, parsedVerifierParams.AppID, parsedVerifierParams.VerifierIdentifier)
-		// if err != nil || clientID == "" {
-		// 	return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "Invalid AppID"}
-		// }
-		// verify token validity against verifier, do not pass along nodesignatures
+		log.WithField("parsedVerifierParams", (parsedVerifierParams)).Debug("ShareRequestHandler:Unmarshal()")
 		jsonMap := make(map[string]interface{})
 		err = fastjson.Unmarshal(rawItem, &jsonMap)
 		if err != nil {
@@ -542,7 +509,7 @@ func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		// Validate signatures
 		var validSignatures []ValidatedNodeSignature
 		for i := 0; i < len(parsedVerifierParams.NodeSignatures); i++ {
-			nodeRef, err := parsedVerifierParams.NodeSignatures[i].NodeValidation(h.bus)
+			nodeRef, err := parsedVerifierParams.NodeSignatures[i].NodeValidation(nodeList)
 			if err == nil {
 				validSignatures = append(validSignatures, ValidatedNodeSignature{
 					parsedVerifierParams.NodeSignatures[i],
@@ -650,26 +617,29 @@ func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		// check if we have enough validTokens according to Access Structure
 
 		pubKeyAccessStructure, err := broker.ABCIMethods().RetrieveKeyMapping(index)
-		log.WithField("publicX", pubKeyAccessStructure.PublicKey.X).Info("PUB KEY")
-		log.WithField("publicY", pubKeyAccessStructure.PublicKey.Y).Info("PUB KEY")
+		log.WithFields(log.Fields{
+			"publicX": pubKeyAccessStructure.PublicKey.X,
+			"publicY": pubKeyAccessStructure.PublicKey.Y,
+		}).Debug("public_key")
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: fmt.Sprintf("could not retrieve access structure: %v", err)}
 		}
 
 		si, _, err := broker.DBMethods().RetrieveCompletedShare(index)
-		log.WithFields(log.Fields{
-			"share": si.Text(16),
-			"index": index.Int64(),
-		}).Info("ShareData")
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "could not retrieve completed share"}
 		}
 
+		log.WithFields(log.Fields{
+			"share": si.Text(16),
+			"index": index.Int64(),
+		}).Debug("share_data")
+
 		keyAssignment := KeyAssignment{
 			Share: si.Bytes(),
 		}
-		log.WithField("keyAssignment", keyAssignment).Info("Data")
-		log.WithField("pubKeyAccessStructure", pubKeyAccessStructure).Info("PUB KEY")
+		log.WithField("AssignedKeyShare", keyAssignment).Debug("GetKeyShare")
+		log.WithField("PublicKey", pubKeyAccessStructure).Debug("GetKeyShare")
 		pubKeyHex := "04" + fmt.Sprintf("%064s", pubKey.X.Text(16)) + fmt.Sprintf("%064s", pubKey.Y.Text(16))
 		encrypted, metadata, err := tronCrypto.Encrypt(pubKeyHex, keyAssignment.Share)
 		if err != nil {
@@ -682,7 +652,6 @@ func (h ShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 
 		keyAssignment.Share = []byte(encrypted)
 		keyAssignment.Metadata = *metadata
-		log.WithField("keyAssignment", keyAssignment).Info("Data")
 
 		response.Keys = append(response.Keys, ShareRequestResultItem{
 			Index: pubKeyAccessStructure.Index.String(),

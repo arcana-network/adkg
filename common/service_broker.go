@@ -444,7 +444,7 @@ func (cm *ChainMethods) GetCurrentEpoch() (epoch int) {
 			return methodResponse.Error
 		}
 		var data int
-		log.WithField("get_curent_epoch", methodResponse.Data).Info("ServiceMapper")
+		log.WithField("GetCurentEpoch", methodResponse.Data).Debug("ServiceMapper")
 		err := CastOrUnmarshal(methodResponse.Data, &data)
 		if err != nil {
 			return err
@@ -1235,24 +1235,24 @@ func (cam *CacheMethods) RecordTokenCommit(verifier string, tokenCommitment stri
 func (cam *CacheMethods) StoreVerifierToClientID(appID, verifier, clientID string) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_verifier_clientid", appID, verifier, clientID)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("StoreVerifierToClientID")
 	}
 }
 func (cam *CacheMethods) StorePartitionForApp(appID string, partitioned bool) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_app_partition", appID, partitioned)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("StorePartitionForApp")
 	}
 }
 
 func (cam *CacheMethods) RetrieveClientIDFromVerifier(appID, verifier string) (clientID string) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "retrieve_verifier_clientid", appID, verifier)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("RetrieveClientIDFromVerifier")
 	}
 	err := CastOrUnmarshal(methodResponse.Data, &clientID)
 	if err != nil {
-		log.WithError(err).Info("Error during RetrieveClientIDFromVerifier")
+		log.WithError(err).Error("RetrieveClientIDFromVerifier")
 		return
 	}
 	return
@@ -1260,13 +1260,13 @@ func (cam *CacheMethods) RetrieveClientIDFromVerifier(appID, verifier string) (c
 func (cam *CacheMethods) GetPartitionForApp(appID string) (partitioned bool, err error) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "retrieve_app_partition", appID)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not get app partition from cache")
+		log.WithError(methodResponse.Error).Error("GetPartitionForApp")
 		err = methodResponse.Error
 		return
 	}
 	err = CastOrUnmarshal(methodResponse.Data, &partitioned)
 	if err != nil {
-		log.WithError(err).Info("Error during retrieve_app_partition")
+		log.WithError(err).Error("GetPartitionForApp")
 		return
 	}
 	return

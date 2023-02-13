@@ -4,3 +4,5 @@ config.json
 .envrc
 coverage.txt
 .idea
+
+dist/

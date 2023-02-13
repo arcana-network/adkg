@@ -25,6 +25,8 @@ type Config struct {
 	HttpServerPort     string `json:"port"`
 	Domain             string `json:"domain"`
 	GatewayURL         string `json:"gatewayUrl"`
+	PasswordlessUrl    string `json:"passwordlessUrl"`
+	OAuthUrl           string `json:"oauthUrl"`
 }
 
 func (c *Config) VerifyRequired() error {
@@ -51,10 +53,8 @@ func ConfigFromFile(configPath string) (*Config, error) {
 }
 
 func UseIPAdressInListenAddress(config *Config) {
-	if config.IPAddress != "" {
-		config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
-		config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
-	}
+	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
+	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
 }
 
 func ReadConfigJson(configPath string) (*Config, error) {
@@ -77,9 +77,9 @@ func GetDefaultConfig() *Config {
 		TMP2PListenAddress: "tcp://0.0.0.0:26656",
 		P2PListenAddress:   "/ip4/0.0.0.0/tcp/1080",
 		BasePath:           "/tmp/keygen-data",
-		EthConnection:      "https://rpc-mainnet.maticvigil.com/v1/bcce899b0024136d1f13572c49ba4c45b6164ce9",
-		ContractAddress:    "0x74C06De8244DC2c99A3d478957a9D16739D338Ef",
-		GatewayURL:         "https://gateway.arcana.network",
+		EthConnection:      DefaultBlockchainRPCURL,
+		ContractAddress:    DefaultContractAddress,
+		GatewayURL:         DefaultGatewayURL,
 	}
 	return config
 }

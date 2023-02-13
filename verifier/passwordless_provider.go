@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/config"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -20,10 +22,15 @@ type PasswordlessVerifier struct {
 }
 
 func NewPasswordlessProvider() *PasswordlessVerifier {
+	verifyUrl, err := url.Parse(config.GlobalConfig.PasswordlessUrl)
+	if err != nil {
+		panic(err)
+	}
+	verifyUrl.Path = "api/token/verify"
+	verifyUrl.RawQuery = "id_token="
 	return &PasswordlessVerifier{
-		Version: "1.0",
-		// Endpoint: "http://host.docker.internal:3000/api/token/verify?id_token=",
-		Endpoint: "https://passwordless.arcana.network/api/token/verify?id_token=",
+		Version:  "1.0",
+		Endpoint: verifyUrl.String(),
 		Timeout:  600 * time.Second,
 	}
 }
@@ -57,7 +64,7 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, clientID st
 		return false, "", err
 	}
 
-	log.WithField("clientID", clientID).Info("VerifyRequestIdentity-Passwordless")
+	log.WithField("ClientID", clientID).Debug("VerifyRequestIdentity-Passwordless")
 
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
@@ -67,40 +74,33 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, clientID st
 	log.WithFields(log.Fields{
 		"params":   p,
 		"verifier": g,
-	}).Info("Passwordless")
+	}).Debug("Passwordless")
 
 	url := g.Endpoint + p.IDToken
-	log.WithField("url", url).Info("TokenInfo-Passwordless")
 
 	var body PasswordlessAuthResponse
-	log.WithField("body", body).Info("EmptyBody-Passwordless")
 
 	err := getPasswordlessAuth(url, &body)
-	log.WithField("err", err).Info("GetAuth-Passwordless")
 
 	if err != nil {
 		return false, "", err
 	}
 
 	err = verifyPasswordlessAuthResponse(body, p.UserID, g.Timeout, clientID)
-	log.WithField("err", err).Debug("VerifyAuth-Passwordless")
-
 	if err != nil {
-		return false, "", fmt.Errorf("verify_pwdless_response: %w", err)
+		log.WithField("err", err).Debug("PasswordlessVerifier: Verify")
+		return false, "", fmt.Errorf("error: %w", err)
 	}
 
 	return true, p.UserID, nil
 }
 
 func getPasswordlessAuth(url string, body *PasswordlessAuthResponse) error {
-	log.WithField("url", url).Info("getPasswordlessAuth-PasswordlessVerifier")
-	log.WithField("body", body).Info("getPasswordlessAuth-PasswordlessVerifier")
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-	log.WithField("Httpstatus code", resp.StatusCode).Info("PasswordlessVerifier")
-	log.WithField("Httpstatus", resp.Status).Info("PasswordlessVerifier")
+	log.WithField("StatusCode", resp.StatusCode).Debug("PasswordlessVerifier")
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("error from passwordless auth. code %d", resp.StatusCode)
 	}
@@ -126,8 +126,7 @@ func verifyPasswordlessAuthResponse(body PasswordlessAuthResponse, verifierID st
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
 	if strings.Compare(clientID, body.Azp) != 0 {
-		return fmt.Errorf("ClientIDMismatch: %s %s", clientID, body.Azp)
+		return fmt.Errorf("clientID Mismatch: Expected=%s, Got=%s", clientID, body.Azp)
 	}
-	log.WithField("body", body).Info("verifyPasswordlessAuthResponse")
 	return nil
 }
