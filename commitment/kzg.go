@@ -15,7 +15,7 @@ type KZGVerifier struct {
 }
 
 func (v *KZGVerifier) Verify(commitment *kzg.Digest, proof *kzg.OpeningProof, point fr.Element, srs *kzg.SRS) error {
-	return nil
+	return v.Verify(commitment, proof, point, srs)
 }
 
 func (v *KZGVerifier) Commitments() []curves.Point {
@@ -27,7 +27,7 @@ func (v *KZGVerifier) Polynomial() *kryptsharing.Polynomial {
 }
 
 func (v *KZGVerifier) Open(polynomial *kryptsharing.Polynomial, point fr.Element, srs *kzg.SRS) (kzg.OpeningProof, error) {
-	return kzg.OpeningProof{}, nil
+	return v.Open(polynomial, point, srs)
 }
 
 func (v *KZGVerifier) Curve() *curves.Curve {
