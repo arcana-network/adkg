@@ -122,6 +122,7 @@ func (s *VerifierService) Start() error {
 		NewGithubProvider(),
 		NewTwitterProvider(),
 		NewPasswordlessProvider(),
+		NewAWSCognitoVerifier(),
 	}
 	s.providerMap = NewProviderMap(providers)
 	return nil
