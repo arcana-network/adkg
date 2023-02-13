@@ -1,6 +1,10 @@
 package commitment
 
 import (
+	"crypto/rand"
+	"log"
+	"math/big"
+
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
@@ -12,6 +16,7 @@ import (
 type KZGVerifier struct {
 	commitments []curves.Point
 	curve       *curves.Curve
+	srs         *kzg.SRS
 }
 
 func (v *KZGVerifier) Verify(commitment *kzg.Digest, proof *kzg.OpeningProof, point fr.Element, srs *kzg.SRS) error {
@@ -36,6 +41,16 @@ func (v *KZGVerifier) Curve() *curves.Curve {
 func NewKZGVerifier(commitments []curves.Point) *KZGVerifier {
 	k := new(KZGVerifier)
 	k.commitments = commitments
+	max := new(big.Int)
+	max.Exp(big.NewInt(2), big.NewInt(130), nil).Sub(max, big.NewInt(1))
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		log.Fatal(err)
+	}
+	k.srs, err = kzg.NewSRS(16, n)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return k
 }
 
