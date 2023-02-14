@@ -8,6 +8,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/secret"
 	"github.com/arcana-network/dkgnode/secret/vault"
+	log "github.com/sirupsen/logrus"
 )
 
 var GlobalConfig *Config
@@ -15,6 +16,7 @@ var GlobalConfig *Config
 type Config struct {
 	TMP2PListenAddress string `json:"tmp2plistenaddress"`
 	P2PListenAddress   string `json:"p2plistenaddress"`
+	RawPrivateKey      string `json:"privatekey"`
 	PrivateKey         []byte
 	TMPrivateKey       []byte
 	SecretConfigPath   string `json:"secretConfigPath"`
@@ -30,7 +32,7 @@ type Config struct {
 }
 
 func (c *Config) VerifyRequired() error {
-	if c.SecretConfigPath == "" {
+	if c.RawPrivateKey == "" && c.SecretConfigPath == "" {
 		return errors.New("required secretConfigPath missing")
 	}
 	if c.IPAddress == "" {
@@ -59,8 +61,10 @@ func UseIPAdressInListenAddress(config *Config) {
 
 func ReadConfigJson(configPath string) (*Config, error) {
 	config := GetDefaultConfig()
+	log.Infof("ConfigPath=%s", configPath)
 	f, err := os.OpenFile(configPath, os.O_RDONLY|os.O_SYNC, 0)
 	if err != nil {
+		log.Infof("error=%s", err)
 		return nil, err
 	}
 	defer f.Close()
@@ -84,32 +88,33 @@ func GetDefaultConfig() *Config {
 	return config
 }
 
-func GetPrivateKeys(configPath string) (key secret.Keys, err error) {
+func GetNodePrivateKey(configPath string) (key []byte, err error) {
+	return GetSecretFromVault(configPath, secret.NodeKey)
+}
+
+func GetTendermintPrivateKey(configPath string) (key []byte, err error) {
+	return GetSecretFromVault(configPath, secret.TendermintKey)
+}
+
+func GetSecretFromVault(configPath, keyType string) ([]byte, error) {
 	c, err := secret.ReadConfig(configPath)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	manager, err := vault.NewVaultManager(c)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = manager.Setup()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	nodePrivKey, err := manager.GetSecret(secret.NodeKey)
+	key, err := manager.GetSecret(keyType)
 	if err != nil {
-		return
+		return nil, err
 	}
-	key.NodePrivateKey = nodePrivKey
-
-	tmPrivKey, err := manager.GetSecret(secret.TendermintKey)
-	if err != nil {
-		return
-	}
-	key.TmPrivateKey = tmPrivKey
-	return
+	return key, nil
 }

@@ -26,7 +26,6 @@ require (
 )
 
 require (
-	github.com/ecies/go/v2 v2.0.4
 	github.com/google/gopacket v1.1.19 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 )

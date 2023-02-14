@@ -61,17 +61,6 @@ services:
     networks:
       arcana:
         ipv4_address: 192.167.10.16
-  seven:
-    build: .
-    ports:
-      - "1080"
-      - "8086:8086"
-    volumes:
-      - ./assets/config.local.7.json:/config.json
-    networks:
-      arcana:
-        ipv4_address: 192.167.10.17
-
 networks:
   arcana:
     driver: bridge
