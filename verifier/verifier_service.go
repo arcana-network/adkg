@@ -114,7 +114,7 @@ func (*VerifierService) ID() string {
 	return common.VERIFIER_SERVICE_NAME
 }
 
-func (s *VerifierService) Start() error {
+func (v *VerifierService) Start() error {
 	providers := []Provider{
 		NewGoogleProvider(),
 		NewDiscordProvider(),
@@ -124,14 +124,14 @@ func (s *VerifierService) Start() error {
 		NewPasswordlessProvider(),
 		NewAWSCognitoVerifier(),
 	}
-	s.providerMap = NewProviderMap(providers)
+	v.providerMap = NewProviderMap(providers)
 	return nil
 
 }
-func (s *VerifierService) Stop() error {
+func (v *VerifierService) Stop() error {
 	return nil
 }
-func (s *VerifierService) IsRunning() bool {
+func (v *VerifierService) IsRunning() bool {
 	return true
 }
 func (v *VerifierService) Call(method string, args ...interface{}) (interface{}, error) {
