@@ -72,7 +72,7 @@ func decryptAES(key []byte, ciphertext []byte) ([]byte, error) {
 	return input, nil
 }
 
-func CompressCommitments(v commitment.Verifier) []byte {
+func CompressCommitments(v commitment.Scheme) []byte {
 	c := make([]byte, 0)
 	for _, v := range v.Commitments() {
 		e := v.ToAffineCompressed() // 33 bytes
@@ -95,7 +95,7 @@ func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point
 	return commitment, nil
 }
 
-func verifierFromCommits(k int, c []byte, curve *curves.Curve) (commitment.Verifier, error) {
+func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*commitment.KZG, error) {
 
 	commitments, err := DecompressCommitments(k, c, curve)
 	if err != nil {
@@ -119,7 +119,7 @@ func GenerateSecret(c *curves.Curve) curves.Scalar {
 	return secret
 }
 
-func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (commitment.Verifier, []sharing.ShamirShare, error) {
+func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (commitment.Scheme, []sharing.ShamirShare, error) {
 	f, err := sharing.NewFeldman(k, n, curve)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
@@ -132,11 +132,11 @@ func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curve
 	return commitment, shares, nil
 }
 
-func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, reader io.Reader) (commitment.Verifier, []sharing.ShamirShare, error) {
+func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, reader io.Reader) (commitment.Scheme, []sharing.ShamirShare, error) {
 
 	shares, poly := getPolyAndShares(secret, threshold, limit, curve, reader)
-	verifier := commitment.NewKZGCommitment(threshold, curve, poly)
-	return verifier, shares, nil
+	kzgCommitment := commitment.NewKZGCommitment(threshold, curve, poly)
+	return kzgCommitment, shares, nil
 }
 
 func getPolyAndShares(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, reader io.Reader) ([]sharing.ShamirShare, *kryptsharing.Polynomial) {
@@ -159,7 +159,7 @@ func SharedKey(priv curves.Scalar, dealerPublicKey curves.Point) [32]byte {
 }
 
 // Check verifies if the share fits the polynomial commitments
-func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, commitment.Verifier, bool) {
+func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, commitment.Scheme, bool) {
 
 	shareBytes, err := decryptAES(key, cipher)
 	if err != nil {
@@ -177,11 +177,11 @@ func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve
 	}
 	shareElement := fr.Element{}
 	shareElement.SetBytes(shareValue)
-	openingProof, err := verifier.Open(verifier.Polynomial(), shareElement, nil)
+	openingProof, err := verifier.Open(shareElement)
 	var digest kzg.Digest
 	digest = bls12377.G1Affine{}
 	digest.SetBytes(commits)
-	if err = verifier.Verify(&digest, &openingProof, shareElement, nil); err != nil {
+	if err = verifier.Verify(&digest, &openingProof, shareElement); err != nil {
 		log.Errorf("Error while verifying share=%s", err)
 		return nil, nil, false
 	}
