@@ -13,9 +13,9 @@ import (
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
+	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bn254"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 
@@ -179,7 +179,7 @@ func Check(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve
 	shareElement.SetBytes(shareValue)
 	openingProof, err := verifier.Open(verifier.Polynomial(), shareElement, nil)
 	var digest kzg.Digest
-	digest = bn254.G1Affine{}
+	digest = bls12377.G1Affine{}
 	digest.SetBytes(commits)
 	if err = verifier.Verify(&digest, &openingProof, shareElement, nil); err != nil {
 		log.Errorf("Error while verifying share=%s", err)

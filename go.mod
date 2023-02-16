@@ -2,6 +2,10 @@ module github.com/arcana-network/dkgnode
 
 go 1.19
 
+replace (
+	github.com/coinbase/kryptology => ../../coinbase/kryptology
+)
+
 require (
 	github.com/TRON-US/go-eccrypto v0.0.1
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -32,6 +36,7 @@ require (
 
 require (
 	github.com/arcana-network/groot v0.0.0-20220407023724-c02d70fc35f9
+	github.com/consensys/gnark-crypto v0.9.0
 	github.com/goccy/go-json v0.9.11
 	github.com/spf13/cobra v1.6.0
 )
@@ -44,7 +49,7 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.1.2 // indirect
 	github.com/bwesterb/go-ristretto v1.2.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
-	github.com/consensys/gnark-crypto v0.5.3 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/creachadair/taskgroup v0.3.2 // indirect

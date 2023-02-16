@@ -8,7 +8,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
 
 	"github.com/arcana-network/dkgnode/common/sharing"
 )
@@ -17,6 +17,7 @@ type KZGVerifier struct {
 	commitments []curves.Point
 	curve       *curves.Curve
 	srs         *kzg.SRS
+	polynomial  *kryptsharing.Polynomial
 }
 
 func (v *KZGVerifier) Verify(commitment *kzg.Digest, proof *kzg.OpeningProof, point fr.Element, srs *kzg.SRS) error {
@@ -28,11 +29,18 @@ func (v *KZGVerifier) Commitments() []curves.Point {
 }
 
 func (v *KZGVerifier) Polynomial() *kryptsharing.Polynomial {
-	return v.Polynomial()
+	return v.polynomial
 }
 
 func (v *KZGVerifier) Open(polynomial *kryptsharing.Polynomial, point fr.Element, srs *kzg.SRS) (kzg.OpeningProof, error) {
-	return v.Open(polynomial, point, srs)
+	var frPoly []fr.Element
+	for _, polyPoint := range polynomial.Coefficients {
+		bls12377Point := polyPoint.(curves.Scalar)
+		pointValue := bls12377Point.BigInt()
+		frPoint := fr.NewElement(pointValue.Uint64())
+		frPoly = append(frPoly, frPoint)
+	}
+	return kzg.Open(frPoly, point, srs)
 }
 
 func (v *KZGVerifier) Curve() *curves.Curve {
@@ -58,6 +66,7 @@ func NewKZGCommitment(threshold uint32, curve *curves.Curve, poly *kryptsharing.
 	v := new(KZGVerifier)
 	v.curve = curve
 	v.commitments = make([]curves.Point, threshold)
+	v.polynomial = poly
 	for i := range v.commitments {
 		base, _ := sharing.CurveParams(curve.Name)
 		v.commitments[i] = base.Mul(poly.Coefficients[i])

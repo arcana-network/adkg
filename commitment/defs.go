@@ -3,7 +3,7 @@ package commitment
 import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/kzg"
 
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 )
