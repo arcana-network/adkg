@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
-
 	"github.com/torusresearch/bijson"
 )
 
@@ -34,6 +33,7 @@ type AWSCognitoAuthResponse struct {
 		AUD           string `json:"aud"`
 		SUB           string `json:"sub"`
 	*/
+	Sub           string `json:"sub"`
 	Email         string `json:"email"`
 	EmailVerified string `json:"email_verified"`
 	GivenName     string `json:"given_name"`
