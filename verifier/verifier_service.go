@@ -58,7 +58,7 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 		return false, "", errors.New("cleaned token is different from original token")
 	}
 	params, err := getVerifierParams(serviceMapper, msg.AppID, msg.Provider)
-	if err != nil || params.ClientID == "" {
+	if err != nil || params == nil || params.ClientID == "" {
 		return false, "", errors.New("invalid app address")
 	}
 
