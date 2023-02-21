@@ -2,9 +2,11 @@ FROM --platform=linux/x86-64 golang:1.19.2-alpine3.16 as node-build
 RUN apk update && apk add libstdc++ g++ git linux-headers
 
 WORKDIR /src
-ADD . ./
+# pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 
-WORKDIR /src
+COPY . .
 RUN go build main.go
 
 FROM --platform=linux/x86-64 alpine:3.14
