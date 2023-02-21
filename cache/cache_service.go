@@ -106,11 +106,10 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 		var args0 string
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		return nil, c.recordSignerSig(args0)
-	case "store_verifier_clientid":
-
+	case "store_verifier_params":
 		var args0 string
 		var args1 string
-		var args2 string
+		var args2 *common.VerifierParams
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		_ = common.CastOrUnmarshal(args[2], &args2)
@@ -124,8 +123,7 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 		_ = common.CastOrUnmarshal(args[1], &partitioned)
 		c.StoreAppPartition(appID, partitioned)
 		return nil, nil
-	case "retrieve_verifier_clientid":
-
+	case "retrieve_verifier_params":
 		var args0 string
 		var args1 string
 		_ = common.CastOrUnmarshal(args[0], &args0)
@@ -140,19 +138,20 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 	return nil, fmt.Errorf("cache service method %v not found", method)
 }
 
-func (c *CacheService) StoreVerifierClientID(appID, verifier, clientID string) {
+func (c *CacheService) StoreVerifierClientID(appID, verifier string, params *common.VerifierParams) {
 	key := strings.Join([]string{appID, verifier}, common.Delimiter1)
-	c.verifierCache.Set(key, clientID, time.Minute*5)
+	c.verifierCache.Set(key, params, time.Minute*5)
 }
-func (c *CacheService) RetrieveVerifierClientID(appID, verifier string) string {
+
+func (c *CacheService) RetrieveVerifierClientID(appID, verifier string) *common.VerifierParams {
 	key := strings.Join([]string{appID, verifier}, common.Delimiter1)
 
 	value, found := c.verifierCache.Get(key)
 	if !found {
-		return ""
+		return nil
 	}
-	clientID := value.(string)
-	return clientID
+	params := value.(*common.VerifierParams)
+	return params
 }
 
 func (c *CacheService) StoreAppPartition(appID string, partitioned bool) {

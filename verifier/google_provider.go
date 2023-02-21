@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -63,13 +64,13 @@ func (g *GoogleVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p GoogleVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
 	}
 
-	log.WithField("clientID", clientID).Info("VerifyRequestIdentity-Google")
+	log.WithField("clientID", params.ClientID).Info("VerifyRequestIdentity-Google")
 
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
@@ -84,7 +85,7 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) 
 		return false, "", err
 	}
 
-	err = verifyGoogleAuthResponse(body, p.UserID, g.Timeout, clientID)
+	err = verifyGoogleAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
 	if err != nil {
 		return false, "", fmt.Errorf("verify_google_response: %w", err)
 	}

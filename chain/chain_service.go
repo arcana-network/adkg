@@ -34,6 +34,18 @@ import (
 
 const DEFAULT_KEY_BUFFER = 50000
 
+// map initializations cannot be constant
+var providerList = map[string]bool{
+	"google":       true,
+	"discord":      true,
+	"twitch":       true,
+	"reddit":       true,
+	"twitter":      true,
+	"github":       true,
+	"passwordless": true,
+	"aws":          true,
+}
+
 type NodeRegister struct {
 	AllConnected bool
 	NodeList     []*common.NodeReference
@@ -155,6 +167,7 @@ func (chain *ChainService) getKeyPartition(appID string) (unpartitioned bool, er
 type Creds struct {
 	Provider string `json:"verifier"`
 	ClientID string `json:"client_id"`
+	Domain   string `json:"domain"`
 }
 
 type GatewayResponse struct {
@@ -178,18 +191,22 @@ func GatewayUrl(path, query string) (*url.URL, error) {
 	return u, nil
 }
 
-func fetchClientID(appID string, p string) (string, error) {
-	u, err := GatewayUrl("/api/v1/get-app-config/",
-		fmt.Sprintf("id=%s", appID))
+func VerifierParams(appID, provider string) (vp *common.VerifierParams, err error) {
+	_, exists := providerList[provider]
+	if !exists {
+		return nil, errors.New("invalid provider")
+	}
+
+	u, err := GatewayUrl("/api/v1/get-app-config/", "id="+appID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	log.Debug("FetchClientID", log.Fields{
 		"url": u.String(),
 	})
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -197,7 +214,7 @@ func fetchClientID(appID string, p string) (string, error) {
 		log.WithFields(log.Fields{
 			"err": err,
 		}).Error("FetchClientID.client.Do()")
-		return "", err
+		return nil, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -206,7 +223,7 @@ func fetchClientID(appID string, p string) (string, error) {
 		log.WithFields(log.Fields{
 			"err": err,
 		}).Error("FetchClientID.ReadBody")
-		return "", err
+		return nil, err
 	}
 	r := GatewayResponse{}
 	err = json.Unmarshal(body, &r)
@@ -214,44 +231,17 @@ func fetchClientID(appID string, p string) (string, error) {
 		log.WithFields(log.Fields{
 			"err": err,
 		}).Error("FetchClientID.Unmarshal")
-		return "", err
+		return nil, err
 	}
 	for _, v := range r.Creds {
-		if p == v.Provider {
-			return v.ClientID, nil
+		if provider == v.Provider {
+			return &common.VerifierParams{
+				ClientID: v.ClientID,
+				Domain:   v.Domain,
+			}, nil
 		}
 	}
-	return "", errors.New("ClientID not found")
-}
-
-func ClientID(appID, provider string) (clientID string, err error) {
-	allowedProviders := []string{
-		"google", "discord", "twitch",
-		"reddit", "twitter", "github",
-		"passwordless",
-	}
-	if stringInSlice(provider, allowedProviders) {
-		if provider == "passwordless" {
-			return appID, nil
-		}
-
-		clientID, err = fetchClientID(appID, provider)
-		log.Debug("FetchClientID", log.Fields{
-			"clientID": clientID,
-			"err":      err,
-		})
-		return clientID, err
-	}
-	return "", errors.New("Invalid verifier")
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
+	return nil, errors.New("ClientID not found")
 }
 
 func getPublicKey(privateKey *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
@@ -680,7 +670,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 			}
 		}
 		return nil, fmt.Errorf("node could not be found for %v %v", args0, args1)
-	case "get_clientid_by_verifier":
+	case "get_params_by_verifier":
 		var args0, args1 string
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
@@ -688,8 +678,8 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		log.WithFields(log.Fields{
 			"args0": args0,
 			"args1": args1,
-		}).Debug("get_clientid_by_verifier")
-		return ClientID(args0, args1)
+		}).Debug("get_params_by_verifier")
+		return VerifierParams(args0, args1)
 	case "get_app_partition":
 		var args0 string
 		_ = common.CastOrUnmarshal(args[0], &args0)

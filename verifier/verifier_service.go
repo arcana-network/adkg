@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/torusresearch/bijson"
-
-	"github.com/arcana-network/dkgnode/common"
 )
 
 var ErrorIDNotVerified = errors.New("ID is not verified")
@@ -26,7 +25,7 @@ type VerifyMessage struct {
 type Provider interface {
 	ID() string
 	CleanToken(string) string
-	Verify(*bijson.RawMessage, string) (verified bool, verifierID string, err error)
+	Verify(*bijson.RawMessage, *common.VerifierParams) (verified bool, verifierID string, err error)
 }
 
 type ProviderMap struct {
@@ -58,26 +57,26 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 	if cleanedToken != msg.Token {
 		return false, "", errors.New("cleaned token is different from original token")
 	}
-	clientID, err := getVerifierClientID(serviceMapper, msg.AppID, msg.Provider)
-	if err != nil || clientID == "" {
+	params, err := getVerifierParams(serviceMapper, msg.AppID, msg.Provider)
+	if err != nil || params.ClientID == "" {
 		return false, "", errors.New("invalid app address")
 	}
 
-	return v.Verify(rawMessage, clientID)
+	return v.Verify(rawMessage, params)
 }
 
-func getVerifierClientID(serviceMapper *common.MessageBroker, appID, verifier string) (string, error) {
+func getVerifierParams(serviceMapper *common.MessageBroker, appID, verifier string) (*common.VerifierParams, error) {
 	cachedClientID := serviceMapper.CacheMethods().RetrieveClientIDFromVerifier(appID, verifier)
-	if cachedClientID == "" {
-		clientID, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
+	if cachedClientID == nil {
+		params, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		if clientID == "" {
-			return "", errors.New("could not get clientID from specified appID")
+		if params == nil {
+			return nil, errors.New("could not get params from specified appID")
 		}
-		serviceMapper.CacheMethods().StoreVerifierToClientID(appID, verifier, clientID)
-		return clientID, nil
+		serviceMapper.CacheMethods().StoreVerifierToClientID(appID, verifier, params)
+		return params, nil
 	}
 	return cachedClientID, nil
 }

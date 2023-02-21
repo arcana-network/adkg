@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -58,13 +59,13 @@ func (g *PasswordlessVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p PasswordlessVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
 	}
 
-	log.WithField("ClientID", clientID).Debug("VerifyRequestIdentity-Passwordless")
+	log.WithField("ClientID", params.ClientID).Debug("VerifyRequestIdentity-Passwordless")
 
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
@@ -86,7 +87,7 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, clientID st
 		return false, "", err
 	}
 
-	err = verifyPasswordlessAuthResponse(body, p.UserID, g.Timeout, clientID)
+	err = verifyPasswordlessAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
 	if err != nil {
 		log.WithField("err", err).Debug("PasswordlessVerifier: Verify")
 		return false, "", fmt.Errorf("error: %w", err)

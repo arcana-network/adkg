@@ -1,10 +1,11 @@
 package verifier
 
 import (
-	"errors"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/arcana-network/dkgnode/common"
 
 	"github.com/torusresearch/bijson"
 )
@@ -50,9 +51,9 @@ func (a *AWSCognitoVerifier) CleanToken(token string) string {
 }
 
 // AWS Cognito domains are user controlled, therefore errors are not worth saving.
-func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, domain, clientID string) bool {
+func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, params *common.VerifierParams) bool {
 	// Domain is uncontrolled unfortunately, it can be practically anything
-	req, err := http.NewRequest("GET", "https://"+domain+"/oauth2/userinfo", nil)
+	req, err := http.NewRequest("GET", "https://"+params.Domain+"/oauth2/userinfo", nil)
 	if err != nil {
 		return false
 	}
@@ -93,21 +94,12 @@ func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, domain, c
 	return true
 }
 
-func (a *AWSCognitoVerifier) Verify(rawPayload *bijson.RawMessage, joinedClientID string) (bool, string, error) {
-	var domain, clientID string
-	{
-		split := strings.Split(joinedClientID, "|")
-		if len(split) != 2 {
-			return false, "", errors.New("invalid client ID")
-		}
-		domain = split[0]
-		clientID = split[1]
-	}
+func (a *AWSCognitoVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p AWSCognitoVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
 	}
-	ok := a.callAndVerify(p, domain, clientID)
+	ok := a.callAndVerify(p, params)
 	if !ok {
 		return false, p.UserID, nil
 	}
