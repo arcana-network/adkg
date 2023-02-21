@@ -33,6 +33,7 @@ require (
 require (
 	github.com/arcana-network/groot v0.0.0-20220407023724-c02d70fc35f9
 	github.com/goccy/go-json v0.9.11
+	github.com/imroc/req/v3 v3.32.0
 	github.com/spf13/cobra v1.6.0
 )
 

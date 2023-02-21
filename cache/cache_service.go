@@ -109,11 +109,11 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 	case "store_verifier_params":
 		var args0 string
 		var args1 string
-		var args2 *common.VerifierParams
+		var args2 common.VerifierParams
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		_ = common.CastOrUnmarshal(args[2], &args2)
-		c.StoreVerifierClientID(args0, args1, args2)
+		c.StoreVerifierClientID(args0, args1, &args2)
 		return nil, nil
 	case "store_app_partition":
 		var appID string

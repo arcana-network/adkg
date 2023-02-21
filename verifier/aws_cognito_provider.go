@@ -1,11 +1,10 @@
 package verifier
 
 import (
-	"io"
-	"net/http"
 	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
 )
 
@@ -43,7 +42,7 @@ type AWSCognitoAuthResponse struct {
 }
 
 func (a *AWSCognitoVerifier) ID() string {
-	return "aws_cognito"
+	return "aws"
 }
 
 func (a *AWSCognitoVerifier) CleanToken(token string) string {
@@ -53,30 +52,15 @@ func (a *AWSCognitoVerifier) CleanToken(token string) string {
 // AWS Cognito domains are user controlled, therefore errors are not worth saving.
 func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, params *common.VerifierParams) bool {
 	// Domain is uncontrolled unfortunately, it can be practically anything
-	req, err := http.NewRequest("GET", "https://"+params.Domain+"/oauth2/userinfo", nil)
-	if err != nil {
-		return false
-	}
-	req.Header.Add("Authorization", "Bearer "+p.IDToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false
-	}
-	if resp.StatusCode >= 400 {
-		return false
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false
-	}
+	url := "https://" + params.Domain + "/oauth2/userInfo"
+	// req.DevMode()
 
 	var authResp AWSCognitoAuthResponse
-	if err := bijson.Unmarshal(b, &authResp); err != nil {
+	_, err := req.R().SetHeader("Authorization", "Bearer "+p.IDToken).SetSuccessResult(&authResp).Get(url)
+	if err != nil {
+		// panic("№1")
 		return false
 	}
-
 	/*
 		if authResp.IAT < time.Now().Unix()-a.Timeout {
 			return false
@@ -87,7 +71,8 @@ func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, params *c
 		}
 	*/
 
-	if authResp.Email != p.UserID || authResp.EmailVerified != "true" {
+	if authResp.Sub != p.UserID || authResp.EmailVerified != "true" {
+		// panic("№2")
 		return false
 	}
 
