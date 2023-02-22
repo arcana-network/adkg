@@ -86,8 +86,8 @@ func (a *AWSCognitoVerifier) Verify(rawPayload *bijson.RawMessage, params *commo
 	}
 	ok := a.callAndVerify(p, params)
 	if !ok {
-		return false, p.UserID, nil
+		return false, "", nil
 	}
 
-	return true, "", nil
+	return true, p.UserID, nil
 }
