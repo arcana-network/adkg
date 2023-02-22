@@ -86,13 +86,13 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 		_, k, _ := self.Params()
 
 		curve := common.CurveFromName(m.Curve)
-		share, verifier, verified := acss.Predicate(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
+		share, verifier, verified := acss.Check(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
 
 		if verified {
 			log.Debugf("acss_verified: share=%v", *share)
 			sessionStore.S[int(dealer.Int64())] = *share
 			sessionStore.TPrime = kcommon.SetBit(sessionStore.TPrime, int(dealer.Int64()))
-			sessionStore.C[int(dealer.Int64())] = verifier.Commitments
+			sessionStore.C[int(dealer.Int64())] = verifier.Commitments()
 
 			// Check proposals and emit
 			for key, v := range sessionStore.TProposals {

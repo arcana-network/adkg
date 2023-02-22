@@ -7,7 +7,9 @@ services:
       - "1080"
       - "8080:8080"
     volumes:
-      - ./assets/config.local.1.json:/config.json
+      - ./local-setup-data/config.local.1.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.11
@@ -17,7 +19,9 @@ services:
       - "1080"
       - "8081:8081"
     volumes:
-      - ./assets/config.local.2.json:/config.json
+      - ./local-setup-data/config.local.2.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.12
@@ -27,7 +31,9 @@ services:
       - "1080"
       - "8082:8082"
     volumes:
-      - ./assets/config.local.3.json:/config.json
+      - ./local-setup-data/config.local.3.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.13
@@ -37,7 +43,9 @@ services:
       - "1080"
       - "8083:8083"
     volumes:
-      - ./assets/config.local.4.json:/config.json
+      - ./local-setup-data/config.local.4.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.14
@@ -47,7 +55,9 @@ services:
       - "1080"
       - "8084:8084"
     volumes:
-      - ./assets/config.local.5.json:/config.json
+      - ./local-setup-data/config.local.5.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.15
@@ -57,21 +67,12 @@ services:
       - "1080"
       - "8085:8085"
     volumes:
-      - ./assets/config.local.6.json:/config.json
+      - ./local-setup-data/config.local.6.json:/config.json
+    extra_hosts:
+    - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.16
-  seven:
-    build: .
-    ports:
-      - "1080"
-      - "8086:8086"
-    volumes:
-      - ./assets/config.local.7.json:/config.json
-    networks:
-      arcana:
-        ipv4_address: 192.167.10.17
-
 networks:
   arcana:
     driver: bridge

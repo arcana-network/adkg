@@ -71,8 +71,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	// Get or set if it doesn't exist
 	keygen, complete := state.GetOrSetIfNotComplete(m.RoundID, defaultKeygen)
 	if complete {
-		log.Errorf("keygen is complete????")
-
+		log.Debugf("keygen is complete")
 		// if keygen is complete, ignore and return
 		return
 	}

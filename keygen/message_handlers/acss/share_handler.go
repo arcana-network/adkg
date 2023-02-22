@@ -92,10 +92,10 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	for _, share := range shares {
 		nodePublicKey := self.PublicKey(int(share.Id))
 
-		cipherShare, err := acss.Encrypt(share.Bytes(), nodePublicKey,
+		cipherShare, err := acss.Commit(share.Bytes(), nodePublicKey,
 			self.PrivateKey())
 		if err != nil {
-			log.Errorf("acss.Encrypt():err=%v", err)
+			log.Errorf("acss.Commit():err=%v", err)
 			return
 		}
 		shareMap[share.Id] = cipherShare

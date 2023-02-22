@@ -109,8 +109,17 @@ func createTendermintFolderStructure(basePath string) error {
 func getTendermintNodeKey(tendermintRootPath string) (*tmp2p.NodeKey, error) {
 	dftConfig := cfg.DefaultConfig()
 	dftConfig.SetRoot(tendermintRootPath)
-	tmNodeKey := &tmp2p.NodeKey{
-		PrivKey: ed25519.PrivKey(config.GlobalConfig.TMPrivateKey),
+	var tmNodeKey *tmp2p.NodeKey
+	if len(config.GlobalConfig.TMPrivateKey) != 0 {
+		tmNodeKey = &tmp2p.NodeKey{
+			PrivKey: ed25519.PrivKey(config.GlobalConfig.TMPrivateKey),
+		}
+	} else {
+		k, err := tmp2p.LoadOrGenNodeKey(dftConfig.NodeKeyFile())
+		if err != nil {
+			return nil, err
+		}
+		tmNodeKey = k
 	}
 	err := tmNodeKey.SaveAs(dftConfig.NodeKeyFile())
 	return tmNodeKey, err

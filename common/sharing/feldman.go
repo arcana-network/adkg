@@ -14,22 +14,22 @@ import (
 )
 
 type FeldmanVerifier struct {
-	Commitments []curves.Point
+	commitments []curves.Point
 }
 
 func (v FeldmanVerifier) Verify(share *ShamirShare) error {
-	curve := curves.GetCurveByName(v.Commitments[0].CurveName())
+	curve := curves.GetCurveByName(v.commitments[0].CurveName())
 	err := share.Validate(curve)
 	if err != nil {
 		return err
 	}
 	x := curve.Scalar.New(int(share.Id))
 	i := curve.Scalar.One()
-	rhs := v.Commitments[0]
+	rhs := v.commitments[0]
 
-	for j := 1; j < len(v.Commitments); j++ {
+	for j := 1; j < len(v.commitments); j++ {
 		i = i.Mul(x)
-		rhs = rhs.Add(v.Commitments[j].Mul(i))
+		rhs = rhs.Add(v.commitments[j].Mul(i))
 	}
 	sc, _ := curve.Scalar.SetBytes(share.Value)
 	base, _ := CurveParams(curve.Name)
@@ -75,10 +75,10 @@ func (f Feldman) Split(secret curves.Scalar, reader io.Reader) (*FeldmanVerifier
 	}
 	shares, poly := shamir.getPolyAndShares(secret, reader)
 	verifier := new(FeldmanVerifier)
-	verifier.Commitments = make([]curves.Point, f.Threshold)
+	verifier.commitments = make([]curves.Point, f.Threshold)
 	base, _ := CurveParams(f.Curve.Name)
-	for i := range verifier.Commitments {
-		verifier.Commitments[i] = base.Mul(poly.Coefficients[i])
+	for i := range verifier.commitments {
+		verifier.commitments[i] = base.Mul(poly.Coefficients[i])
 	}
 	return verifier, shares, nil
 }

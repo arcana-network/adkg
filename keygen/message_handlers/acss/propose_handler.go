@@ -75,7 +75,7 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 		log.Errorf("could not deserialize message data: %s", err)
 		return
 	}
-	_, _, verified := acss.Predicate(key[:], data.ShareMap[uint32(self.ID())][:],
+	_, _, verified := acss.Check(key[:], data.ShareMap[uint32(self.ID())][:],
 		data.Commitments[:], k, curve)
 
 	// If verified, send echo to each node

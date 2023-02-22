@@ -4,14 +4,14 @@ RUN apk update && apk add libstdc++ g++ git linux-headers
 WORKDIR /src
 ADD . ./
 
-WORKDIR /src/cmd
-RUN go build dkg.go
+WORKDIR /src
+RUN go build main.go
 
 FROM --platform=linux/x86-64 alpine:3.14
 RUN mkdir -p /arcana_dkg
-COPY --from=node-build /src/cmd/dkg /arcana_dkg/dkg
+COPY --from=node-build /src/main /arcana_dkg/dkg
 
 
 EXPOSE 80 443 1080 8000
 VOLUME ["/arcana_dkg"]
-CMD ["/arcana_dkg/dkg"]
+CMD ["/arcana_dkg/dkg", "start"]
