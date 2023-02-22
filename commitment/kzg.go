@@ -17,7 +17,8 @@ type KZG struct {
 	commitments []curves.Point
 	curve       *curves.Curve
 	// verifier
-	srs *kzg.SRS
+	srs        *kzg.SRS
+	polynomial *kryptsharing.Polynomial
 }
 
 func (v *KZG) Commitments() []curves.Point {
@@ -42,6 +43,7 @@ func NewKZGCommitment(threshold uint32, curve *curves.Curve, poly *kryptsharing.
 	v := new(KZG)
 	v.curve = curve
 	v.commitments = make([]curves.Point, threshold)
+	v.polynomial = poly
 	for i := range v.commitments {
 		base, _ := sharing.CurveParams(curve.Name)
 		v.commitments[i] = base.Mul(poly.Coefficients[i])
