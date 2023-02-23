@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/torusresearch/bijson"
 )
 
@@ -43,7 +44,7 @@ func (d *DiscordVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (d *DiscordVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (d *DiscordVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p DiscordVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
@@ -53,7 +54,7 @@ func (d *DiscordVerifier) Verify(rawPayload *bijson.RawMessage, clientID string)
 	if err := getDiscordAuth(&body, p.IDToken); err != nil {
 		return false, "", err
 	}
-	if err := verifyDiscordAuthResponse(body, p.UserID, d.Timeout, clientID); err != nil {
+	if err := verifyDiscordAuthResponse(body, p.UserID, d.Timeout, params.ClientID); err != nil {
 		return false, "", err
 	}
 

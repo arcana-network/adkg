@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -36,7 +37,7 @@ func (t *GithubVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (t *GithubVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (t *GithubVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p GithubVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
@@ -54,7 +55,7 @@ func (t *GithubVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) 
 		return false, "", err
 	}
 
-	if err := verifyGithubAuthResponse(body, p.UserID, t.Timeout, clientID); err != nil {
+	if err := verifyGithubAuthResponse(body, p.UserID, t.Timeout, params.ClientID); err != nil {
 		return false, "", fmt.Errorf("verify_github_response: %w", err)
 	}
 
