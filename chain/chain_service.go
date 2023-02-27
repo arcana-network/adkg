@@ -152,7 +152,7 @@ func (chain *ChainService) getKeyPartition(appID string) (unpartitioned bool, er
 	partitioned := true
 	c, err := chain.getArcanaContract(appID)
 	if err != nil {
-		log.WithField("err", err).Error("ChainService:getKeyPartition")
+		log.WithError(err).Error("GetKeyPartition()")
 		return partitioned, errors.New("error while connecting to contract")
 	}
 	unpartitioned, err = c.Unpartitioned(nil)
@@ -160,7 +160,7 @@ func (chain *ChainService) getKeyPartition(appID string) (unpartitioned bool, er
 		return partitioned, err
 	}
 	partitioned = !unpartitioned
-	log.Infof("unpartitioned value from contract: %v", unpartitioned)
+	log.Debugf("unpartitioned value from contract: %v", unpartitioned)
 	return partitioned, nil
 }
 
@@ -179,9 +179,8 @@ type GatewayIDFromAddressResponse struct {
 }
 
 func GatewayUrl(path, query string) (*url.URL, error) {
-	log.Info("GetGatewayUrl", log.Fields{
-		"gatewayUrl": config.GlobalConfig.GatewayURL,
-	})
+	log.WithField("gatewayUrl", config.GlobalConfig.GatewayURL).Debug("GetGatewayUrl")
+
 	u, err := url.Parse(config.GlobalConfig.GatewayURL)
 	if err != nil {
 		return nil, err
@@ -201,9 +200,7 @@ func VerifierParams(appID, provider string) (vp *common.VerifierParams, err erro
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("FetchClientID", log.Fields{
-		"url": u.String(),
-	})
+	log.WithField("url", u.String()).Debug("FetchClientID")
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -280,19 +277,19 @@ func (s *ChainService) RegisterNode(epoch int, declaredIP string, TMP2PConnectio
 func (s *ChainService) createTransactionOpts() (*bind.TransactOpts, error) {
 	nonce, err := s.client.PendingNonceAt(context.Background(), ethCrypto.PubkeyToAddress(*s.pubKey))
 	if err != nil {
-		log.Error(err)
+		log.WithError(err).Error("CreateTransactionOpts.PendingNonceAt()")
 		return nil, err
 	}
 
 	chainID, err := s.ChainID()
 	if err != nil {
-		log.WithError(err).Error("NewKeyedTransactorWithChainID()")
+		log.WithError(err).Error("CreateTransactionOpts.chainID()")
 		return nil, err
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(s.privKey, chainID)
 	if err != nil {
-		log.WithError(err).Error("NewKeyedTransactorWithChainID()")
+		log.WithError(err).Error("CreateTransactionOpts.NewKeyedTransactorWithChainID()")
 		return nil, err
 	}
 
@@ -302,7 +299,7 @@ func (s *ChainService) createTransactionOpts() (*bind.TransactOpts, error) {
 
 	gasPrice, err := s.client.SuggestGasPrice(context.Background())
 	if err != nil {
-		log.WithError(err).Error("SuggestGasPrice()")
+		log.WithError(err).Error("CreateTransactionOpts.SuggestGasPrice()")
 		return nil, err
 	}
 	auth.GasPrice = gasPrice
@@ -345,7 +342,7 @@ func registerNode(e *ChainService) {
 		"p2pConnection":   e.p2pConnection,
 		"tmp2pConnection": e.tmp2pConnection,
 		"externalAddr":    externalAddr,
-	}).Info("before registering node")
+	}).Info("BeforeRegisteredContractValues")
 
 	if !registered {
 		port := config.GlobalConfig.HttpServerPort
@@ -361,7 +358,7 @@ func registerNode(e *ChainService) {
 			"Port":            port,
 			"IDAddressString": tmp2p.IDAddressString(tmp2pNodeKey.ID(), externalAddr),
 			"PublicEndpoint":  endpoint,
-		}).Info("Registering self on contract")
+		}).Info("RegisteredContractValues")
 
 		_, err := e.RegisterNode(
 			e.currentEpoch,
@@ -381,7 +378,7 @@ func whitelistMonitor(e *ChainService) {
 	for range interval.C {
 		isWhitelisted, err := e.nodeList.IsWhitelisted(nil, big.NewInt(int64(e.currentEpoch)), *e.addr)
 		if err != nil {
-			log.WithError(err).Error("could not check ethereum whitelist")
+			log.WithError(err).Error("WhitelistMonitor.IsWhitelisted()")
 		}
 		if isWhitelisted {
 			e.isWhitelisted = true
@@ -461,9 +458,7 @@ func (e *ChainService) verifyDataWithNodelist(pk common.Point, sig []byte, data 
 }
 
 func (chainService *ChainService) Call(method string, args ...interface{}) (interface{}, error) {
-	log.WithFields(log.Fields{
-		"method": method,
-	}).Debug("ChainService:Call()")
+	log.WithField("method", method).Debug("ChainService.Call()")
 	switch method {
 	case "get_self_address":
 
@@ -488,7 +483,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 	case "get_p2p_connection":
 		return chainService.p2pConnection, nil
 	case "get_current_epoch":
-		log.WithField("get_curent_epoch_return", chainService.currentEpoch).Debug("ChainService")
+		log.WithField("currentEpoch", chainService.currentEpoch).Debug("ChainService")
 		return chainService.currentEpoch, nil
 	case "validate_epoch_pub_key":
 		var args0 ethCommon.Address
@@ -497,7 +492,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		pubKey, err := common.NewServiceBroker(chainService.bus, "chain").DBMethods().RetrieveNodePubKey(args0)
 		if err != nil {
-			log.WithField("error", err).Info("ValidateEpochPubKey")
+			log.WithError(err).Info("ValidateEpochPubKey")
 			return false, err
 		}
 		log.WithFields(log.Fields{
@@ -511,14 +506,12 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		}
 		return false, errors.New("incorrect pubkey")
 	case "get_previous_epoch":
-
 		epochInfo, err := chainService.GetEpochInfo(chainService.currentEpoch, false)
 		if err != nil {
 			return nil, err
 		}
 		prevEpoch := int(epochInfo.PrevEpoch.Int64())
 		return prevEpoch, nil
-	// GetNextEpoch() (epoch int)
 	case "get_next_epoch":
 		epochInfo, err := chainService.GetEpochInfo(chainService.currentEpoch, false)
 		if err != nil {
@@ -568,7 +561,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 			if chainService.nodeRegisterMap[args0] != nil && len(chainService.nodeRegisterMap[args0].NodeList) > 0 {
 				return nil, nil
 			}
-			log.WithField("epoch", args0).Debug("waiting for nodes to be connected")
+			log.WithField("epoch", args0).Debug("WaitingNodesConnection..")
 		}
 	case "get_node_details_by_address":
 
@@ -608,7 +601,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 				time.Sleep(10 * time.Second)
 			}
 			first = false
-			log.Info("attempting to retrieve complete node list")
+			log.Info("AwaitCompleteNodeList.RetrieveCompleteNodeList()")
 			if chainService.nodeRegisterMap[nodeEpoch] == nil {
 				log.WithField("nodeRegisterMap", chainService.nodeRegisterMap).Error("could not get node list")
 				continue
@@ -702,7 +695,7 @@ func (e *ChainService) GetEpochInfo(epoch int, skipCache bool) (common.EpochInfo
 		return common.EpochInfo{}, fmt.Errorf("epoch %v is invalid", epoch)
 	}
 	result, err := e.nodeList.GetEpochInfo(opts, big.NewInt(int64(epoch)))
-	log.WithField("epoch data", result).Info("GetEpochInfo()")
+	log.WithField("info", result).Debug("GetEpochInfo()")
 	if err != nil {
 		return common.EpochInfo{}, err
 	}
@@ -759,7 +752,7 @@ func (chainService *ChainService) verifyDataWithEpoch(pk common.Point, sig []byt
 }
 
 func (e *ChainService) getNodeRefsByEpoch(epoch int) ([]*common.NodeReference, error) {
-	log.WithField("epoch", epoch).Debug("getNodeRefsByEpoch called")
+	log.WithField("epoch", epoch).Debug("GetNodeRefsByEpoch()")
 	ethList, err := e.nodeList.GetNodes(nil, big.NewInt(int64(epoch)))
 	if err != nil {
 		return nil, fmt.Errorf("Could not get node list %v", err.Error())
@@ -798,7 +791,7 @@ func (e *ChainService) GetNodeRef(nodeAddress ethCommon.Address) (n *common.Node
 		err = retry.Do(func() error {
 			var retryErr error
 			connectionDetails, retryErr = e.broker.ServerMethods().RequestConnectionDetails(details.DeclaredIp)
-			log.WithField("connectionDetails", connectionDetails).Debug("got back connection details from node")
+			log.WithField("details", connectionDetails).Debug("RequestConnectionDetails()")
 			if retryErr != nil {
 				return fmt.Errorf("could not get hidden connection details %v", retryErr)
 			}
@@ -809,10 +802,10 @@ func (e *ChainService) GetNodeRef(nodeAddress ethCommon.Address) (n *common.Node
 			return nil
 		})
 		if err != nil {
-			log.WithField("nodeAddress", nodeAddress).WithError(err).Error("could not get connection details from node, get from DB")
+			log.WithField("address", nodeAddress).WithError(err).Error("RequestConnectionDetails() -> GetFromDB")
 			connectionDetails, err = e.broker.DBMethods().RetrieveConnectionDetails(nodeAddress)
 			if err != nil {
-				log.WithField("nodeAddress", nodeAddress).Error("could not get connection details from DB either")
+				log.WithField("address", nodeAddress).Error("RequestConnectionDetailsFromDB()")
 				return nil, fmt.Errorf("unable to get connection details for nodeAddress %v", nodeAddress)
 			}
 		}
@@ -844,7 +837,7 @@ func currentNodesMonitor(e *ChainService) {
 		currEpoch := e.broker.ChainMethods().GetCurrentEpoch()
 		currEpochInfo, err := e.GetEpochInfo(currEpoch, true)
 		if err != nil {
-			log.WithError(err).Error("could not get curr epoch")
+			log.WithError(err).Error("CurrentNodesMonitor.GetEpochInfo()")
 			continue
 		}
 		e.Lock()
@@ -852,11 +845,9 @@ func currentNodesMonitor(e *ChainService) {
 			e.nodeRegisterMap[currEpoch] = &NodeRegister{}
 		}
 		e.Unlock()
-		log.WithField("currEpoch", currEpoch).Info("currentNodesMonitor calling NodeRefs")
 		currNodeList, err := e.getNodeRefsByEpoch(currEpoch)
-		log.WithField("currNodeList", currNodeList).Info("currentNodesMonitor calling currNodeList result")
 		if err != nil {
-			log.WithError(err).Error("could not get currNodeList")
+			log.WithError(err).Error("CurrentNodesMonitor.getNodeRefsByEpoch()")
 			continue
 		}
 		if currEpochInfo.N.Cmp(big.NewInt(int64(len(currNodeList)))) != 0 {
@@ -870,7 +861,7 @@ func currentNodesMonitor(e *ChainService) {
 		for _, nodeRef := range currNodeList {
 			err = e.broker.P2PMethods().ConnectToP2PNode(nodeRef.P2PConnection, nodeRef.PeerID)
 			if err != nil {
-				log.WithField("Address", *nodeRef.Address).Error("could not connect to p2p node ...continuing...")
+				log.WithField("address", *nodeRef.Address).Error("CurrentNodesMonitor.ConnectToP2PNode()")
 				allNodesConnected = false
 			}
 			if nodeRef.PeerID == e.broker.P2PMethods().ID() {
@@ -880,7 +871,7 @@ func currentNodesMonitor(e *ChainService) {
 		if !allNodesConnected {
 			continue
 		}
-		log.WithField("currNodeList", currNodeList).Debug("connected to all nodes in current epoch")
+		log.WithField("nodeList", currNodeList).Info("ConnectedToAllNodes")
 		e.Lock()
 		e.nodeRegisterMap[currEpoch].NodeList = currNodeList
 		e.Unlock()

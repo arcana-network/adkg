@@ -5,31 +5,35 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func IncrementKeysGenerated(validatorID string) {
-	keysGenerated.keysGenerated.With(prometheus.Labels{
-		validatorIDLabel: validatorID}).Inc()
+var keysGenerated *keysGeneratedCounter
+var keysAssigned *keysAssignedCounter
+var keyShareCalls *shareReqCounter
+
+func IncrementKeysGenerated() {
+	keysGenerated.keysGenerated.Inc()
+}
+
+func IncrementKeyAssigned() {
+	keysAssigned.keysAssigned.Inc()
+}
+
+func IncrementShareReqSuccess() {
+	keyShareCalls.success.Inc()
+}
+
+func IncrementShareReqFail() {
+	keyShareCalls.failure.Inc()
 }
 
 func StartClient() {
-	prometheusRegistry = prometheus.NewRegistry()
 
-	keysGenerated = NewValidatorKeysGeneratedCounter(prometheusRegistry)
-	http.Handle(
-		"/metrics", promhttp.HandlerFor(
-			prometheusRegistry,
-			promhttp.HandlerOpts{
-				EnableOpenMetrics: true,
-			}),
-	)
+	keysGenerated = NewKeysGeneratedCounter()
+	keysAssigned = NewKeysAssignedCounter()
+	keyShareCalls = NewSuccessShareReqCounter()
+
+	http.Handle("/metrics", promhttp.Handler())
 	log.Fatalln(http.ListenAndServe(":9090", nil))
 }
-
-var prometheusRegistry *prometheus.Registry
-
-const validatorIDLabel = "validatorID"
-
-var keysGenerated *validatorKeysGeneratedCounter

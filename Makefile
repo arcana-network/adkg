@@ -1,4 +1,3 @@
-# Include variables from the .envrc file
 -include .envrc
 
 ## help - print this help message
@@ -39,6 +38,9 @@ build-test:
 build-dev:
 	@make path=.dev-build-env build
 	
+.PHONY: release
+release:
+	@goreleaser release --snapshot --clean
 # ==================================================================================== # 
 # QUALITY CONTROL
 # ==================================================================================== #

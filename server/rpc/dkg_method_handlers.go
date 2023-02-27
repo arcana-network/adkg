@@ -15,6 +15,7 @@ import (
 	"github.com/arcana-network/dkgnode/crypto"
 	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/secp256k1"
+	"github.com/arcana-network/dkgnode/telemetry"
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -253,6 +254,7 @@ func (h KeyAssignHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMe
 		return nil, err
 	}
 
+	telemetry.IncrementKeyAssigned()
 	statLogger.Info("key_assign", logger.Field{"appId": p.AppID, "verifier": p.Provider})
 	return KeyAssignResult{Keys: make([]KeyAssignItem, 0)}, nil
 }
@@ -622,11 +624,13 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 			"publicY": pubKeyAccessStructure.PublicKey.Y,
 		}).Debug("public_key")
 		if err != nil {
+			telemetry.IncrementShareReqFail()
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: fmt.Sprintf("could not retrieve access structure: %v", err)}
 		}
 
 		si, _, err := broker.DBMethods().RetrieveCompletedShare(index)
 		if err != nil {
+			telemetry.IncrementShareReqFail()
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "could not retrieve completed share"}
 		}
 
@@ -643,10 +647,12 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		pubKeyHex := "04" + fmt.Sprintf("%064s", pubKey.X.Text(16)) + fmt.Sprintf("%064s", pubKey.Y.Text(16))
 		encrypted, metadata, err := tronCrypto.Encrypt(pubKeyHex, keyAssignment.Share)
 		if err != nil {
+			telemetry.IncrementShareReqFail()
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: fmt.Sprintf("could not encrypt shares with err: %v", err)}
 		}
 
 		if metadata == nil {
+			telemetry.IncrementShareReqFail()
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "could not encrypt shares, metadata nil"}
 		}
 
@@ -665,6 +671,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		})
 	}
 
+	telemetry.IncrementShareReqSuccess()
 	return response, nil
 }
 

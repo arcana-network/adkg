@@ -84,6 +84,8 @@ func GetDefaultConfig() *Config {
 		EthConnection:      DefaultBlockchainRPCURL,
 		ContractAddress:    DefaultContractAddress,
 		GatewayURL:         DefaultGatewayURL,
+		PasswordlessUrl:    DefaultPasswordlessUrl,
+		OAuthUrl:           DefaultOAuthUrl,
 	}
 	return config
 }
