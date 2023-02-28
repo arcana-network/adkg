@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"os"
-	"path/filepath"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -13,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 
-	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
 
@@ -262,7 +260,8 @@ type ConnectionDetailsResult struct {
 }
 
 func GetSocketAddress() string {
-	return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
+	// return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
+	return "unix://dkg.sock"
 }
 
 func DoesFileExist(fileName string) bool {
