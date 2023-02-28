@@ -147,26 +147,26 @@ func getSignatureParams(token, secret, appID string) ([]byte, error) {
 func getSignedRequest(url string, sigBody SignatureBody) (*TwitterSignatureResponse, error) {
 	bodyBytes, err := getSignatureParams(sigBody.OauthToken, sigBody.OauthTokenSecret, sigBody.AppID)
 	if err != nil {
-		log.WithField("Error", err).Info("MarshalBody: TwitterAuthentication")
+		log.WithError(err).Error("MarshalBody:TwitterAuthentication")
 		return nil, errors.New("error marshalling body for signature")
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		log.WithField("Error", err).Info("GetSignature: TwitterAuthentication")
+		log.WithError(err).Error("GetSignature:TwitterAuthentication")
 		return nil, errors.New("error creating req for signature")
 	}
 	var body TwitterSignatureResponse
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.WithField("Error", err).Info("GetSignature: TwitterAuthentication")
+		log.WithError(err).Error("GetSignature: TwitterAuthentication")
 		return nil, errors.New("error getting signature from secret keeper")
 	}
 	defer resp.Body.Close()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.WithField("Error", err).Info("ReadBody: TwitterAuthentication")
+		log.WithError(err).Error("ReadBody: TwitterAuthentication")
 		return nil, errors.New("error reading body from secret keeper")
 	}
 	if err := bijson.Unmarshal(b, &body); err != nil {
@@ -176,7 +176,7 @@ func getSignedRequest(url string, sigBody SignatureBody) (*TwitterSignatureRespo
 }
 
 func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken string) error {
-	log.WithField("idToken", idToken).Info("IDToken:TwitterVerifier")
+	log.WithField("idToken", idToken).Debug("TwitterVerifier")
 	s := strings.Split(idToken, ":")
 	if len(s) != 3 {
 		return errors.New("unexpected id token")
@@ -186,21 +186,21 @@ func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken strin
 		OauthTokenSecret: s[1],
 		AppID:            s[2],
 	}
-	log.WithField("sigBody: ", sigBody).Info("getTwitterAuth:TwitterVerifier")
+	log.WithField("sigBody", sigBody).Debug("getTwitterAuth:TwitterVerifier")
 
 	sig, err := getSignedRequest(v.SignatureUrl, sigBody)
 	if err != nil {
 		return err
 	}
 
-	log.WithField("sig: ", sig).Info("getSignedRequest:getTwitterAuth:TwitterVerifier")
+	log.WithField("sig", sig).Debug("getSignedRequest:getTwitterAuth:TwitterVerifier")
 
 	requestUrl, _ := url.Parse(v.UserInfoUrl)
 	requestUrl.RawQuery = url.Values(sig.Params).Encode()
 
 	req, err := http.NewRequest("GET", requestUrl.String(), nil)
 	if err != nil {
-		log.WithField("err", err).Info("CreateRequest:TwitterVerifier")
+		log.WithError(err).Error("CreateRequest:TwitterVerifier")
 		return err
 	}
 
@@ -208,12 +208,12 @@ func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken strin
 
 	bytesRes, err := request(req)
 	if err != nil {
-		log.WithField("err", err).Info("VerifyCredentials:TwitterVerifier")
+		log.WithError(err).Error("VerifyCredentials:TwitterVerifier")
 		return err
 	}
 
 	if err := json.Unmarshal(bytesRes, &body); err != nil {
-		log.WithField("err", err).Info("ParsingTwitterResponse:TwitterVerifier")
+		log.WithError(err).Error("ParsingTwitterResponse:TwitterVerifier")
 		return err
 	}
 	return nil
@@ -225,7 +225,7 @@ func request(req *http.Request) (bodyBytes []byte, err error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.WithField("err", err).Info("DoRequest:TwitterVerifier")
+		log.WithError(err).Error("DoRequest:TwitterVerifier")
 		return
 	}
 	if resp.StatusCode >= 400 {
@@ -235,13 +235,13 @@ func request(req *http.Request) (bodyBytes []byte, err error) {
 	defer resp.Body.Close()
 	bodyBytes, err = io.ReadAll(resp.Body)
 	if err != nil {
-		log.WithField("err", err).Info("ReadRequestResponse:TwitterVerifier")
+		log.WithError(err).Error("ReadRequestResponse:TwitterVerifier")
 		return
 	}
 	return bodyBytes, err
 }
 func verifyTwitterAuthResponse(body TwitterAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
-	log.WithField("body", body).Info("Twitter verifier")
+	log.WithField("body", body).Debug("TwitterVerifier")
 	if body.ID != verifierID && body.Email != verifierID {
 		return fmt.Errorf("UserIDs do not match: %s %s", body.ID, verifierID)
 	}

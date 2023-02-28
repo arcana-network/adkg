@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/node"
 	"github.com/arcana-network/dkgnode/telemetry"
@@ -120,7 +121,7 @@ func setParamsFlags(cmd *cobra.Command) {
 }
 
 func runCommand(cmd *cobra.Command, _ []string) error {
-	if cfgFilePath != "" {
+	if common.DoesFileExist(cfgFilePath) {
 		c, err := config.ReadConfigJson(cfgFilePath)
 		if err != nil {
 			log.Infof("Config file parsing error")
@@ -160,7 +161,7 @@ func runCommand(cmd *cobra.Command, _ []string) error {
 		conf.PrivateKey = pk
 	}
 
-	// log.Infof("config: %v", conf)
+	// log.Debugf("config: %v", conf)
 	go telemetry.StartClient()
 	node.Start(conf)
 	return nil

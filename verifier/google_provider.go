@@ -15,8 +15,6 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-// const GoogleOAuthEndpoint = "https://www.googleapis.com/oauth2/v3"
-
 type GoogleVerifier struct {
 	Version  string
 	Endpoint string
@@ -70,7 +68,7 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 		return false, "", err
 	}
 
-	log.WithField("clientID", params.ClientID).Info("VerifyRequestIdentity-Google")
+	log.WithField("clientID", params.ClientID).Debug("Google:Verify")
 
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
@@ -95,11 +93,13 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 
 func getGoogleAuth(url string, body *GoogleAuthResponse) error {
 	resp, err := http.Get(url)
-	log.WithField("Httpstatus code", resp.StatusCode).Info("GoogleVerifier")
-	log.WithField("Httpstatus", resp.Status).Info("GoogleVerifier")
 	if err != nil {
 		return err
 	}
+	log.WithFields(log.Fields{
+		"StatusCode": resp.StatusCode,
+		"HTTPStatus": resp.Status,
+	}).Debugf("GoogleVerifier")
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("error from google auth. code %d", resp.StatusCode)
 	}
@@ -132,7 +132,7 @@ func verifyGoogleAuthResponse(body GoogleAuthResponse, verifierID string, timeou
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
 	if strings.Compare(clientID, body.Azp) != 0 {
-		return fmt.Errorf("client ID mismatch: Expected:%s Got:%s", clientID, body.Azp)
+		return fmt.Errorf("ClientID mismatch: Expected:%s Got:%s", clientID, body.Azp)
 	}
 	return nil
 }

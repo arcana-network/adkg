@@ -89,7 +89,7 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 
 	err = verifyPasswordlessAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
 	if err != nil {
-		log.WithField("err", err).Debug("PasswordlessVerifier: Verify")
+		log.WithError(err).Error("PasswordlessVerifier:Verify")
 		return false, "", fmt.Errorf("error: %w", err)
 	}
 

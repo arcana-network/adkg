@@ -95,7 +95,7 @@ func getGithubAuth(body *GithubAuthResponse, idToken string) error {
 }
 
 func verifyGithubAuthResponse(body GithubAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
-	log.WithField("body", body).Info("Github verifier")
+	log.WithField("body", body).Debug("GithubVerifier")
 	idStr := strconv.FormatInt(int64(body.ID), 10)
 	if idStr != verifierID && body.Email != verifierID {
 		log.WithFields(log.Fields{

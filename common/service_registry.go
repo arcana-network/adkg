@@ -53,6 +53,9 @@ func (s *ServiceRegistry) StopAll() (err error) {
 	for name, service := range s.services {
 		log.Info(fmt.Sprintf(`Stopping service: %s`, name))
 		err = service.Stop()
+		if err != nil {
+			log.WithError(err).Errorf("Stopping service %q", name)
+		}
 	}
 	return err
 }
@@ -74,8 +77,7 @@ func (s *ServiceRegistry) SetupMethodRouting() {
 			if !bs.IsRunning() {
 				log.WithFields(log.Fields{
 					"Service": methodRequest.Service,
-					"data":    data,
-				}).Error("Service is not running")
+				}).Error("ServiceNotRunning")
 				return fmt.Errorf("service %v is not running", methodRequest.Service)
 			}
 			baseService = bs

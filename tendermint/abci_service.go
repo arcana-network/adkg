@@ -11,13 +11,20 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tendermint/tendermint/abci/server"
 	tmlog "github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 type ABCIService struct {
-	bus    eventbus.Bus
-	ABCI   *ABCI
-	broker *common.MessageBroker
+	bus          eventbus.Bus
+	ABCI         *ABCI
+	broker       *common.MessageBroker
+	socketServer service.Service
+}
+
+func cleanupSockFile(p string) {
+	if common.DoesFileExist(p) {
+		_ = os.Remove(p)
+	}
 }
 
 func NewABCI(bus eventbus.Bus) *ABCIService {
@@ -28,30 +35,25 @@ func NewABCI(bus eventbus.Bus) *ABCIService {
 	return &abciService
 }
 
-func (service *ABCIService) ID() string {
+func (s *ABCIService) ID() string {
 	return common.ABCI_SERVICE_NAME
 }
 
-func (service *ABCIService) Start() error {
-	service.ABCI = service.ABCI.NewABCI(service.broker)
-	socketAddr := "unix://dkg.sock"
-	srv := server.NewSocketServer(socketAddr, service.ABCI)
+func (s *ABCIService) Start() error {
+	s.ABCI = s.ABCI.NewABCI(s.broker)
+	socketAddr := common.GetSocketAddress()
+	cleanupSockFile(socketAddr)
+
+	s.socketServer = server.NewSocketServer(socketAddr, s.ABCI)
 	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(os.Stdout))
 
-	srv.SetLogger(logger.With("module", "abci-service"))
+	s.socketServer.SetLogger(logger.With("module", "abci-service"))
 	log.Info("Starting ABCI server")
-	if err := srv.Start(); err != nil {
-		log.WithField("err", err).Info()
+
+	if err := s.socketServer.Start(); err != nil {
+		log.WithError(err).Error("ABCI.SocketServer.Start()")
 		return err
 	}
-	go func() {
-		tmos.TrapSignal(logger.With("module", "trap-signal"), func() {
-			err := srv.Stop()
-			if err != nil {
-				log.WithError(err).Error("could not stop service")
-			}
-		})
-	}()
 	return nil
 }
 
@@ -60,7 +62,7 @@ func (service *ABCIService) IsRunning() bool {
 }
 
 func (service *ABCIService) Stop() error {
-	return nil
+	return service.socketServer.Stop()
 }
 
 func (a *ABCIService) Call(method string, args ...interface{}) (interface{}, error) {

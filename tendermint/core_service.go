@@ -199,7 +199,8 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 	defaultConfig := cfg.DefaultConfig()
 	defaultConfig.SetRoot(buildPath)
 
-	defaultConfig.ProxyApp = "unix://dkg.sock"
+	defaultConfig.ProxyApp = common.GetSocketAddress()
+
 	defaultConfig.Consensus.CreateEmptyBlocks = false
 
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"

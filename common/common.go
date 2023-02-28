@@ -3,6 +3,8 @@ package common
 import (
 	"crypto/ecdsa"
 	"math/big"
+	"os"
+	"path/filepath"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -11,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 
+	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
 
@@ -256,4 +259,22 @@ func PadPrivKeyBytes(kBytes []byte) []byte {
 type ConnectionDetailsResult struct {
 	TMP2PConnection string `json:"tm_p2p_connection"`
 	P2PConnection   string `json:"p2p_connection"`
+}
+
+func GetSocketAddress() string {
+	return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
+}
+
+func DoesFileExist(fileName string) bool {
+	_, err := os.Stat(fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		} else if os.IsPermission(err) {
+			return false
+		} else {
+			return true
+		}
+	}
+	return true
 }
