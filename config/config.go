@@ -61,16 +61,17 @@ func UseIPAdressInListenAddress(config *Config) {
 
 func ReadConfigJson(configPath string) (*Config, error) {
 	config := GetDefaultConfig()
-	log.Infof("ConfigPath=%s", configPath)
+	log.Debugf("ConfigPath=%s", configPath)
 	f, err := os.OpenFile(configPath, os.O_RDONLY|os.O_SYNC, 0)
 	if err != nil {
-		log.Infof("error=%s", err)
+		log.WithError(err).Error("OpenConfigFile")
 		return nil, err
 	}
 	defer f.Close()
 
 	err = json.NewDecoder(f).Decode(config)
 	if err != nil {
+		log.WithError(err).Error("DecodeConfig")
 		return nil, fmt.Errorf("error reading config: %w", err)
 	}
 	return config, nil

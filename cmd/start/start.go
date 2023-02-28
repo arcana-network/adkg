@@ -55,7 +55,7 @@ func setConfigFileFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(
 		&cfgFilePath,
 		configFileFlag,
-		"",
+		"./config.json",
 		"Used to specify JSON config file path",
 	)
 }
