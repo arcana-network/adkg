@@ -109,8 +109,17 @@ func createTendermintFolderStructure(basePath string) error {
 func getTendermintNodeKey(tendermintRootPath string) (*tmp2p.NodeKey, error) {
 	dftConfig := cfg.DefaultConfig()
 	dftConfig.SetRoot(tendermintRootPath)
-	tmNodeKey := &tmp2p.NodeKey{
-		PrivKey: ed25519.PrivKey(config.GlobalConfig.TMPrivateKey),
+	var tmNodeKey *tmp2p.NodeKey
+	if len(config.GlobalConfig.TMPrivateKey) != 0 {
+		tmNodeKey = &tmp2p.NodeKey{
+			PrivKey: ed25519.PrivKey(config.GlobalConfig.TMPrivateKey),
+		}
+	} else {
+		k, err := tmp2p.LoadOrGenNodeKey(dftConfig.NodeKeyFile())
+		if err != nil {
+			return nil, err
+		}
+		tmNodeKey = k
 	}
 	err := tmNodeKey.SaveAs(dftConfig.NodeKeyFile())
 	return tmNodeKey, err
@@ -190,7 +199,8 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 	defaultConfig := cfg.DefaultConfig()
 	defaultConfig.SetRoot(buildPath)
 
-	defaultConfig.ProxyApp = "unix://dkg.sock"
+	defaultConfig.ProxyApp = common.GetSocketAddress()
+
 	defaultConfig.Consensus.CreateEmptyBlocks = false
 
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"

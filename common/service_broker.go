@@ -444,7 +444,7 @@ func (cm *ChainMethods) GetCurrentEpoch() (epoch int) {
 			return methodResponse.Error
 		}
 		var data int
-		log.WithField("get_curent_epoch", methodResponse.Data).Info("ServiceMapper")
+		log.WithField("GetCurentEpoch", methodResponse.Data).Debug("ServiceMapper")
 		err := CastOrUnmarshal(methodResponse.Data, &data)
 		if err != nil {
 			return err
@@ -628,14 +628,16 @@ func (cm *ChainMethods) VerifyDataWithEpoch(pk Point, sig []byte, input []byte, 
 	}
 	return data, nil
 }
-func (cm *ChainMethods) GetClientIDViaVerifier(appID, verifier string) (clientID string, err error) {
-	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_clientid_by_verifier", appID, verifier)
-	err = CastOrUnmarshal(methodResponse.Data, &clientID)
+func (cm *ChainMethods) GetClientIDViaVerifier(appID, verifier string) (*VerifierParams, error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_params_by_verifier", appID, verifier)
+	var params VerifierParams
+	err := CastOrUnmarshal(methodResponse.Data, &params)
 	if err != nil {
-		return
+		return nil, err
 	}
-	return
+	return &params, err
 }
+
 func (cm *ChainMethods) GetPartitionForApp(appID string) (partitioned bool, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_app_partition", appID)
 	err = CastOrUnmarshal(methodResponse.Data, &partitioned)
@@ -745,6 +747,7 @@ func CastOrUnmarshal(dataInter interface{}, v interface{}, flags ...bool) (err e
 			err = errors.New("could not cast in castOrUnmarshal")
 		}
 	}()
+
 	data, ok := dataInter.(EventBusBytes)
 	if ok {
 		err = bijson.Unmarshal(data, v)
@@ -752,10 +755,18 @@ func CastOrUnmarshal(dataInter interface{}, v interface{}, flags ...bool) (err e
 			log.WithField("data", data).WithError(err).Info("could not unmarshal in castOrUnmarshal")
 		}
 	} else {
-		if reflect.ValueOf(dataInter).Kind() == reflect.Ptr {
-			reflect.ValueOf(v).Elem().Set(reflect.ValueOf(dataInter).Elem())
+		lhs := reflect.ValueOf(dataInter)
+		rhs := reflect.ValueOf(v)
+		if lhs.Kind() == reflect.Ptr {
+			el := lhs.Elem()
+			if !el.IsValid() {
+				log.Printf("LHS: %#v, RHS: %#v\n", dataInter, v)
+				return errors.New("LHS' element is invalid and may not be casted to the RHS")
+			}
+
+			rhs.Elem().Set(el)
 		} else {
-			reflect.ValueOf(v).Elem().Set(reflect.ValueOf(dataInter))
+			rhs.Elem().Set(lhs)
 		}
 	}
 	return
@@ -1232,41 +1243,42 @@ func (cam *CacheMethods) RecordTokenCommit(verifier string, tokenCommitment stri
 	}
 }
 
-func (cam *CacheMethods) StoreVerifierToClientID(appID, verifier, clientID string) {
-	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_verifier_clientid", appID, verifier, clientID)
+func (cam *CacheMethods) StoreVerifierToClientID(appID, verifier string, params *VerifierParams) {
+	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_verifier_params", appID, verifier, params)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("StoreVerifierToClientID")
 	}
 }
 func (cam *CacheMethods) StorePartitionForApp(appID string, partitioned bool) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_app_partition", appID, partitioned)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("StorePartitionForApp")
 	}
 }
 
-func (cam *CacheMethods) RetrieveClientIDFromVerifier(appID, verifier string) (clientID string) {
-	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "retrieve_verifier_clientid", appID, verifier)
+func (cam *CacheMethods) RetrieveClientIDFromVerifier(appID, verifier string) *VerifierParams {
+	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "retrieve_verifier_params", appID, verifier)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not record token commit")
+		log.WithError(methodResponse.Error).Error("RetrieveClientIDFromVerifier")
 	}
-	err := CastOrUnmarshal(methodResponse.Data, &clientID)
+	var params VerifierParams
+	err := CastOrUnmarshal(methodResponse.Data, &params)
 	if err != nil {
-		log.WithError(err).Info("Error during RetrieveClientIDFromVerifier")
-		return
+		log.WithError(err).Error("RetrieveClientIDFromVerifier")
+		return nil
 	}
-	return
+	return &params
 }
 func (cam *CacheMethods) GetPartitionForApp(appID string) (partitioned bool, err error) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "retrieve_app_partition", appID)
 	if methodResponse.Error != nil {
-		log.WithError(methodResponse.Error).Error("could not get app partition from cache")
+		log.WithError(methodResponse.Error).Error("GetPartitionForApp")
 		err = methodResponse.Error
 		return
 	}
 	err = CastOrUnmarshal(methodResponse.Data, &partitioned)
 	if err != nil {
-		log.WithError(err).Info("Error during retrieve_app_partition")
+		log.WithError(err).Error("GetPartitionForApp")
 		return
 	}
 	return

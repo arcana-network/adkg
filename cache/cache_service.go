@@ -106,53 +106,52 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 		var args0 string
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		return nil, c.recordSignerSig(args0)
-	case "store_verifier_clientid":
-
+	case "store_verifier_params":
 		var args0 string
 		var args1 string
-		var args2 string
+		var args2 common.VerifierParams
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		_ = common.CastOrUnmarshal(args[2], &args2)
-		c.StoreVerifierClientID(args0, args1, args2)
+		c.StoreVerifierClientID(args0, args1, &args2)
 		return nil, nil
 	case "store_app_partition":
+		var appID string
+		var partitioned bool
 
-		var args0 string
-		var args1 bool
-		_ = common.CastOrUnmarshal(args[0], &args0)
-		_ = common.CastOrUnmarshal(args[1], &args1)
-		c.StoreAppPartition(args0, args1)
+		_ = common.CastOrUnmarshal(args[0], &appID)
+		_ = common.CastOrUnmarshal(args[1], &partitioned)
+		c.StoreAppPartition(appID, partitioned)
 		return nil, nil
-	case "retrieve_verifier_clientid":
-
+	case "retrieve_verifier_params":
 		var args0 string
 		var args1 string
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		return c.RetrieveVerifierClientID(args0, args1), nil
 	case "retrieve_app_partition":
+		var appID string
 
-		var args0 string
-		_ = common.CastOrUnmarshal(args[0], &args0)
-		return c.RetrieveAppPartition(args0)
+		_ = common.CastOrUnmarshal(args[0], &appID)
+		return c.RetrieveAppPartition(appID)
 	}
 	return nil, fmt.Errorf("cache service method %v not found", method)
 }
 
-func (c *CacheService) StoreVerifierClientID(appID, verifier, clientID string) {
+func (c *CacheService) StoreVerifierClientID(appID, verifier string, params *common.VerifierParams) {
 	key := strings.Join([]string{appID, verifier}, common.Delimiter1)
-	c.verifierCache.Set(key, clientID, time.Minute*5)
+	c.verifierCache.Set(key, params, time.Minute*5)
 }
-func (c *CacheService) RetrieveVerifierClientID(appID, verifier string) string {
+
+func (c *CacheService) RetrieveVerifierClientID(appID, verifier string) *common.VerifierParams {
 	key := strings.Join([]string{appID, verifier}, common.Delimiter1)
 
 	value, found := c.verifierCache.Get(key)
 	if !found {
-		return ""
+		return nil
 	}
-	clientID := value.(string)
-	return clientID
+	params := value.(*common.VerifierParams)
+	return params
 }
 
 func (c *CacheService) StoreAppPartition(appID string, partitioned bool) {
@@ -163,7 +162,10 @@ func (c *CacheService) RetrieveAppPartition(appID string) (bool, error) {
 	if !found {
 		return false, errors.New("not found")
 	}
-	partitioned := value.(bool)
+	partitioned, ok := value.(bool)
+	if !ok {
+		return false, errors.New("invalid value found")
+	}
 	return partitioned, nil
 }
 

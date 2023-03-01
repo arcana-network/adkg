@@ -1,4 +1,3 @@
-# Include variables from the .envrc file
 -include .envrc
 
 ## help - print this help message
@@ -15,7 +14,7 @@ help:
 .PHONY: run
 run: build
 	@echo "Starting dkg service..."
-	dkg
+	adkg start
 	
 # ==================================================================================== # 
 # BUILD
@@ -25,8 +24,23 @@ run: build
 .PHONY: build
 build:
 	@echo 'Building binary...'
-	@go install cmd/dkg.go
+	@. ./build.sh $(path)
+
+.PHONY: build-prod
+build-prod:
+	@make path=.prod-build-env build
+
+.PHONY: build-test
+build-test:
+	@make path=.test-build-env build
+
+.PHONY: build-dev
+build-dev:
+	@make path=.dev-build-env build
 	
+.PHONY: release
+release:
+	@goreleaser release --snapshot --clean
 # ==================================================================================== # 
 # QUALITY CONTROL
 # ==================================================================================== #

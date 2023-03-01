@@ -1,0 +1,10 @@
+{
+  "privateKey": "09463587b7501a5a18e86291da6403f77a17c0689527622fbf4f2a30db38f596",
+  "ipAddress": "192.167.10.16",
+  "port": "8085",
+  "domain": "localhost:8085",
+  "TLS": false,
+  "dkgContractAddress": "0xB83ab42A05252a0eFe5678188B8516F531CB5Bb2",
+  "blockchainRPCURL": "https://rpc-mumbai.maticvigil.com/v1/bcce899b0024136d1f13572c49ba4c45b6164ce9",
+  "gatewayUrl": "https://gateway-dev.arcana.network"
+}

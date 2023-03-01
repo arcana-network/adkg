@@ -36,9 +36,9 @@ func TestCacheService_StoreVerifierClientID(t *testing.T) {
 	c := New()
 	c.Start()
 
-	c.StoreVerifierClientID("appid", "verifier", "clientid")
-	id := c.RetrieveVerifierClientID("appid", "verifier")
-	if id != "clientid" {
+	c.StoreVerifierClientID("appid", "verifier", &common.VerifierParams{ClientID: "clientid", Domain: "domain"})
+	params := c.RetrieveVerifierClientID("appid", "verifier")
+	if params.ClientID != "clientid" {
 		t.Fatal("Should be able to retrieve a verifier client id")
 	}
 }

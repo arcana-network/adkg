@@ -8,6 +8,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
+	"github.com/arcana-network/dkgnode/telemetry"
 )
 
 var ShareMessageType string = "acss_share"
@@ -66,6 +67,8 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	log.Infof("Starting keygen: %s", m.RoundID)
 
 	keygen.Started = true
+
+	telemetry.IncrementKeysGenerated()
 
 	curve := common.CurveFromName(m.Curve)
 	// Generate secret

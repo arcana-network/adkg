@@ -8,6 +8,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/secret"
 	"github.com/arcana-network/dkgnode/secret/vault"
+	log "github.com/sirupsen/logrus"
 )
 
 var GlobalConfig *Config
@@ -15,6 +16,7 @@ var GlobalConfig *Config
 type Config struct {
 	TMP2PListenAddress string `json:"tmp2plistenaddress"`
 	P2PListenAddress   string `json:"p2plistenaddress"`
+	RawPrivateKey      string `json:"privatekey"`
 	PrivateKey         []byte
 	TMPrivateKey       []byte
 	SecretConfigPath   string `json:"secretConfigPath"`
@@ -25,10 +27,12 @@ type Config struct {
 	HttpServerPort     string `json:"port"`
 	Domain             string `json:"domain"`
 	GatewayURL         string `json:"gatewayUrl"`
+	PasswordlessUrl    string `json:"passwordlessUrl"`
+	OAuthUrl           string `json:"oauthUrl"`
 }
 
 func (c *Config) VerifyRequired() error {
-	if c.SecretConfigPath == "" {
+	if c.RawPrivateKey == "" && c.SecretConfigPath == "" {
 		return errors.New("required secretConfigPath missing")
 	}
 	if c.IPAddress == "" {
@@ -51,22 +55,23 @@ func ConfigFromFile(configPath string) (*Config, error) {
 }
 
 func UseIPAdressInListenAddress(config *Config) {
-	if config.IPAddress != "" {
-		config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
-		config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
-	}
+	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
+	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
 }
 
 func ReadConfigJson(configPath string) (*Config, error) {
 	config := GetDefaultConfig()
+	log.Debugf("ConfigPath=%s", configPath)
 	f, err := os.OpenFile(configPath, os.O_RDONLY|os.O_SYNC, 0)
 	if err != nil {
+		log.WithError(err).Error("OpenConfigFile")
 		return nil, err
 	}
 	defer f.Close()
 
 	err = json.NewDecoder(f).Decode(config)
 	if err != nil {
+		log.WithError(err).Error("DecodeConfig")
 		return nil, fmt.Errorf("error reading config: %w", err)
 	}
 	return config, nil
@@ -77,39 +82,42 @@ func GetDefaultConfig() *Config {
 		TMP2PListenAddress: "tcp://0.0.0.0:26656",
 		P2PListenAddress:   "/ip4/0.0.0.0/tcp/1080",
 		BasePath:           "/tmp/keygen-data",
-		EthConnection:      "https://rpc-mainnet.maticvigil.com/v1/bcce899b0024136d1f13572c49ba4c45b6164ce9",
-		ContractAddress:    "0x74C06De8244DC2c99A3d478957a9D16739D338Ef",
-		GatewayURL:         "https://gateway.arcana.network",
+		EthConnection:      DefaultBlockchainRPCURL,
+		ContractAddress:    DefaultContractAddress,
+		GatewayURL:         DefaultGatewayURL,
+		PasswordlessUrl:    DefaultPasswordlessUrl,
+		OAuthUrl:           DefaultOAuthUrl,
 	}
 	return config
 }
 
-func GetPrivateKeys(configPath string) (key secret.Keys, err error) {
+func GetNodePrivateKey(configPath string) (key []byte, err error) {
+	return GetSecretFromVault(configPath, secret.NodeKey)
+}
+
+func GetTendermintPrivateKey(configPath string) (key []byte, err error) {
+	return GetSecretFromVault(configPath, secret.TendermintKey)
+}
+
+func GetSecretFromVault(configPath, keyType string) ([]byte, error) {
 	c, err := secret.ReadConfig(configPath)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	manager, err := vault.NewVaultManager(c)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = manager.Setup()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	nodePrivKey, err := manager.GetSecret(secret.NodeKey)
+	key, err := manager.GetSecret(keyType)
 	if err != nil {
-		return
+		return nil, err
 	}
-	key.NodePrivateKey = nodePrivKey
-
-	tmPrivKey, err := manager.GetSecret(secret.TendermintKey)
-	if err != nil {
-		return
-	}
-	key.TmPrivateKey = tmPrivKey
-	return
+	return key, nil
 }

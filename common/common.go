@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/ecdsa"
 	"math/big"
+	"os"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -256,4 +257,23 @@ func PadPrivKeyBytes(kBytes []byte) []byte {
 type ConnectionDetailsResult struct {
 	TMP2PConnection string `json:"tm_p2p_connection"`
 	P2PConnection   string `json:"p2p_connection"`
+}
+
+func GetSocketAddress() string {
+	// return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
+	return "unix://dkg.sock"
+}
+
+func DoesFileExist(fileName string) bool {
+	_, err := os.Stat(fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		} else if os.IsPermission(err) {
+			return false
+		} else {
+			return true
+		}
+	}
+	return true
 }

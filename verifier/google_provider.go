@@ -10,11 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
-
-// const GoogleOAuthEndpoint = "https://www.googleapis.com/oauth2/v3"
 
 type GoogleVerifier struct {
 	Version  string
@@ -63,13 +62,13 @@ func (g *GoogleVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p GoogleVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
 	}
 
-	log.WithField("clientID", clientID).Info("VerifyRequestIdentity-Google")
+	log.WithField("clientID", params.ClientID).Debug("Google:Verify")
 
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
@@ -84,7 +83,7 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) 
 		return false, "", err
 	}
 
-	err = verifyGoogleAuthResponse(body, p.UserID, g.Timeout, clientID)
+	err = verifyGoogleAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
 	if err != nil {
 		return false, "", fmt.Errorf("verify_google_response: %w", err)
 	}
@@ -94,11 +93,13 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) 
 
 func getGoogleAuth(url string, body *GoogleAuthResponse) error {
 	resp, err := http.Get(url)
-	log.WithField("Httpstatus code", resp.StatusCode).Info("GoogleVerifier")
-	log.WithField("Httpstatus", resp.Status).Info("GoogleVerifier")
 	if err != nil {
 		return err
 	}
+	log.WithFields(log.Fields{
+		"StatusCode": resp.StatusCode,
+		"HTTPStatus": resp.Status,
+	}).Debugf("GoogleVerifier")
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("error from google auth. code %d", resp.StatusCode)
 	}
@@ -131,7 +132,7 @@ func verifyGoogleAuthResponse(body GoogleAuthResponse, verifierID string, timeou
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
 	if strings.Compare(clientID, body.Azp) != 0 {
-		return fmt.Errorf("client ID mismatch: Expected:%s Got:%s", clientID, body.Azp)
+		return fmt.Errorf("ClientID mismatch: Expected:%s Got:%s", clientID, body.Azp)
 	}
 	return nil
 }

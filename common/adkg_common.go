@@ -243,7 +243,7 @@ func GetADKGIDFromRoundID(roundID RoundID) (ADKGID, error) {
 	r := &RoundDetails{}
 	err := r.FromID(roundID)
 	if err != nil {
-		log.Infof("Error parsing round id, err=%s", err)
+		log.WithError(err).Infof("ParseRoundID()")
 		return ADKGID(""), err
 	}
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/torusresearch/bijson"
 )
 
@@ -39,7 +40,7 @@ func (t *TwitchVerifier) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (t *TwitchVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) (bool, string, error) {
+func (t *TwitchVerifier) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p TwitchVerifierParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
@@ -57,7 +58,7 @@ func (t *TwitchVerifier) Verify(rawPayload *bijson.RawMessage, clientID string) 
 		return false, "", err
 	}
 
-	if err := verifyTwitchAuthResponse(body, p.UserID, t.Timeout, clientID); err != nil {
+	if err := verifyTwitchAuthResponse(body, p.UserID, t.Timeout, params.ClientID); err != nil {
 		return false, "", fmt.Errorf("verify_twitch_response: %w", err)
 	}
 

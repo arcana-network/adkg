@@ -197,7 +197,12 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 	}).Info("EndBlock")
 
 	buffer := abci.broker.ChainMethods().KeyBuffer()
-	maxKeyInit := buffer / 250
+	var maxKeyInit int
+	if buffer > 250 {
+		maxKeyInit = buffer / 250
+	} else {
+		maxKeyInit = buffer
+	}
 
 	if int(abci.state.LastCreatedIndex)-int(abci.state.LastUnassignedIndex) < buffer {
 
@@ -266,8 +271,8 @@ func (abci *ABCI) Commit() abcitypes.ResponseCommit {
 }
 
 func getAppKeyPartition(broker *common.MessageBroker, appID string) (bool, error) {
-	partitioned, error := broker.CacheMethods().GetPartitionForApp(appID)
-	if error != nil {
+	partitioned, err := broker.CacheMethods().GetPartitionForApp(appID)
+	if err != nil {
 		partitioned, err := broker.ChainMethods().GetPartitionForApp(appID)
 		if err != nil {
 			return false, err
@@ -299,9 +304,10 @@ func (abci *ABCI) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.Res
 		}
 		log.Infof("Partitioned value in ABCI=%v", partitioned)
 		verifierKey := getVerifierKey(AssignmentTx(queryArgs), partitioned)
+
 		log.WithFields(log.Fields{
 			"verifierKey": string(verifierKey),
-		}).Info("GetIndexesFromVerifierID")
+		}).Debug("GetIndexesFromVerifierID")
 		keyIndexes, err := abci.retrieveVerifierToKeyIndex(verifierKey)
 		if err != nil {
 			return abcitypes.ResponseQuery{Code: 10, Info: fmt.Sprintf("val not found for query %v or data: %s, err: %v", reqQuery, string(reqQuery.Data), err)}

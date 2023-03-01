@@ -1,11 +1,13 @@
 package start
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/node"
 	"github.com/arcana-network/dkgnode/telemetry"
@@ -38,8 +40,8 @@ func GetCommand() *cobra.Command {
 
 	setFlags(cmd)
 
-	cmd.MarkFlagsRequiredTogether(secretConfigPathFlag, ipAddressFlag)
-	cmd.MarkFlagsMutuallyExclusive(configFileFlag, ipAddressFlag)
+	// cmd.MarkFlagsRequiredTogether(secretConfigPathFlag, ipAddressFlag)
+	// cmd.MarkFlagsMutuallyExclusive(configFileFlag, ipAddressFlag)
 
 	return cmd
 }
@@ -53,7 +55,7 @@ func setConfigFileFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(
 		&cfgFilePath,
 		configFileFlag,
-		"",
+		"./config.json",
 		"Used to specify JSON config file path",
 	)
 }
@@ -119,7 +121,7 @@ func setParamsFlags(cmd *cobra.Command) {
 }
 
 func runCommand(cmd *cobra.Command, _ []string) error {
-	if cfgFilePath != "" {
+	if common.DoesFileExist(cfgFilePath) {
 		c, err := config.ReadConfigJson(cfgFilePath)
 		if err != nil {
 			log.Infof("Config file parsing error")
@@ -140,20 +142,33 @@ func runCommand(cmd *cobra.Command, _ []string) error {
 		config.UseIPAdressInListenAddress(conf)
 	}
 
-	key, err := config.GetPrivateKeys(conf.SecretConfigPath)
-	if err != nil {
-		return err
+	if conf.RawPrivateKey == "" {
+		privateKey, err := config.GetNodePrivateKey(conf.SecretConfigPath)
+		if err != nil {
+			return err
+		}
+		conf.PrivateKey = privateKey
+		tendermintKey, err := config.GetTendermintPrivateKey(conf.SecretConfigPath)
+		if err != nil {
+			return err
+		}
+		conf.TMPrivateKey = tendermintKey
+	} else {
+		pk, err := hex.DecodeString(conf.RawPrivateKey)
+		if err != nil {
+			return err
+		}
+		conf.PrivateKey = pk
 	}
-	conf.PrivateKey = key.NodePrivateKey
-	conf.TMPrivateKey = key.TmPrivateKey
 
+	// log.Debugf("config: %v", conf)
 	go telemetry.StartClient()
 	node.Start(conf)
 	return nil
 }
 
 func VerifyConfigFromFlags(conf *config.Config) error {
-	if conf.SecretConfigPath == "" {
+	if conf.RawPrivateKey == "" && conf.SecretConfigPath == "" {
 		return fmt.Errorf(FlagMissingError, secretConfigPathFlag)
 	}
 	if conf.IPAddress == "" {
