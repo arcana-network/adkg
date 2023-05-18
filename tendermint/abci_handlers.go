@@ -194,7 +194,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		}
 
 		// Get aggregate login options here
-		partitioned, err := getAppKeyPartition(abci.broker, parsedTx.AppID)
+		partitioned, err := GetAppKeyPartition(abci.broker, parsedTx.AppID)
 		if err != nil {
 			return false, &tags, fmt.Errorf("AppID %v not found", parsedTx.AppID)
 		}
@@ -327,7 +327,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 
 func (abci *ABCI) getKeyAssignment(assignedKeyIndex big.Int, parsedTx AssignmentTx) (common.Point, []big.Int) {
 	// Get aggregate login options here
-	partitioned, _ := getAppKeyPartition(abci.broker, parsedTx.AppID)
+	partitioned, _ := GetAppKeyPartition(abci.broker, parsedTx.AppID)
 	verifierKey := getVerifierKey(parsedTx, partitioned)
 
 	keyIndexes, err := abci.retrieveVerifierToKeyIndex(verifierKey)

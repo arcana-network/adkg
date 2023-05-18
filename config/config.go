@@ -29,6 +29,7 @@ type Config struct {
 	GatewayURL         string `json:"gatewayUrl"`
 	PasswordlessUrl    string `json:"passwordlessUrl"`
 	OAuthUrl           string `json:"oauthUrl"`
+	GlobalKeyCertPool  string `json:"globalKeyCertPool"`
 }
 
 func (c *Config) VerifyRequired() error {

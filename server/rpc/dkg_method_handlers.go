@@ -16,6 +16,7 @@ import (
 	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/secp256k1"
 	"github.com/arcana-network/dkgnode/telemetry"
+	"github.com/arcana-network/dkgnode/tendermint"
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -489,7 +490,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while parsing sharerequestitem"}
 		}
-		log.WithField("parsedVerifierParams", (parsedVerifierParams)).Debug("ShareRequestHandler:Unmarshal()")
+		log.WithField("parsedVerifierParams", parsedVerifierParams).Debug("ShareRequestHandler:Unmarshal()")
 		jsonMap := make(map[string]interface{})
 		err = fastjson.Unmarshal(rawItem, &jsonMap)
 		if err != nil {
@@ -500,9 +501,33 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while marshalling" + err.Error()}
 		}
-		verified, userID, err := broker.VerifierMethods().Verify((*bijson.RawMessage)(&redactedRawItem))
+		partitioned, err := tendermint.GetAppKeyPartition(broker, parsedVerifierParams.AppID)
 		if err != nil {
-			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params" + err.Error()}
+			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while getting a partition" + err.Error()}
+		}
+
+		var verified bool
+		var userID string
+
+		if !partitioned || true {
+			serialized, err := fastjson.Marshal(common.GenericVerifierData{
+				Provider: "global_key_proxy",
+				UserID:   parsedVerifierParams.UserID,
+				AppID:    parsedVerifierParams.AppID,
+				Token:    parsedVerifierParams.IDToken,
+			})
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying via the proxy:" + err.Error()}
+			}
+			verified, userID, err = broker.VerifierMethods().Verify((*bijson.RawMessage)(&serialized))
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params" + err.Error()}
+			}
+		} else {
+			verified, userID, err = broker.VerifierMethods().Verify((*bijson.RawMessage)(&redactedRawItem))
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params" + err.Error()}
+			}
 		}
 
 		if !verified {

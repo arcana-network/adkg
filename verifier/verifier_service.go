@@ -16,12 +16,6 @@ type VerifierService struct {
 	bus         eventbus.Bus
 }
 
-type VerifyMessage struct {
-	Token    string `json:"id_token"`
-	Provider string `json:"provider"`
-	AppID    string `json:"app_id"`
-}
-
 type Provider interface {
 	ID() string
 	CleanToken(string) string
@@ -45,7 +39,7 @@ func (tgv *ProviderMap) ListProviders() []string {
 }
 
 func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *common.MessageBroker) (bool, string, error) {
-	var msg VerifyMessage
+	var msg common.GenericVerifierData
 	if err := bijson.Unmarshal(*rawMessage, &msg); err != nil {
 		return false, "", err
 	}
@@ -53,6 +47,16 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 	if err != nil {
 		return false, "", err
 	}
+
+	/* The global key proxy needs to be handled separately because it in turn calls other verifiers and doesn’t have its own client ID
+	* Ideally would be its own function (‘GlobalVerify’) and not even be a separate provider, but since the architecture is so messed up,
+	* we’d have to add new methods, add new types for that, and add more functions to the broker. Until the architecture is cleaned up,
+	* That is not feasible right now.
+	 */
+	if msg.Provider == "global_key_proxy" {
+		return v.Verify(rawMessage, nil)
+	}
+
 	cleanedToken := v.CleanToken(msg.Token)
 	if cleanedToken != msg.Token {
 		return false, "", errors.New("cleaned token is different from original token")
@@ -123,6 +127,7 @@ func (v *VerifierService) Start() error {
 		NewPasswordlessProvider(),
 		NewAWSCognitoVerifier(),
 		// NewSteamProvider(),
+		NewGlobalKeyVerifier(v),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil
