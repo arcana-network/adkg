@@ -72,7 +72,7 @@ func (g *SteamProvider) Verify(rawPayload *bijson.RawMessage, params *common.Ver
 
 	err = verifySteamAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
 	if err != nil {
-		return false, "", fmt.Errorf("verify_google_response: %w", err)
+		return false, "", fmt.Errorf("verify_steam_response: %w", err)
 	}
 
 	return true, p.UserID, nil
@@ -86,9 +86,9 @@ func getSteamAuth(url string, body *SteamProviderResponse) error {
 	log.WithFields(log.Fields{
 		"StatusCode": resp.StatusCode,
 		"HTTPStatus": resp.Status,
-	}).Debugf("GoogleVerifier")
+	}).Debugf("SteamVerifier")
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error from google auth. code %d", resp.StatusCode)
+		return fmt.Errorf("error from steam auth. code %d", resp.StatusCode)
 	}
 
 	b, err := io.ReadAll(resp.Body)
