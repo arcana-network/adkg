@@ -21,6 +21,7 @@ import (
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/arcana-network/dkgnode/nodelist"
 	"github.com/arcana-network/dkgnode/secp256k1"
+	"github.com/imroc/req/v3"
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -44,6 +45,7 @@ var providerList = map[string]bool{
 	"github":       true,
 	"passwordless": true,
 	"aws":          true,
+	"steam":        true,
 }
 
 type NodeRegister struct {
@@ -149,19 +151,26 @@ func (chain *ChainService) getArcanaContract(appID string) (*appdata.Arcana, err
 	return appContract, nil
 }
 func (chain *ChainService) getKeyPartition(appID string) (unpartitioned bool, err error) {
-	partitioned := true
-	c, err := chain.getArcanaContract(appID)
-	if err != nil {
-		log.WithError(err).Error("GetKeyPartition()")
-		return partitioned, errors.New("error while connecting to contract")
-	}
-	unpartitioned, err = c.Unpartitioned(nil)
-	if err != nil {
-		return partitioned, err
-	}
-	partitioned = !unpartitioned
+	var resp getPartitionResponse
+	fetchKeyPartition(&resp, appID)
+	partitioned := !resp.Global
 	log.Debugf("unpartitioned value from contract: %v", unpartitioned)
 	return partitioned, nil
+}
+
+type getPartitionResponse struct {
+	Global bool `json:"global"`
+}
+
+func fetchKeyPartition(resp *getPartitionResponse, appID string) {
+	url, err := GatewayUrl("/api/v1/get-app-config/", "id="+appID)
+	if err != nil {
+		return
+	}
+	_, err = req.R().SetSuccessResult(resp).Get(url.String())
+	if err != nil {
+		return
+	}
 }
 
 type Creds struct {
@@ -196,7 +205,7 @@ func VerifierParams(appID, provider string) (vp *common.VerifierParams, err erro
 		return nil, errors.New("invalid provider")
 	}
 
-	if provider == "passwordless" {
+	if provider == "passwordless" || provider == "steam" {
 		return &common.VerifierParams{
 			ClientID: appID,
 			Domain:   "",

@@ -266,14 +266,5 @@ func GetSocketAddress() string {
 
 func DoesFileExist(fileName string) bool {
 	_, err := os.Stat(fileName)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false
-		} else if os.IsPermission(err) {
-			return false
-		} else {
-			return true
-		}
-	}
-	return true
+	return err == nil
 }
