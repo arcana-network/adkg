@@ -509,7 +509,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		var verified bool
 		var userID string
 
-		if !partitioned || true {
+		if !partitioned {
 			serialized, err := fastjson.Marshal(common.GenericVerifierData{
 				Provider: "global_key_proxy",
 				UserID:   parsedVerifierParams.UserID,
