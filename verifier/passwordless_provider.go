@@ -1,17 +1,15 @@
 package verifier
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
+	"github.com/imroc/req/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -65,8 +63,6 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 		return false, "", err
 	}
 
-	log.WithField("ClientID", params.ClientID).Debug("VerifyRequestIdentity-Passwordless")
-
 	p.IDToken = g.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
 		return false, "", errors.New("invalid payload parameters")
@@ -77,18 +73,13 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 		"verifier": g,
 	}).Debug("Passwordless")
 
-	url := g.Endpoint + p.IDToken
-
 	var body PasswordlessAuthResponse
 
-	err := getPasswordlessAuth(url, &body)
-
-	if err != nil {
+	if _, err := req.R().SetSuccessResult(&body).Get(g.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 
-	err = verifyPasswordlessAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
-	if err != nil {
+	if err := verifyPasswordlessResponse(body, p.UserID, g.Timeout, params.ClientID); err != nil {
 		log.WithError(err).Error("PasswordlessVerifier:Verify")
 		return false, "", fmt.Errorf("error: %w", err)
 	}
@@ -96,29 +87,7 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 	return true, p.UserID, nil
 }
 
-func getPasswordlessAuth(url string, body *PasswordlessAuthResponse) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	log.WithField("StatusCode", resp.StatusCode).Debug("PasswordlessVerifier")
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error from passwordless auth. code %d", resp.StatusCode)
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(b, body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func verifyPasswordlessAuthResponse(body PasswordlessAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
+func verifyPasswordlessResponse(body PasswordlessAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
 	timeSigned := time.Unix(int64(body.Iat), 0)
 	if timeSigned.Add(timeout).Before(time.Now()) {
 		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())

@@ -1,18 +1,15 @@
 package verifier
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
-	log "github.com/sirupsen/logrus"
+	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
 )
 
@@ -39,73 +36,44 @@ type SteamProviderParams struct {
 	UserID  string `json:"user_id"`
 }
 
-type SteamProviderResponse struct {
+type SteamAuthResponse struct {
 	ID string `json:"id"`
 }
 
-func (g *SteamProvider) ID() string {
+func (p *SteamProvider) ID() string {
 	return "steam"
 }
 
-func (g *SteamProvider) CleanToken(token string) string {
+func (p *SteamProvider) CleanToken(token string) string {
 	return strings.Trim(token, " ")
 }
 
-func (g *SteamProvider) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
+func (provider *SteamProvider) Verify(rawPayload *bijson.RawMessage, params *common.VerifierParams) (bool, string, error) {
 	var p SteamProviderParams
 	if err := bijson.Unmarshal(*rawPayload, &p); err != nil {
 		return false, "", err
 	}
 
-	p.IDToken = g.CleanToken(p.IDToken)
+	p.IDToken = provider.CleanToken(p.IDToken)
 	if p.UserID == "" || p.IDToken == "" {
 		return false, "", errors.New("invalid payload parameters")
 	}
 
-	url := g.Endpoint + p.IDToken
-	var body SteamProviderResponse
-	err := getSteamAuth(url, &body)
-
-	if err != nil {
+	var body SteamAuthResponse
+	if _, err := req.R().SetSuccessResult(&body).Get(provider.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 
-	err = verifySteamAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
-	if err != nil {
+	if err := verifySteamResponse(body, p.UserID, provider.Timeout, params.ClientID); err != nil {
 		return false, "", fmt.Errorf("verify_steam_response: %w", err)
 	}
 
 	return true, p.UserID, nil
 }
 
-func getSteamAuth(url string, body *SteamProviderResponse) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	log.WithFields(log.Fields{
-		"StatusCode": resp.StatusCode,
-		"HTTPStatus": resp.Status,
-	}).Debugf("SteamVerifier")
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error from steam auth. code %d", resp.StatusCode)
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(b, body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func verifySteamAuthResponse(body SteamProviderResponse, verifierID string, timeout time.Duration, clientID string) error {
+func verifySteamResponse(body SteamAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
 	if strings.Compare(verifierID, body.ID) != 0 {
-		return errors.New("email not equal to body.steamid " + verifierID + " " + body.ID)
+		return errors.New("id not equal to body.steamid " + verifierID + " " + body.ID)
 	}
 	return nil
 }

@@ -1,17 +1,14 @@
 package verifier
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
-	log "github.com/sirupsen/logrus"
+	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
 )
 
@@ -68,55 +65,25 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 		return false, "", err
 	}
 
-	log.WithField("clientID", params.ClientID).Debug("Google:Verify")
-
 	p.IDToken = g.CleanToken(p.IDToken)
+
 	if p.UserID == "" || p.IDToken == "" {
 		return false, "", errors.New("invalid payload parameters")
 	}
 
-	url := g.Endpoint + p.IDToken
 	var body GoogleAuthResponse
-	err := getGoogleAuth(url, &body)
-
-	if err != nil {
+	if _, err := req.R().SetSuccessResult(&body).Get(g.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 
-	err = verifyGoogleAuthResponse(body, p.UserID, g.Timeout, params.ClientID)
-	if err != nil {
+	if err := verifyGoogleResponse(body, p.UserID, g.Timeout, params.ClientID); err != nil {
 		return false, "", fmt.Errorf("verify_google_response: %w", err)
 	}
 
 	return true, p.UserID, nil
 }
 
-func getGoogleAuth(url string, body *GoogleAuthResponse) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	log.WithFields(log.Fields{
-		"StatusCode": resp.StatusCode,
-		"HTTPStatus": resp.Status,
-	}).Debugf("GoogleVerifier")
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error from google auth. code %d", resp.StatusCode)
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(b, body)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func verifyGoogleAuthResponse(body GoogleAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
+func verifyGoogleResponse(body GoogleAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
 	timeSignedInt, ok := new(big.Int).SetString(body.Iat, 10)
 	if !ok {
 		return errors.New("Could not get timesignedint from " + body.Iat)
@@ -125,6 +92,7 @@ func verifyGoogleAuthResponse(body GoogleAuthResponse, verifierID string, timeou
 		return ErrorIDNotVerified
 	}
 	timeSigned := time.Unix(timeSignedInt.Int64(), 0)
+
 	if timeSigned.Add(timeout).Before(time.Now()) {
 		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
 	}
@@ -132,7 +100,7 @@ func verifyGoogleAuthResponse(body GoogleAuthResponse, verifierID string, timeou
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
 	if strings.Compare(clientID, body.Azp) != 0 {
-		return fmt.Errorf("ClientID mismatch: Expected:%s Got:%s", clientID, body.Azp)
+		return fmt.Errorf("clientID mismatch: Expected:%s Got:%s", clientID, body.Azp)
 	}
 	return nil
 }
