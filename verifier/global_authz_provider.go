@@ -81,6 +81,5 @@ func (gkv *GlobalKeyVerifier) Verify(rawPayload *bijson.RawMessage, _ *common.Ve
 		Provider: parsed.Verifier,
 		AppID:    parsed.ApplicationID,
 	})
-	serviceMapper := common.NewServiceBroker(gkv.vs.bus, "global_verifier")
 	return gkv.vs.providerMap.Verify((*bijson.RawMessage)(&serialized), serviceMapper)
 }
