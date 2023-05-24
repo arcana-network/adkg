@@ -44,6 +44,7 @@ var providerList = map[string]bool{
 	"github":       true,
 	"passwordless": true,
 	"aws":          true,
+	"firebase":     true,
 }
 
 type NodeRegister struct {
