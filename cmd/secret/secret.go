@@ -7,6 +7,7 @@ import (
 	secretGenerate "github.com/arcana-network/dkgnode/cmd/secret/generate"
 	secretInit "github.com/arcana-network/dkgnode/cmd/secret/init"
 	secretOutput "github.com/arcana-network/dkgnode/cmd/secret/output"
+	secretRecover "github.com/arcana-network/dkgnode/cmd/secret/recover"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,7 @@ func GetCommand() *cobra.Command {
 	cmd.AddCommand(secretInit.GetCommand())
 	cmd.AddCommand(secretGenerate.GetCommand())
 	cmd.AddCommand(secretOutput.GetCommand())
+	cmd.AddCommand(secretRecover.GetCommand())
 	return cmd
 }
 
