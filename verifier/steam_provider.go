@@ -37,7 +37,8 @@ type SteamProviderParams struct {
 }
 
 type SteamAuthResponse struct {
-	ID string `json:"id"`
+	ID  string `json:"id"`
+	AZP string `json:"azp"`
 }
 
 func (p *SteamProvider) ID() string {
@@ -75,5 +76,10 @@ func verifySteamResponse(body SteamAuthResponse, verifierID string, timeout time
 	if strings.Compare(verifierID, body.ID) != 0 {
 		return errors.New("id not equal to body.steamid " + verifierID + " " + body.ID)
 	}
+
+	if strings.Compare(clientID, body.AZP) != 0 {
+		return errors.New("client id not equal to AZP " + clientID + " " + body.AZP)
+	}
+
 	return nil
 }
