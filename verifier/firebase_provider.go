@@ -32,7 +32,7 @@ func NewFirebaseProvider() (*FirebaseProvider, error) {
 	keyMap := make(map[string]string, 4)
 	parsedKM := make(map[string]crypto.PublicKey, 4)
 
-	rsp, err := req.R().SetSuccessResult(keyMap).Get(FirebaseKeyListURL)
+	rsp, err := req.R().SetSuccessResult(&keyMap).Get(FirebaseKeyListURL)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +93,11 @@ func (f FirebaseProvider) verifyJWT(token *jwt.Token) (interface{}, error) {
 	}
 	KIDStr, ok := kid.(string)
 	if !ok {
-		return nil, errors.New("kid invalid")
+		return nil, errors.New("kid invalid (1)")
 	}
 	k, ok := f.signingKeys[KIDStr]
 	if !ok {
-		return nil, errors.New("kid invalid")
+		return nil, errors.New("kid invalid (2)")
 	}
 	return k, nil
 
@@ -108,9 +108,9 @@ func (f FirebaseProvider) Verify(message *bijson.RawMessage, params *common.Veri
 	if err := bijson.Unmarshal(*message, &p); err != nil {
 		return false, "", err
 	}
-	tok, err := jwt.ParseWithClaims(p.IDToken, &jwt.RegisteredClaims{}, f.verifyJWT, jwt.WithAudience(params.Domain), jwt.WithIssuer("https://securetoken.google.com/"+params.Domain), jwt.WithIssuedAt(), jwt.WithLeeway(f.Leeway), jwt.WithValidMethods([]string{"RS256"}))
+	tok, err := jwt.ParseWithClaims(p.IDToken, &jwt.RegisteredClaims{}, f.verifyJWT, jwt.WithAudience(params.ClientID), jwt.WithIssuer("https://securetoken.google.com/"+params.ClientID), jwt.WithIssuedAt(), jwt.WithLeeway(f.Leeway), jwt.WithValidMethods([]string{"RS256"}))
 	if err != nil {
-		return false, "", nil
+		return false, "", err
 	}
 	if !tok.Valid {
 		return false, "", errors.New("token not valid")
