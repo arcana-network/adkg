@@ -114,6 +114,11 @@ func (*VerifierService) ID() string {
 }
 
 func (v *VerifierService) Start() error {
+	firebaseProvider, err := NewFirebaseProvider()
+	if err != nil {
+		return err
+	}
+
 	providers := []Provider{
 		NewGoogleProvider(),
 		NewDiscordProvider(),
@@ -123,6 +128,7 @@ func (v *VerifierService) Start() error {
 		NewPasswordlessProvider(),
 		NewAWSCognitoVerifier(),
 		// NewSteamProvider(),
+		firebaseProvider,
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil
