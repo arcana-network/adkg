@@ -1,6 +1,7 @@
 project_name: dkg
 before:
   hooks:
+    - rm -rf dist/
     - go mod tidy
     - go generate ./...
 builds:
@@ -9,10 +10,8 @@ builds:
     main: main.go
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w
       - -X main.build={{.Env.VERSION}}
@@ -26,15 +25,12 @@ builds:
 
 archives:
   - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
 checksum:
-  name_template: "{{ .ProjectName }}-{{ .Version}}-checksums.txt"
+  name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ .Version }}"

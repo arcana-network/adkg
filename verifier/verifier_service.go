@@ -127,6 +127,7 @@ func (v *VerifierService) Start() error {
 		NewTwitterProvider(),
 		NewPasswordlessProvider(),
 		NewAWSCognitoVerifier(),
+		NewSteamProvider(),
 		firebaseProvider,
 	}
 	v.providerMap = NewProviderMap(providers)

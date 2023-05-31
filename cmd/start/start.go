@@ -161,7 +161,7 @@ func runCommand(cmd *cobra.Command, _ []string) error {
 		conf.PrivateKey = pk
 	}
 
-	// log.Debugf("config: %v", conf)
+	// log.Infof("config: %v", conf)
 	go telemetry.StartClient()
 	node.Start(conf)
 	return nil

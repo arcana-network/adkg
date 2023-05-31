@@ -99,7 +99,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 				if keyset.Predicate(kcommon.IntToByteValue(sessionStore.TPrime), kcommon.IntToByteValue(v)) {
 					roundID := common.CreateRound(adkgid, key, "keyset")
 					keyset.OnKeysetVerified(roundID, m.Curve, kcommon.IntToByteValue(v), sessionStore, key, self)
-					delete(sessionStore.TProposals, k)
+					delete(sessionStore.TProposals, key)
 				}
 			}
 		} else {
