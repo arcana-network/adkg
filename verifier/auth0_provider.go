@@ -46,7 +46,7 @@ func (a *Auth0Verifier) callAndVerify(p AWSCognitoVerifierParams, params *common
 		}
 	*/
 
-	if authResp.Sub != p.UserID || authResp.EmailVerified != "true" {
+	if authResp.Sub != p.UserID {
 		// panic("№2")
 		return false
 	}
