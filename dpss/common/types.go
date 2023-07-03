@@ -74,7 +74,7 @@ type DPSSSession struct {
 	Z                      curves.Scalar
 }
 
-func DefaultADKGSession() *DPSSSession {
+func DefaultDPSSSession() *DPSSSession {
 	s := DPSSSession{
 		C:                      make(map[int][]curves.Point),
 		S:                      make(map[int]sharing.ShamirShare),

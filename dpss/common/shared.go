@@ -76,13 +76,13 @@ func GetSessionStoreFromRoundID(roundID common.DPSSRoundID, p DPSSParticipant) (
 	}
 	sessionStore := p.State().SessionStore
 	// create default session to use below
-	s, _ := sessionStore.GetOrSet(r.DPSSID, DefaultADKGSession())
+	s, _ := sessionStore.GetOrSet(r.DPSSID, DefaultDPSSSession())
 	return s, nil
 }
 
-func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
+func GenerateDPSSID(rindex, noOfRandoms big.Int) common.DPSSID {
 	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
-	return common.ADKGID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
+	return common.DPSSID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
 }
 
 func Hash(msg []byte) []byte {
@@ -101,11 +101,11 @@ type CommitmentsForCommittees struct {
 	Ti     int //For counting the acss
 	TjOld  int //For counting the opposite acss when in the old committee
 	TjNew  int //For counting the opposite acss when in the new committee
-	AdkgID common.ADKGID
+	DPSSID common.DPSSID
 }
 
 type DacssState struct {
 	sync.Mutex
 	Ended   bool
-	T_dacss map[common.ADKGID]int
+	T_dacss map[common.DPSSID]int
 }

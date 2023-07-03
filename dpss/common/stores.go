@@ -46,7 +46,7 @@ type CommitmentStoreMap struct {
 	Map sync.Map
 }
 
-// adkgid=>commitment=>count
+// dpssid=>commitment=>count
 func (store *CommitmentStoreMap) GetOrSet(r common.DPSSRoundID, input *CommitmentState) (session *CommitmentState, found bool) {
 
 	inter, found := store.Map.LoadOrStore(r, input)
@@ -108,9 +108,9 @@ type DPSSSessionStore struct {
 	Map sync.Map
 }
 
-func (m *DPSSSessionStore) Get(r common.DPSSID) (session *common.ADKGSession, found bool) {
+func (m *DPSSSessionStore) Get(r common.DPSSID) (session *DPSSSession, found bool) {
 	inter, found := m.Map.Load(r)
-	session, _ = inter.(*common.ADKGSession)
+	session, _ = inter.(*DPSSSession)
 	return
 }
 

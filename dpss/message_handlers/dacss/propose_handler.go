@@ -14,21 +14,21 @@ import (
 	"github.com/vivint/infectious"
 )
 
+var AcssProposeMessageType common.DPSSMessageType = "dacss_propose"
+
 type AcssProposeMessage struct {
 	RoundID      common.DPSSRoundID
-	sender       int
 	newCommittee bool
 	kind         common.DPSSMessageType
 	curve        *curves.Curve
 	data         messages.MessageData
 }
 
-func NewAcssProposeMessage(id common.DPSSRoundID, d messages.MessageData, curve *curves.Curve, sender int, newCommittee bool) (*common.DPSSMessage, error) {
+func NewAcssProposeMessage(id common.DPSSRoundID, d messages.MessageData, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
 	m := AcssProposeMessage{
 		RoundID:      id,
-		sender:       sender,
 		newCommittee: newCommittee,
-		kind:         "dacss_propose",
+		kind:         AcssProposeMessageType,
 		curve:        curve,
 		data:         d,
 	}
