@@ -12,9 +12,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssEchoMessageType common.DPSSMessageType = "dacss_echo"
+var EchoMessageType common.DPSSMessageType = "dacss_echo"
 
-type AcssEchoMessage struct {
+type EchoMessage struct {
 	RoundID       common.DPSSRoundID
 	committeeType int
 	kind          common.DPSSMessageType
@@ -24,11 +24,11 @@ type AcssEchoMessage struct {
 	newCommittee  bool
 }
 
-func NewAcssEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssEchoMessage{
+func NewEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
+	m := EchoMessage{
 		RoundID:      id,
 		newCommittee: newCommittee,
-		kind:         AcssEchoMessageType,
+		kind:         EchoMessageType,
 		curve:        curve,
 		share:        s,
 		hash:         hash,
@@ -48,7 +48,7 @@ func NewAcssEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, 
 	return &msg, nil
 }
 
-func (m *AcssEchoMessage) Fingerprint() string {
+func (m *EchoMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.hash...)
@@ -63,7 +63,7 @@ func (m *AcssEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (m *AcssEchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *EchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, p.ID())
 	// Get state from node
 	state := p.State().KeygenStore
@@ -116,7 +116,7 @@ func (m *AcssEchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.
 		c.ReadySent = true
 		for _, n := range p.Nodes(m.newCommittee) {
 			go func(node common.KeygenNodeDetails) {
-				msg, err := NewAcssReadyMessage(m.RoundID, m.share, m.hash, m.curve, m.newCommittee)
+				msg, err := NewReadyMessage(m.RoundID, m.share, m.hash, m.curve, m.newCommittee)
 				if err != nil {
 					return
 				}

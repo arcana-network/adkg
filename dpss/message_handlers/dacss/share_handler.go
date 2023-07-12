@@ -15,18 +15,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var AcssShareMessageType common.DPSSMessageType = "dacss_share"
+var ShareMessageType common.DPSSMessageType = "dacss_share"
 
-type AcssShareMessage struct {
+type ShareMessage struct {
 	roundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	curve   *curves.Curve
 }
 
-func NewAcssShareMessage(roundID common.DPSSRoundID, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := AcssShareMessage{
+func NewShareMessage(roundID common.DPSSRoundID, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := ShareMessage{
 		roundID: roundID,
-		kind:    AcssShareMessageType,
+		kind:    ShareMessageType,
 		curve:   curve,
 	}
 	bytes, err := json.Marshal(m)
@@ -38,7 +38,7 @@ func NewAcssShareMessage(roundID common.DPSSRoundID, curve *curves.Curve) (*comm
 	return &msg, nil
 }
 
-func (m *AcssShareMessage) Process(sender common.KeygenNodeDetails, self dpsscommon.DPSSParticipant) {
+func (m *ShareMessage) Process(sender common.KeygenNodeDetails, self dpsscommon.DPSSParticipant) {
 	if sender.Index != self.ID() {
 		return
 	}
@@ -53,7 +53,7 @@ func (m *AcssShareMessage) Process(sender common.KeygenNodeDetails, self dpsscom
 
 }
 
-func makeMessageAndSend(newCommittee bool, self dpsscommon.DPSSParticipant, m *AcssShareMessage, secret curves.Scalar, privateKey curves.Scalar) {
+func makeMessageAndSend(newCommittee bool, self dpsscommon.DPSSParticipant, m *ShareMessage, secret curves.Scalar, privateKey curves.Scalar) {
 
 	n, k, _ := self.Params(newCommittee)
 	// Generate share and commitments
@@ -82,7 +82,7 @@ func makeMessageAndSend(newCommittee bool, self dpsscommon.DPSSParticipant, m *A
 
 	// Create propose message & broadcast
 	roundid := reCreateRoundID(m.roundID, newCommittee)
-	msg, err := NewAcssProposeMessage(roundid, messageData, m.curve, newCommittee)
+	msg, err := NewProposeMessage(roundid, messageData, m.curve, newCommittee)
 	if err != nil {
 		return
 	}

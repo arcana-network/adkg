@@ -14,9 +14,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var KeysetReadyMessageType common.DPSSMessageType = "acss_ready"
+var ReadyMessageType common.DPSSMessageType = "keyset_ready"
 
-type KeysetReadyMessage struct {
+type ReadyMessage struct {
 	RoundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	curve   *curves.Curve
@@ -24,10 +24,10 @@ type KeysetReadyMessage struct {
 	hash    []byte
 }
 
-func NewKeysetReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := &KeysetReadyMessage{
+func NewReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := &ReadyMessage{
 		RoundID: id,
-		kind:    KeysetReadyMessageType,
+		kind:    ReadyMessageType,
 		curve:   curve,
 		share:   s,
 		hash:    hash,
@@ -41,7 +41,7 @@ func NewKeysetReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byt
 	return &msg, nil
 }
 
-func (m *KeysetReadyMessage) Fingerprint() string {
+func (m *ReadyMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.hash...)
@@ -56,7 +56,7 @@ func (m *KeysetReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m *KeysetReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *ReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender.Index, p.ID())
 	// Get state from node
 	state := p.State().KeygenStore
@@ -106,7 +106,7 @@ func (m *KeysetReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscomm
 
 	if c.RC >= k && !c.ReadySent && c.EC >= k {
 		// Broadcast ready message
-		msg, err := NewKeysetReadyMessage(m.RoundID, m.share, m.hash, m.curve)
+		msg, err := NewReadyMessage(m.RoundID, m.share, m.hash, m.curve)
 		if err != nil {
 			return
 		}
@@ -134,7 +134,7 @@ func (m *KeysetReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscomm
 
 			if bytes.Equal(hash, m.hash) {
 				defer func() { keygen.State.Phase = common.Ended }()
-				msg, err := NewKeysetOutputMessage(m.RoundID, M, m.curve)
+				msg, err := NewOutputMessage(m.RoundID, M, m.curve)
 				if err != nil {
 					return
 				}

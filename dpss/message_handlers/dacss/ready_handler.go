@@ -15,14 +15,14 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssReadyMessageType common.DPSSMessageType = "dacss_ready"
+var ReadyMessageType common.DPSSMessageType = "dacss_ready"
 
 const (
 	OldCommittee = iota
 	NewCommittee
 )
 
-type AcssReadyMessage struct {
+type ReadyMessage struct {
 	RoundID       common.DPSSRoundID
 	newCommittee  bool
 	committeeType int
@@ -32,11 +32,11 @@ type AcssReadyMessage struct {
 	hash          []byte
 }
 
-func NewAcssReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssReadyMessage{
+func NewReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
+	m := ReadyMessage{
 		RoundID:      id,
 		newCommittee: newCommittee,
-		kind:         AcssReadyMessageType,
+		kind:         ReadyMessageType,
 		curve:        curve,
 		share:        s,
 		hash:         hash,
@@ -55,7 +55,7 @@ func NewAcssReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte,
 	return &msg, nil
 }
 
-func (m *AcssReadyMessage) Fingerprint() string {
+func (m *ReadyMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.hash...)
@@ -70,7 +70,7 @@ func (m *AcssReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *ReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender.Index, p.ID())
 	// Get state from node
 	state := p.State().KeygenStore
@@ -123,7 +123,7 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 
 	if c.RC >= k && !c.ReadySent && c.EC >= k {
 		// Broadcast ready message
-		msg, err := NewAcssReadyMessage(m.RoundID, m.share, m.hash, m.curve, m.newCommittee)
+		msg, err := NewReadyMessage(m.RoundID, m.share, m.hash, m.curve, m.newCommittee)
 		if err != nil {
 			return
 		}
@@ -149,7 +149,7 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 			log.Debugf("HashCompare, hash=%v, mHash=%v", hash, m.hash)
 
 			if bytes.Equal(hash, m.hash) {
-				outputMsg, err := NewAcssOutputMessage(m.RoundID, M, m.curve, "ready", m.newCommittee)
+				outputMsg, err := NewOutputMessage(m.RoundID, M, m.curve, "ready", m.newCommittee)
 				if err != nil {
 					return
 				}
@@ -164,7 +164,7 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 				}
 				for _, n := range p.Nodes(!m.newCommittee) {
 					go func(node common.KeygenNodeDetails) {
-						msg, err := NewAcssCommitMessage(m.RoundID, msg.Commitments, m.curve, m.newCommittee)
+						msg, err := NewCommitMessage(m.RoundID, msg.Commitments, m.curve, m.newCommittee)
 						if err != nil {
 							return
 						}

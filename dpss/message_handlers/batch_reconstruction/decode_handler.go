@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var DecodeMessageType common.DPSSMessageType = "decode"
+var DecodeMessageType common.DPSSMessageType = "br_decode"
 
 type InitDecodeMessage struct {
 	RoundID common.DPSSRoundID

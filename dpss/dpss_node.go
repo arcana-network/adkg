@@ -1,9 +1,16 @@
 package dpss
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/arcana-network/dkgnode/common"
 	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
+	batchreconstruction "github.com/arcana-network/dkgnode/dpss/message_handlers/batch_reconstruction"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/him"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -114,20 +121,240 @@ func (n *PSSNode) Contract() dpsscommon.SmartContract {
 }
 
 func (n *PSSNode) ProcessMessage(sender common.KeygenNodeDetails, msg common.DPSSMessage) error {
-	switch msg.Method {
-	case "aux1_aba":
-		log.Debugf("Got %s", aba.Aux1MessageType)
-		var aux1Msg aba.Aux1Message
-		err := bijson.Unmarshal(msg.Data, &aux1Msg)
-		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", msg.Method)
-			return err
-		}
-		aux1Msg.Process(sender, n)
+	log.WithFields(log.Fields{
+		"sender":   sender.Index,
+		"receiver": n.ID(),
+		"Method":   msg.Method,
+		"RoundID":  msg.PSSID,
+	}).Debug("DPSSNode:ProcessMessage()")
+
+	switch {
+	case strings.HasPrefix(string(msg.Method), "dacss"):
+		n.ProcessDACSSMessages(sender, msg)
+	case strings.HasPrefix(string(msg.Method), "keyset"):
+		n.ProcessKeysetMessages(sender, msg)
+	case strings.HasPrefix(string(msg.Method), "aba"):
+		n.ProcessABAMessages(sender, msg)
+	case strings.HasPrefix(string(msg.Method), "br"):
+		n.ProcessBatchReconsMessages(sender, msg)
+	case strings.HasPrefix(string(msg.Method), "him"):
+		n.ProcessHIMMessages(sender, msg)
+
 	default:
-		log.Errorf("Unhandled message:")
+		log.Infof("No handler found. MsgType=%s", msg.Method)
+		return fmt.Errorf("dpssMessage method %v not found", msg.Method)
 	}
 	return nil
+}
+
+func (n *PSSNode) ProcessDACSSMessages(sender common.KeygenNodeDetails, rawMsg common.DPSSMessage) {
+	switch rawMsg.Method {
+	case dacss.ShareMessageType:
+		var msg dacss.ShareMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+
+	case dacss.ProposeMessageType:
+		var msg dacss.ProposeMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case dacss.EchoMessageType:
+		var msg dacss.EchoMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case dacss.ReadyMessageType:
+		var msg dacss.ReadyMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case dacss.CommitMessageType:
+		var msg dacss.CommitMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case dacss.OutputMessageType:
+		var msg dacss.OutputMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	}
+}
+
+func (n *PSSNode) ProcessKeysetMessages(sender common.KeygenNodeDetails, rawMsg common.DPSSMessage) {
+	switch rawMsg.Method {
+	case keyset.InitMessageType:
+		var msg keyset.InitMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case keyset.ProposeMessageType:
+		var msg keyset.ProposeMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case keyset.EchoMessageType:
+		var msg keyset.EchoMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case keyset.ReadyMessageType:
+		var msg keyset.ReadyMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	case keyset.OutputMessageType:
+		var msg keyset.OutputMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, n)
+	}
+}
+
+func (node *PSSNode) ProcessABAMessages(sender common.KeygenNodeDetails, rawMsg common.DPSSMessage) {
+	switch rawMsg.Method {
+	case aba.InitMessageType:
+		var msg aba.InitMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.Est1MessageType:
+		var msg aba.Est1Message
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.Aux1MessageType:
+		var msg aba.Aux1Message
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.AuxsetMessageType:
+		var msg aba.AuxsetMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.Est2MessageType:
+		var msg aba.Est2Message
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.Aux2MessageType:
+		var msg aba.Aux2Message
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.CoinInitMessageType:
+		var msg aba.CoinInitMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case aba.CoinMessageType:
+		var msg aba.CoinMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	}
+}
+
+func (node *PSSNode) ProcessBatchReconsMessages(sender common.KeygenNodeDetails, rawMsg common.DPSSMessage) {
+	switch rawMsg.Method {
+	case batchreconstruction.InitMessageType:
+		var msg batchreconstruction.InitBatchMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case batchreconstruction.ReconsMessageType:
+		var msg batchreconstruction.InitReconsMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	case batchreconstruction.DecodeMessageType:
+		var msg batchreconstruction.InitDecodeMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	}
+}
+
+func (node *PSSNode) ProcessHIMMessages(sender common.KeygenNodeDetails, rawMsg common.DPSSMessage) {
+	switch rawMsg.Method {
+	case him.InitMessageType:
+		var msg him.InitMessage
+		err := bijson.Unmarshal(rawMsg.Data, &msg)
+		if err != nil {
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", rawMsg.Method)
+			return
+		}
+		msg.Process(sender, node)
+	}
 }
 
 func (n *PSSNode) ProcessBroadcastMessage(msg common.DPSSMessage) error {

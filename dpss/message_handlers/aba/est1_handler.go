@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var Est1MessageType common.DPSSMessageType = "est1_aba"
+var Est1MessageType common.DPSSMessageType = "aba_est1"
 
 type Est1Message struct {
 	roundID common.DPSSRoundID

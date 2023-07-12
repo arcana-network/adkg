@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var CoinInitMessageType common.DPSSMessageType = "coin_init_aba"
+var CoinInitMessageType common.DPSSMessageType = "aba_coin_init"
 
 type CoinInitMessage struct {
 	roundID common.DPSSRoundID

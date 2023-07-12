@@ -9,9 +9,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var AcssCommitMessageType common.DPSSMessageType = "dacss_commit"
+var CommitMessageType common.DPSSMessageType = "dacss_commit"
 
-type AcssCommitMessage struct {
+type CommitMessage struct {
 	RoundID       common.DPSSRoundID
 	committeeType int
 	kind          common.DPSSMessageType
@@ -20,8 +20,8 @@ type AcssCommitMessage struct {
 	newCommittee  bool
 }
 
-func NewAcssCommitMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssCommitMessage{
+func NewCommitMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
+	m := CommitMessage{
 		RoundID:      id,
 		curve:        curve,
 		Commitment:   data,
@@ -41,7 +41,7 @@ func NewAcssCommitMessage(id common.DPSSRoundID, data []byte, curve *curves.Curv
 	return &msg, nil
 }
 
-func (m AcssCommitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m CommitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 
 	_, _, t := p.Params(m.newCommittee)
 
@@ -75,7 +75,7 @@ func (m AcssCommitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 
 	if commitmentCount.CommitmentsForADKGID[string(m.Commitment)] >= t+1 && !commitmentCount.Ended[string(m.Commitment)] {
 		commitmentCount.Ended[string(m.Commitment)] = true
-		outputMsg, err := NewAcssOutputMessage(m.RoundID, m.Commitment, m.curve, "commit", m.newCommittee)
+		outputMsg, err := NewOutputMessage(m.RoundID, m.Commitment, m.curve, "commit", m.newCommittee)
 		if err != nil {
 			return
 		}

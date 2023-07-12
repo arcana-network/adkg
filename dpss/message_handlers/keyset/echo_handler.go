@@ -12,9 +12,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var KeysetEchoMessageType common.DPSSMessageType = "keyset_echo"
+var EchoMessageType common.DPSSMessageType = "keyset_echo"
 
-type KeysetEchoMessage struct {
+type EchoMessage struct {
 	RoundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	curve   *curves.Curve
@@ -22,10 +22,10 @@ type KeysetEchoMessage struct {
 	hash    []byte
 }
 
-func NewKeysetEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := &KeysetEchoMessage{
+func NewEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := &EchoMessage{
 		id,
-		KeysetEchoMessageType,
+		EchoMessageType,
 		curve,
 		s,
 		hash,
@@ -39,7 +39,7 @@ func NewKeysetEchoMessage(id common.DPSSRoundID, s infectious.Share, hash []byte
 	return &msg, nil
 }
 
-func (m *KeysetEchoMessage) Fingerprint() string {
+func (m *EchoMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.hash...)
@@ -54,7 +54,7 @@ func (m *KeysetEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (m *KeysetEchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *EchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, p.ID())
 	// Get state from node
 	state := p.State().KeygenStore
@@ -104,7 +104,7 @@ func (m *KeysetEchoMessage) Process(sender common.KeygenNodeDetails, p dpsscommo
 	if c.EC >= (2*f + 1) {
 		// Send Ready Message
 		c.ReadySent = true
-		msg, err := NewKeysetReadyMessage(m.RoundID, m.share, m.hash, m.curve)
+		msg, err := NewReadyMessage(m.RoundID, m.share, m.hash, m.curve)
 		if err != nil {
 			return
 		}

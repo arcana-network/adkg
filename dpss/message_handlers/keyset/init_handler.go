@@ -8,19 +8,19 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-var KeysetInitMessageType common.DPSSMessageType = "keyset_init"
+var InitMessageType common.DPSSMessageType = "keyset_init"
 
-type KeysetInitMessage struct {
+type InitMessage struct {
 	RoundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	data    []byte
 	curve   *curves.Curve
 }
 
-func NewKeysetInitMessage(roundID common.DPSSRoundID, d []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := KeysetInitMessage{
+func NewInitMessage(roundID common.DPSSRoundID, d []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := InitMessage{
 		roundID,
-		KeysetInitMessageType,
+		InitMessageType,
 		d,
 		curve,
 	}
@@ -33,12 +33,12 @@ func NewKeysetInitMessage(roundID common.DPSSRoundID, d []byte, curve *curves.Cu
 	return &msg, nil
 }
 
-func (m *KeysetInitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *InitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	if sender.Index != p.ID() {
 		return
 	}
 
-	msg, err := NewKeysetProposeMessage(m.RoundID, m.data, m.curve)
+	msg, err := NewProposeMessage(m.RoundID, m.data, m.curve)
 	if err != nil {
 		return
 	}

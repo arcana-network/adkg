@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var CoinMessageType common.DPSSMessageType = "coin_aba"
+var CoinMessageType common.DPSSMessageType = "aba_coin"
 
 type CoinMessage struct {
 	RoundID common.DPSSRoundID

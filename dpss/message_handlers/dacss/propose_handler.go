@@ -14,9 +14,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssProposeMessageType common.DPSSMessageType = "dacss_propose"
+var ProposeMessageType common.DPSSMessageType = "dacss_propose"
 
-type AcssProposeMessage struct {
+type ProposeMessage struct {
 	RoundID      common.DPSSRoundID
 	newCommittee bool
 	kind         common.DPSSMessageType
@@ -24,11 +24,11 @@ type AcssProposeMessage struct {
 	data         messages.MessageData
 }
 
-func NewAcssProposeMessage(id common.DPSSRoundID, d messages.MessageData, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssProposeMessage{
+func NewProposeMessage(id common.DPSSRoundID, d messages.MessageData, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
+	m := ProposeMessage{
 		RoundID:      id,
 		newCommittee: newCommittee,
-		kind:         AcssProposeMessageType,
+		kind:         ProposeMessageType,
 		curve:        curve,
 		data:         d,
 	}
@@ -41,11 +41,7 @@ func NewAcssProposeMessage(id common.DPSSRoundID, d messages.MessageData, curve 
 	return &msg, nil
 }
 
-func (m *AcssProposeMessage) Kind() common.DPSSMessageType {
-	return m.kind
-}
-
-func (m *AcssProposeMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *ProposeMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received Propose message from %d on %d", sender.Index, p.ID())
 	log.Debugf("Propose: PSSNode=%d, Value=%v", p.ID(), m.data)
 
@@ -114,7 +110,7 @@ func (m *AcssProposeMessage) Process(sender common.KeygenNodeDetails, p dpsscomm
 		for _, n := range p.Nodes(m.newCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", p.ID(), n.Index)
 			go func(node common.KeygenNodeDetails) {
-				msg, err := NewAcssEchoMessage(m.RoundID, shares[node.Index-1], hash, m.curve, m.newCommittee)
+				msg, err := NewEchoMessage(m.RoundID, shares[node.Index-1], hash, m.curve, m.newCommittee)
 				if err != nil {
 					return
 				}

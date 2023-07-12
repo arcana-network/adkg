@@ -13,19 +13,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var KeysetOutputMessageType common.DPSSMessageType = "acss_output"
+var OutputMessageType common.DPSSMessageType = "keyset_output"
 
-type KeysetOutputMessage struct {
+type OutputMessage struct {
 	RoundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	curve   *curves.Curve
 	m       []byte
 }
 
-func NewKeysetOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := &KeysetOutputMessage{
+func NewOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := &OutputMessage{
 		RoundID: id,
-		kind:    KeysetOutputMessageType,
+		kind:    OutputMessageType,
 		curve:   curve,
 		m:       data,
 	}
@@ -39,7 +39,7 @@ func NewKeysetOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Cu
 	return &msg, nil
 }
 
-func (m *KeysetOutputMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *OutputMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debug("message=keyset-output", logger.Field{
 		"M":       m.m[:],
 		"PSSNode": sender.Index,

@@ -15,19 +15,19 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var KeysetProposeMessageType common.DPSSMessageType = "keyset_propose"
+var ProposeMessageType common.DPSSMessageType = "keyset_propose"
 
-type KeysetProposeMessage struct {
+type ProposeMessage struct {
 	RoundID common.DPSSRoundID
 	kind    common.DPSSMessageType
 	curve   *curves.Curve
 	data    []byte
 }
 
-func NewKeysetProposeMessage(id common.DPSSRoundID, d []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := &KeysetProposeMessage{
+func NewProposeMessage(id common.DPSSRoundID, d []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := &ProposeMessage{
 		id,
-		KeysetProposeMessageType,
+		ProposeMessageType,
 		curve,
 		d,
 	}
@@ -40,7 +40,7 @@ func NewKeysetProposeMessage(id common.DPSSRoundID, d []byte, curve *curves.Curv
 	return &msg, nil
 }
 
-func (m *KeysetProposeMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *ProposeMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received keyset Propose message from %d on %d", sender.Index, p.ID())
 	log.Debug("Starting keyset", logger.Field{
 		"node":   p.ID(),
@@ -94,7 +94,7 @@ func (m *KeysetProposeMessage) Process(sender common.KeygenNodeDetails, p dpssco
 		for _, n := range p.Nodes(false) {
 			log.Debugf("Sending echo: from=%d, to=%d", p.ID(), n.Index)
 			go func(node common.KeygenNodeDetails) {
-				msg, err := NewKeysetEchoMessage(m.RoundID, shares[node.Index-1], hash, m.curve)
+				msg, err := NewEchoMessage(m.RoundID, shares[node.Index-1], hash, m.curve)
 				if err != nil {
 					return
 				}
@@ -132,7 +132,7 @@ func OnKeysetVerified(roundID common.DPSSRoundID, curve curves.Curve, keyset []b
 	for _, n := range self.Nodes(false) {
 		log.Debugf("Sending echo: from=%d, to=%d", self.ID(), n.Index)
 		go func(node common.KeygenNodeDetails) {
-			echoMsg, err := NewKeysetEchoMessage(roundID, shares[node.Index-1], hash, &curve)
+			echoMsg, err := NewEchoMessage(roundID, shares[node.Index-1], hash, &curve)
 			if err != nil {
 				log.WithField("error", err).Error("NewKeysetEchoMessage")
 				return

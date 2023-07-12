@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ReconsMessageType common.DPSSMessageType = "recons"
+var ReconsMessageType common.DPSSMessageType = "br_recons"
 
 type InitReconsMessage struct {
 	RoundID common.DPSSRoundID

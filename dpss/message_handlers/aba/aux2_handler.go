@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var Aux2MessageType common.DPSSMessageType = "aux2_aba"
+var Aux2MessageType common.DPSSMessageType = "aba_aux2"
 
 type Aux2Message struct {
 	roundID common.DPSSRoundID

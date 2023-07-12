@@ -16,9 +16,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var AcssOutputMessageType common.DPSSMessageType = "dacss_output"
+var OutputMessageType common.DPSSMessageType = "dacss_output"
 
-type AcssOutputMessage struct {
+type OutputMessage struct {
 	RoundID      common.DPSSRoundID
 	kind         common.DPSSMessageType
 	curve        *curves.Curve
@@ -27,11 +27,11 @@ type AcssOutputMessage struct {
 	handlerType  string
 }
 
-func NewAcssOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve, handlerType string, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssOutputMessage{
+func NewOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Curve, handlerType string, newCommittee bool) (*common.DPSSMessage, error) {
+	m := OutputMessage{
 		RoundID:      id,
 		newCommittee: newCommittee,
-		kind:         AcssOutputMessageType,
+		kind:         OutputMessageType,
 		curve:        curve,
 		m:            data,
 		handlerType:  handlerType,
@@ -46,7 +46,7 @@ func NewAcssOutputMessage(id common.DPSSRoundID, data []byte, curve *curves.Curv
 	return &msg, nil
 }
 
-func (m AcssOutputMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m OutputMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received output message on %d, OVER!!!!", sender.Index)
 
 	//extracting common adkgid for old and new committee

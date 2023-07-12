@@ -17,9 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType common.DPSSMessageType = "init_him"
+var InitMessageType common.DPSSMessageType = "him_init"
 
-type InitHimMessage struct {
+type InitMessage struct {
 	RoundID      common.DPSSRoundID
 	newCommittee bool
 	kind         common.DPSSMessageType
@@ -27,7 +27,7 @@ type InitHimMessage struct {
 }
 
 func NewInitMessage(id common.DPSSRoundID, newCommittee bool, curve *curves.Curve) (*common.DPSSMessage, error) {
-	m := InitHimMessage{
+	m := InitMessage{
 		id,
 		newCommittee,
 		InitMessageType,
@@ -42,7 +42,7 @@ func NewInitMessage(id common.DPSSRoundID, newCommittee bool, curve *curves.Curv
 	return &msg, nil
 }
 
-func (m *InitHimMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *InitMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	if sender.Index != p.ID() {
 		return
 	}

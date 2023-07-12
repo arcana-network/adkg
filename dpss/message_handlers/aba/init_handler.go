@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType common.DPSSMessageType = "init_aba"
+var InitMessageType common.DPSSMessageType = "aba_init"
 
 type InitMessage struct {
 	roundID common.DPSSRoundID

@@ -93,7 +93,7 @@ func (m multiAcssMessage) Process(p dpsscommon.DPSSParticipant) {
 
 			//Initiate keyset proposal
 			round := common.CreateDPSSRound(ID, p.ID(), "keyset")
-			msg, err := keyset.NewKeysetInitMessage(round, output[:], m.curve)
+			msg, err := keyset.NewInitMessage(round, output[:], m.curve)
 			if err != nil {
 				return
 			}

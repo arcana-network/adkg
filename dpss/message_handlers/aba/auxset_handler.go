@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var AuxsetMessageType common.DPSSMessageType = "auxset_aba"
+var AuxsetMessageType common.DPSSMessageType = "aba_auxset"
 
 type AuxsetMessage struct {
 	roundID common.DPSSRoundID

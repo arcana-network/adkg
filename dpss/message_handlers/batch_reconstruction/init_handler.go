@@ -10,7 +10,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-var InitMessageType common.DPSSMessageType = "init_batch"
+var InitMessageType common.DPSSMessageType = "br_init"
 
 type InitBatchMessage struct {
 	RoundID common.DPSSRoundID
