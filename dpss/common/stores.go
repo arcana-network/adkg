@@ -47,7 +47,7 @@ type CommitmentStoreMap struct {
 }
 
 // dpssid=>commitment=>count
-func (store *CommitmentStoreMap) GetOrSet(r common.DPSSRoundID, input *CommitmentState) (session *CommitmentState, found bool) {
+func (store *CommitmentStoreMap) GetOrSet(r common.DPSSID, input *CommitmentState) (session *CommitmentState, found bool) {
 
 	inter, found := store.Map.LoadOrStore(r, input)
 	session, _ = inter.(*CommitmentState)

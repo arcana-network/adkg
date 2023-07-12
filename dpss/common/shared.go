@@ -90,12 +90,6 @@ func Hash(msg []byte) []byte {
 	return sum[:]
 }
 
-func IntToByteValue(val int) []byte {
-	var byteVal [8]byte
-	binary.BigEndian.PutUint64(byteVal[:], uint64(val))
-	return byteVal[:]
-}
-
 type CommitmentsForCommittees struct {
 	sync.Mutex
 	Ti     int //For counting the acss
@@ -108,4 +102,34 @@ type DacssState struct {
 	sync.Mutex
 	Ended   bool
 	T_dacss map[common.DPSSID]int
+}
+
+// TODO: Deduplicate this
+func HasBit(n int, pos int) bool {
+	val := n & (1 << pos)
+	return (val > 0)
+}
+func SetBit(n int, pos int) int {
+	n |= (1 << pos)
+	return n
+}
+
+func CountSetBits(n int) int {
+	count := 0
+	for n > 0 {
+		n &= (n - 1)
+		count++
+	}
+	return count
+}
+
+func IntToByteValue(val int) []byte {
+	var byteVal [8]byte
+	binary.BigEndian.PutUint64(byteVal[:], uint64(val))
+	return byteVal[:]
+}
+
+func ByteToIntValue(val []byte) int {
+	intVal := binary.BigEndian.Uint64(val)
+	return int(intVal)
 }

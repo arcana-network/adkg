@@ -1,4 +1,4 @@
-package dacss
+package keyset
 
 import (
 	"bytes"
@@ -8,43 +8,29 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	"github.com/arcana-network/dkgnode/keygen/messages"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 )
 
-var AcssReadyMessageType common.DPSSMessageType = "dacss_ready"
+var KeysetReadyMessageType common.DPSSMessageType = "acss_ready"
 
-const (
-	OldCommittee = iota
-	NewCommittee
-)
-
-type AcssReadyMessage struct {
-	RoundID       common.DPSSRoundID
-	newCommittee  bool
-	committeeType int
-	kind          common.DPSSMessageType
-	curve         *curves.Curve
-	share         infectious.Share
-	hash          []byte
+type KeysetReadyMessage struct {
+	RoundID common.DPSSRoundID
+	kind    common.DPSSMessageType
+	curve   *curves.Curve
+	share   infectious.Share
+	hash    []byte
 }
 
-func NewAcssReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, newCommittee bool) (*common.DPSSMessage, error) {
-	m := AcssReadyMessage{
-		RoundID:      id,
-		newCommittee: newCommittee,
-		kind:         AcssReadyMessageType,
-		curve:        curve,
-		share:        s,
-		hash:         hash,
-	}
-	if newCommittee {
-		m.committeeType = 1
-	} else {
-		m.committeeType = 0
+func NewKeysetReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve) (*common.DPSSMessage, error) {
+	m := &KeysetReadyMessage{
+		RoundID: id,
+		kind:    KeysetReadyMessageType,
+		curve:   curve,
+		share:   s,
+		hash:    hash,
 	}
 	bytes, err := json.Marshal(m)
 	if err != nil {
@@ -55,7 +41,7 @@ func NewAcssReadyMessage(id common.DPSSRoundID, s infectious.Share, hash []byte,
 	return &msg, nil
 }
 
-func (m *AcssReadyMessage) Fingerprint() string {
+func (m *KeysetReadyMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.hash...)
@@ -70,7 +56,7 @@ func (m *AcssReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
+func (m *KeysetReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon.DPSSParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender.Index, p.ID())
 	// Get state from node
 	state := p.State().KeygenStore
@@ -94,6 +80,7 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 	}
 	keygen.Lock()
 	defer keygen.Unlock()
+	// Make sure the echo received from a node is set to true
 	defer func() { keygen.State.ReceivedReady[sender.Index] = true }()
 
 	if keygen.State.Phase == common.Ended {
@@ -106,9 +93,6 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 		return
 	}
 
-	// Make sure the echo received from a node is set to true
-	defer func() { keygen.State.ReceivedReady[sender.Index] = true }()
-
 	// Get keygen store by serializing the data of message
 	cid := m.Fingerprint()
 	c := dpsscommon.GetCStore(keygen, cid)
@@ -117,17 +101,16 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 
 	// increment the echo messages received
 	c.RC = c.RC + 1
-	n, k, f := p.Params(m.newCommittee)
-
+	n, k, f := p.Params(false)
 	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, k, p.ID())
 
 	if c.RC >= k && !c.ReadySent && c.EC >= k {
 		// Broadcast ready message
-		msg, err := NewAcssReadyMessage(m.RoundID, m.share, m.hash, m.curve, m.newCommittee)
+		msg, err := NewKeysetReadyMessage(m.RoundID, m.share, m.hash, m.curve)
 		if err != nil {
 			return
 		}
-		go p.Broadcast(m.newCommittee, *msg)
+		go p.Broadcast(false, *msg)
 	}
 
 	for i := 0; i < f; i += 1 {
@@ -145,35 +128,19 @@ func (m *AcssReadyMessage) Process(sender common.KeygenNodeDetails, p dpsscommon
 				log.Debugf("Decode faced an error, err=%s", err)
 				return
 			}
+
 			hash := dpsscommon.Hash(M)
 			log.Debugf("HashCompare, hash=%v, mHash=%v", hash, m.hash)
 
 			if bytes.Equal(hash, m.hash) {
-				outputMsg, err := NewAcssOutputMessage(m.RoundID, M, m.curve, "ready", m.newCommittee)
-				if err != nil {
-					return
-				}
-				go p.ReceiveMessage(*outputMsg)
 				defer func() { keygen.State.Phase = common.Ended }()
-				// send to other committee
-				msg := messages.MessageData{}
-				err = msg.Deserialize(M)
+				msg, err := NewKeysetOutputMessage(m.RoundID, M, m.curve)
 				if err != nil {
-					log.Debugf("Could not deserialize message data, err=%s", err)
 					return
 				}
-				for _, n := range p.Nodes(!m.newCommittee) {
-					go func(node common.KeygenNodeDetails) {
-						msg, err := NewAcssCommitMessage(m.RoundID, msg.Commitments, m.curve, m.newCommittee)
-						if err != nil {
-							return
-						}
-						p.Send(*msg, node)
-					}(n)
-				}
+				go p.ReceiveMessage(*msg)
+				break
 			}
-
 		}
 	}
-
 }

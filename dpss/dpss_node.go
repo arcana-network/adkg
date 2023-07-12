@@ -3,7 +3,7 @@ package dpss
 import (
 	"github.com/arcana-network/dkgnode/common"
 	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
-	"github.com/arcana-network/dkgnode/dpss/dpssmessage/aba"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -123,7 +123,7 @@ func (n *PSSNode) ProcessMessage(sender common.KeygenNodeDetails, msg common.DPS
 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", msg.Method)
 			return err
 		}
-		aux1Msg.Process(n)
+		aux1Msg.Process(sender, n)
 	default:
 		log.Errorf("Unhandled message:")
 	}

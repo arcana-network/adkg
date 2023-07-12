@@ -8,8 +8,9 @@ import (
 	"strings"
 )
 
-func GenerateDPSSID(index big.Int) DPSSID {
-	return DPSSID(strings.Join([]string{"DPSS", index.Text(16)}, Delimiter3))
+func GenerateDPSSID(rindex, noOfRandoms big.Int) DPSSID {
+	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, Delimiter2)
+	return DPSSID(strings.Join([]string{"DPSS", index}, Delimiter3))
 }
 
 func (id *DPSSID) GetIndex() (big.Int, error) {
