@@ -14,8 +14,6 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-const MaxFailedPubKeyAssigns = 10
-
 var ErrKeyNotAvailable = errors.New("Key not available for assignment!")
 
 func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.KeygenNodeDetails, state *State) (bool, error) {
@@ -156,25 +154,18 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 			return false, &tags, nil
 		}
 
-		if abci.state.ConsecutiveFailedPubKeyAssigns == MaxFailedPubKeyAssigns {
-			abci.resetKeyAssigns()
-			return true, &tags, nil
-		}
-
 		var dkgID string
 		var keyIndexes []big.Int
 		var pk common.Point
 		assignedKeyIndex := *big.NewInt(int64(abci.state.LastUnassignedIndex))
-		count := 0
 		for {
 			pk, keyIndexes = abci.getKeyAssignment(assignedKeyIndex, parsedTx)
 			dkgID = string(common.GenerateADKGID(assignedKeyIndex))
-			if count > MaxFailedPubKeyAssigns {
+			if assignedKeyIndex.Cmp(new(big.Int).SetInt64(int64(abci.state.LastCreatedIndex))) > -1 {
 				return false, &tags, errors.New("could not assign key, key not found")
 			}
 			if pk.X.Cmp(big.NewInt(0)) == 0 || pk.Y.Cmp(big.NewInt(0)) == 0 {
 				assignedKeyIndex = *new(big.Int).Add(&assignedKeyIndex, new(big.Int).SetInt64(1))
-				count += 1
 			} else {
 				break
 			}
@@ -309,8 +300,14 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 					Point: m.PublicKey,
 				}
 
-				// Increase index
-				abci.state.LastCreatedIndex = abci.state.LastCreatedIndex + uint(1)
+				delete(abci.state.KeygenDecisions, key)
+
+				index := keyIndex.Int64()
+
+				if uint(index) > abci.state.LastCreatedIndex {
+					abci.state.LastCreatedIndex = uint(index)
+				}
+
 				log.WithFields(log.Fields{
 					"key":    m.PublicKey,
 					"index":  abci.state.LastCreatedIndex,

@@ -11,6 +11,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
+	"github.com/avast/retry-go"
 
 	"github.com/arcana-network/dkgnode/eventbus"
 
@@ -205,8 +206,10 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"
 	defaultConfig.FastSyncMode = false
-	// defaultConfig.RPC.ListenAddress = fmt.Sprintf("tcp://%s:25567", config.GlobalConfig.IPAddress)
-	defaultConfig.RPC.ListenAddress = "tcp://0.0.0.0:25567"
+	// defaultConfig.RPC.ListenAddress = fmt.Sprintf("tcp://%s:26657", config.GlobalConfig.IPAddress)
+	defaultConfig.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	defaultConfig.RPC.MaxSubscriptionClients = 5
+	defaultConfig.RPC.MaxSubscriptionsPerClient = 200
 
 	// defaultConfig.P2P.ListenAddress = fmt.Sprintf("tcp://%s:26656", config.GlobalConfig.IPAddress)
 	defaultConfig.P2P.ListenAddress = "tcp://0.0.0.0:26656"
@@ -242,7 +245,7 @@ func createTendermintNode(defaultConfig *cfg.Config) (*nm.Node, error) {
 func abciMonitor(t *TendermintService) {
 	interval := time.NewTicker(5 * time.Second)
 	for range interval.C {
-		bftClient, err := http.New(fmt.Sprintf("tcp://%s:25567", "127.0.0.1"), "/websocket")
+		bftClient, err := http.New(fmt.Sprintf("tcp://%s:26657", "127.0.0.1"), "/websocket")
 		if err != nil {
 			log.WithField("error during starting rpc abci", err).Error("ABCI")
 		} else {
@@ -263,7 +266,28 @@ func (t *TendermintService) Call(method string, args ...interface{}) (interface{
 	switch method {
 	case "get_node_key":
 		return tmjson.Marshal(*t.tmNodeKey)
+	case "tx_status":
+		var args0 []byte
+		_ = common.CastOrUnmarshal(args[0], &args0)
+		return t.isHashValid(args0), nil
 	case "broadcast":
+		err := retry.Do(func() error {
+			if t.bftrpc == nil {
+				log.Error("broadcast: bft rpc is not initialized yet")
+				return fmt.Errorf("bft rpc is not initialized")
+			}
+			if t.websocketStatus == WebSocketDown {
+				log.Error("broadcast: bft ws is not up")
+				return fmt.Errorf("bft ws is not up yet")
+			}
+			return nil
+		},
+			retry.Attempts(6),
+			retry.LastErrorOnly(true),
+		)
+		if err != nil {
+			return nil, err
+		}
 
 		var args0 interface{}
 		_ = common.CastOrUnmarshal(args[0], &args0)
@@ -303,33 +327,47 @@ func (t *TendermintService) Call(method string, args ...interface{}) (interface{
 }
 
 func (t *TendermintService) RegisterQuery(query string) (chan []byte, context.CancelFunc, error) {
-	log.WithField("RegisterQuery", query).Info("TendermintService")
+	log.WithField("RegisterQuery", query).Debug("TendermintService")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*7)
 	responseCh := make(chan []byte, 1)
 	ch, err := t.bftrpc.Subscribe(ctx, "self", query)
-	log.WithField("ch", ch).Info("Got channel: TendermintService")
-
 	if err != nil {
+		log.WithError(err).Error("RegisterQuery:Subscribe()")
 		cancel()
 		return nil, nil, err
 	}
 
 	go func() {
+		log.Info("RegisterQuery:Subscribe() - success")
 		result := <-ch
 		eventDataTx := result.Data.(tmtypes.EventDataTx)
 		d, err := eventDataTx.Marshal()
 		if err != nil {
-			return
+			log.WithError(err).Error("RegisterQuery:EventDataTx.Marshal()")
+		} else {
+			responseCh <- d
 		}
-		err = t.bftrpc.Unsubscribe(ctx, "self", query)
+		err = t.bftrpc.Unsubscribe(context.Background(), "self", query)
 		if err != nil {
+			log.WithError(err).Error("Query:Unsubscribe()")
 			return
 		}
-		responseCh <- d
 	}()
 	return responseCh, cancel, nil
 }
+
+func (t *TendermintService) isHashValid(hash []byte) bool {
+	res, err := t.bftrpc.Tx(context.Background(), hash, false)
+	if err != nil {
+		return false
+	}
+	if res.TxResult.Code == 0 {
+		return true
+	}
+	return false
+}
+
 func rawPointToTMPubKey(X, Y *big.Int) tmsecp.PubKey {
 	var pubkeyBytes tmsecp.PubKey
 	pubkeyObject := btcec.PublicKey{

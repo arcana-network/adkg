@@ -1144,11 +1144,10 @@ func (tm *TendermintMethods) RegisterQuery(query string) (respChannel chan []byt
 	log.WithField("query", query).Info("RegisterQuery")
 
 	handler := createHandler(respChannel)
-
-	log.Info("Got handler")
 	err = eventBus.SubscribeOnceAsync("tendermint:forward:"+query, handler)
-	log.WithField("subscription", "tendermint:forward:"+query).Info("Got subscription")
-
+	if err != nil {
+		return nil, err
+	}
 	methodResponse := ServiceMethod(eventBus, tm.caller, tm.service, "register_query", query)
 	if methodResponse.Error != nil {
 		err = methodResponse.Error
@@ -1208,6 +1207,18 @@ func (tm *TendermintMethods) Broadcast(tx interface{}) (txHash Hash, err error) 
 	}
 	txHash = data
 	return
+}
+func (tm *TendermintMethods) TxStatus(hash []byte) (bool, error) {
+	methodResponse := ServiceMethod(tm.bus, tm.caller, tm.service, "tx_status", hash)
+	if methodResponse.Error != nil {
+		return false, methodResponse.Error
+	}
+	var data bool
+	err := CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return false, err
+	}
+	return data, nil
 }
 
 type CacheMethods struct {

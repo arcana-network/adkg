@@ -263,7 +263,7 @@ func (h HealthHandler) ServeJSONRPC(_ context.Context, _ *fastjson.RawMessage) (
 	return HealthResult{Status: "Ok"}, nil
 }
 
-var requestTimer = 10
+var requestTimer = 45
 
 func assignKey(c context.Context, eventBus eventbus.Bus, provider string, userID string, appID string) *jsonrpc.Error {
 	broker := common.NewServiceBroker(eventBus, "key_assign_handler")
@@ -294,8 +294,19 @@ func assignKey(c context.Context, eventBus eventbus.Bus, provider string, userID
 	}
 	log.WithField("hash", hash.String()).Info("BFT")
 	rpcErr := waitForTransaction(hash, requestContext, broker)
-	if err != nil {
+	if rpcErr != nil {
 		return rpcErr
+	}
+	return nil
+}
+
+func getTxStatus(broker *common.MessageBroker, hash []byte) *jsonrpc.Error {
+	valid, err := broker.TendermintMethods().TxStatus(hash)
+	if err != nil {
+		return &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "unable to get tx status"}
+	}
+	if !valid {
+		return &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "unable to get tx status"}
 	}
 	return nil
 }
@@ -306,15 +317,15 @@ func waitForTransaction(hash common.Hash, requestContext context.Context,
 	query := tmquery.MustParse("tx.hash='" + hash.String() + "'")
 	responseCh, err := broker.TendermintMethods().RegisterQuery(query.String())
 	if err != nil {
-		log.WithField("err", err).Info("RegisterQuery:waitForTransaction")
-		return jsonrpc.ErrInternal()
+		err := getTxStatus(broker, hash.Bytes())
+		return err
 	}
 	var tmpJrpcErr jsonrpc.Error
 	for {
 		finished := false
 		select {
 		case e := <-responseCh:
-			log.WithField("e", string(e)).Info("WaitForTransaction")
+			log.Info("GotResponseCh: WaitForTransaction()")
 			err := checkTransactionResult(e, query)
 			if err != nil {
 				tmpJrpcErr = jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "Tx failed"}
@@ -326,6 +337,7 @@ func waitForTransaction(hash common.Hash, requestContext context.Context,
 			tmpJrpcErr = jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "Request timeout"}
 			finished = true
 		}
+
 		if finished {
 			break
 		}
@@ -350,7 +362,6 @@ func checkTransactionResult(e []byte, query *tmquery.Query) error {
 	log.WithFields(log.Fields{
 		"txQuery": query.String(),
 		"code":    txResult.Result.GetCode(),
-		"result":  txResult.Result.GetInfo(),
 	}).Info("CheckTransactionResult")
 
 	if txResult.Result.IsOK() {
@@ -465,7 +476,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 
 	broker := common.NewServiceBroker(h.bus, "share_request_handler")
 	epoch := broker.ChainMethods().GetCurrentEpoch()
-	epochInfo, err := broker.ChainMethods().GetEpochInfo(epoch, true)
+	epochInfo, err := broker.ChainMethods().GetEpochInfo(epoch, false)
 	if err != nil {
 		return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while current epoch"}
 	}
