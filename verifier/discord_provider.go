@@ -3,14 +3,19 @@ package verifier
 import (
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
 )
+
+func NewDiscordProvider() *DiscordVerifier {
+	return &DiscordVerifier{
+		Timeout: 60 * time.Second,
+	}
+}
 
 type DiscordAuthResponse struct {
 	Application struct {
@@ -51,104 +56,50 @@ func (d *DiscordVerifier) Verify(rawPayload *bijson.RawMessage, params *common.V
 	}
 
 	var body DiscordAuthResponse
-	if err := getDiscordAuth(&body, p.IDToken); err != nil {
+	res, err := req.R().
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.IDToken)).
+		SetSuccessResult(&body).
+		Get("https://discordapp.com/api/oauth2/@me")
+	if err != nil {
 		return false, "", err
 	}
-	if err := verifyDiscordAuthResponse(body, p.UserID, d.Timeout, params.ClientID); err != nil {
+	if res.IsErrorState() {
+		return false, "", errors.New("discord_auth_error")
+	}
+
+	timeExpires, err := time.Parse(time.RFC3339, body.Expires)
+	if err != nil {
 		return false, "", err
+	}
+	timeSigned := timeExpires.Add(-7 * 24 * time.Hour)
+	if timeSigned.Add(d.Timeout).Before(time.Now()) {
+		return false, "", errors.New("token_expired")
+	}
+
+	if params.ClientID != body.Application.ID {
+		return false, "", errors.New("client_id_mismatch")
 	}
 
 	var user DiscordUserResponse
-	if err := getDiscordEmail(&user, p.IDToken); err != nil {
+	resp, err := req.R().
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.IDToken)).
+		SetSuccessResult(&user).
+		Get("https://discordapp.com/api/users/@me")
+	if err != nil {
 		return false, "", err
 	}
-	if err := verifyDiscordUserResponse(user, p.UserID); err != nil {
-		return false, "", fmt.Errorf("verify_discord_response: %w", err)
+
+	if resp.IsErrorState() {
+		return false, "", errors.New("discord_user_error")
+	}
+
+	if !user.Verified {
+		return false, "", ErrorIDNotVerified
+	}
+
+	if p.UserID != user.Email {
+		return false, "", errors.New("user_id_mismatch")
 	}
 
 	return true, p.UserID, nil
-}
-
-func NewDiscordProvider() *DiscordVerifier {
-	return &DiscordVerifier{
-		Timeout: 60 * time.Second,
-	}
-}
-
-func getDiscordAuth(body *DiscordAuthResponse, idToken string) error {
-	req, err := http.NewRequest("GET", "https://discordapp.com/api/oauth2/@me", nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", idToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := bijson.Unmarshal(b, body); err != nil {
-		return err
-	}
-
-	return nil
-}
-func getDiscordEmail(body *DiscordUserResponse, idToken string) error {
-	req, err := http.NewRequest("GET", "https://discordapp.com/api/users/@me", nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", idToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := bijson.Unmarshal(b, body); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func verifyDiscordAuthResponse(body DiscordAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
-	timeExpires, err := time.Parse(time.RFC3339, body.Expires)
-	if err != nil {
-		return err
-	}
-	timeSigned := timeExpires.Add(-7 * 24 * time.Hour)
-	if timeSigned.Add(timeout).Before(time.Now()) {
-		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
-	}
-
-	if clientID != body.Application.ID {
-		return fmt.Errorf("client ID mismatch: %s %s", clientID, body.Application.ID)
-	}
-	return nil
-}
-
-func verifyDiscordUserResponse(body DiscordUserResponse, verifierID string) error {
-	if !body.Verified {
-		return ErrorIDNotVerified
-	}
-	if body.ID == verifierID {
-		return nil
-	}
-	if verifierID != body.Email {
-		return fmt.Errorf("ids do not match %s %s", verifierID, body.Email)
-	}
-	return nil
 }

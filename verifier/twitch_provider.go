@@ -3,14 +3,19 @@ package verifier
 import (
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
 )
+
+func NewTwitchProvider() *TwitchVerifier {
+	return &TwitchVerifier{
+		Timeout: 60 * time.Second,
+	}
+}
 
 type TwitchAuthResponse struct {
 	AUD      string `json:"aud"`
@@ -54,64 +59,33 @@ func (t *TwitchVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 
 	var body TwitchAuthResponse
 
-	if err := getTwitchAuth(&body, p.IDToken); err != nil {
+	res, err := req.R().
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.IDToken)).
+		SetSuccessResult(&body).
+		Get("https://id.twitch.tv/oauth2/userinfo")
+	if err != nil {
 		return false, "", err
 	}
 
-	if err := verifyTwitchAuthResponse(body, p.UserID, t.Timeout, params.ClientID); err != nil {
-		return false, "", fmt.Errorf("verify_twitch_response: %w", err)
+	if res.IsErrorState() {
+		return false, "", errors.New("twitch_auth_error")
 	}
 
-	return true, p.UserID, nil
-}
-
-func NewTwitchProvider() *TwitchVerifier {
-	return &TwitchVerifier{
-		Timeout: 60 * time.Second,
-	}
-}
-
-func getTwitchAuth(body *TwitchAuthResponse, idToken string) error {
-	req, err := http.NewRequest("GET", "https://id.twitch.tv/oauth2/userinfo", nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", idToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error from google auth. code %d", resp.StatusCode)
-	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := bijson.Unmarshal(b, &body); err != nil {
-		return err
-	}
-	return nil
-}
-
-func verifyTwitchAuthResponse(body TwitchAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
 	timeSigned := time.Unix(int64(body.IAT), 0)
 
 	if !body.Verified {
-		return ErrorIDNotVerified
+		return false, "", ErrorIDNotVerified
 	}
 
-	if timeSigned.Add(timeout).Before(time.Now()) {
-		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
+	if timeSigned.Add(t.Timeout).Before(time.Now()) {
+		return false, "", errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
 	}
-	if body.Email != verifierID {
-		return fmt.Errorf("UserIDs do not match %s %s", body.Email, verifierID)
+	if body.Email != p.UserID {
+		return false, "", errors.New("user_id_mismatch")
 	}
-	if body.AUD != clientID {
-		return fmt.Errorf("ClientIDMismatch: %s %s", clientID, body.AUD)
+	if body.AUD != params.ClientID {
+		return false, "", fmt.Errorf("client_id_mismatch: %s %s", params.ClientID, body.AUD)
 	}
-	return nil
+
+	return true, p.UserID, nil
 }

@@ -1,12 +1,7 @@
 package verifier
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -14,13 +9,27 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	eth "github.com/ethereum/go-ethereum/common"
-	log "github.com/sirupsen/logrus"
+	"github.com/imroc/req/v3"
 
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/keygen"
 )
+
+func NewTwitterProvider() *TwitterVerifier {
+	signatureUrl, err := url.Parse(config.GlobalConfig.OAuthUrl)
+	if err != nil {
+		panic(err)
+	}
+	signatureUrl.Path = "/oauth/twitter/signature"
+
+	return &TwitterVerifier{
+		Timeout:      60 * time.Second,
+		SignatureUrl: signatureUrl.String(),
+		UserInfoUrl:  "https://api.twitter.com/1.1/account/verify_credentials.json",
+	}
+}
 
 type TwitterAuthResponse struct {
 	ID           string `json:"id_str"`
@@ -71,25 +80,11 @@ func (t *TwitterVerifier) Verify(rawPayload *bijson.RawMessage, params *common.V
 		return false, "", err
 	}
 
-	if err := verifyTwitterAuthResponse(body, p.UserID, t.Timeout, params.ClientID); err != nil {
-		return false, "", fmt.Errorf("verify_twitter_response: %w", err)
+	if body.ID != p.UserID && body.Email != p.UserID {
+		return false, "", errors.New("user_id_mismatch")
 	}
 
 	return true, p.UserID, nil
-}
-
-func NewTwitterProvider() *TwitterVerifier {
-	signatureUrl, err := url.Parse(config.GlobalConfig.OAuthUrl)
-	if err != nil {
-		panic(err)
-	}
-	signatureUrl.Path = "/oauth/twitter/signature"
-
-	return &TwitterVerifier{
-		Timeout:      60 * time.Second,
-		SignatureUrl: signatureUrl.String(),
-		UserInfoUrl:  "https://api.twitter.com/1.1/account/verify_credentials.json",
-	}
 }
 
 type SignatureBody struct {
@@ -144,39 +139,29 @@ func getSignatureParams(token, secret, appID string) ([]byte, error) {
 	body, err := bijson.Marshal(getSigParams)
 	return body, err
 }
+
 func getSignedRequest(url string, sigBody SignatureBody) (*TwitterSignatureResponse, error) {
 	bodyBytes, err := getSignatureParams(sigBody.OauthToken, sigBody.OauthTokenSecret, sigBody.AppID)
 	if err != nil {
-		log.WithError(err).Error("MarshalBody:TwitterAuthentication")
 		return nil, errors.New("error marshalling body for signature")
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		log.WithError(err).Error("GetSignature:TwitterAuthentication")
-		return nil, errors.New("error creating req for signature")
-	}
+
 	var body TwitterSignatureResponse
-
-	resp, err := http.DefaultClient.Do(req)
+	res, err := req.R().
+		SetBodyBytes(bodyBytes).
+		SetSuccessResult(&body).
+		Post(url)
 	if err != nil {
-		log.WithError(err).Error("GetSignature: TwitterAuthentication")
-		return nil, errors.New("error getting signature from secret keeper")
+		return nil, errors.New("twitch_sig_error")
 	}
-	defer resp.Body.Close()
 
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.WithError(err).Error("ReadBody: TwitterAuthentication")
-		return nil, errors.New("error reading body from secret keeper")
-	}
-	if err := bijson.Unmarshal(b, &body); err != nil {
-		return nil, err
+	if res.IsErrorState() {
+		return nil, errors.New("twitch_sig_error")
 	}
 	return &body, nil
 }
 
 func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken string) error {
-	log.WithField("idToken", idToken).Debug("TwitterVerifier")
 	s := strings.Split(idToken, ":")
 	if len(s) != 3 {
 		return errors.New("unexpected id token")
@@ -186,64 +171,26 @@ func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken strin
 		OauthTokenSecret: s[1],
 		AppID:            s[2],
 	}
-	log.WithField("sigBody", sigBody).Debug("getTwitterAuth:TwitterVerifier")
 
 	sig, err := getSignedRequest(v.SignatureUrl, sigBody)
 	if err != nil {
 		return err
 	}
 
-	log.WithField("sig", sig).Debug("getSignedRequest:getTwitterAuth:TwitterVerifier")
+	u, _ := url.Parse(v.UserInfoUrl)
+	u.RawQuery = url.Values(sig.Params).Encode()
 
-	requestUrl, _ := url.Parse(v.UserInfoUrl)
-	requestUrl.RawQuery = url.Values(sig.Params).Encode()
-
-	req, err := http.NewRequest("GET", requestUrl.String(), nil)
+	res, err := req.R().
+		SetHeader("Authorization", sig.Header).
+		SetSuccessResult(body).
+		Get(u.String())
 	if err != nil {
-		log.WithError(err).Error("CreateRequest:TwitterVerifier")
 		return err
 	}
 
-	req.Header.Add("Authorization", sig.Header)
-
-	bytesRes, err := request(req)
-	if err != nil {
-		log.WithError(err).Error("VerifyCredentials:TwitterVerifier")
-		return err
+	if res.IsErrorState() {
+		return errors.New("twitter_auth_error")
 	}
 
-	if err := json.Unmarshal(bytesRes, &body); err != nil {
-		log.WithError(err).Error("ParsingTwitterResponse:TwitterVerifier")
-		return err
-	}
-	return nil
-}
-
-func request(req *http.Request) (bodyBytes []byte, err error) {
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.WithError(err).Error("DoRequest:TwitterVerifier")
-		return
-	}
-	if resp.StatusCode >= 400 {
-		err = errors.New("server returned status error")
-		return
-	}
-	defer resp.Body.Close()
-	bodyBytes, err = io.ReadAll(resp.Body)
-	if err != nil {
-		log.WithError(err).Error("ReadRequestResponse:TwitterVerifier")
-		return
-	}
-	return bodyBytes, err
-}
-func verifyTwitterAuthResponse(body TwitterAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
-	log.WithField("body", body).Debug("TwitterVerifier")
-	if body.ID != verifierID && body.Email != verifierID {
-		return fmt.Errorf("UserIDs do not match: %s %s", body.ID, verifierID)
-	}
 	return nil
 }

@@ -287,6 +287,14 @@ func assignKey(c context.Context, eventBus eventbus.Bus, provider string, userID
 		"userID":   userID,
 		"appID":    appID,
 	}).Info("BroadcastingAssignmentTx")
+
+	keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(provider, userID, appID)
+	if err == nil {
+		if len(keyIndexes) > 0 {
+			return &jsonrpc.Error{Code: -32602, Message: "Input Error", Data: "Key is already assigned"}
+		}
+	}
+
 	msg := AssignmentTx{UserID: userID, Provider: provider, AppID: appID}
 	hash, err := broker.TendermintMethods().Broadcast(msg)
 	if err != nil {

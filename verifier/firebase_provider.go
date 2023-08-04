@@ -3,13 +3,14 @@ package verifier
 import (
 	"crypto"
 	"errors"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/imroc/req/v3"
 	"github.com/torusresearch/bijson"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -43,7 +44,9 @@ func (f *FirebaseProvider) initializeKeys() error {
 	keyMap := make(map[string]string, 4)
 	parsedKM := make(map[string]crypto.PublicKey, 4)
 
-	rsp, err := req.R().SetSuccessResult(&keyMap).Get(FirebaseKeyListURL)
+	rsp, err := req.R().
+		SetSuccessResult(&keyMap).
+		Get(FirebaseKeyListURL)
 	if err != nil {
 		return err
 	}

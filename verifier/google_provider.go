@@ -72,7 +72,9 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	}
 
 	var body GoogleAuthResponse
-	if _, err := req.R().SetSuccessResult(&body).Get(g.Endpoint + p.IDToken); err != nil {
+	if _, err := req.R().
+		SetSuccessResult(&body).
+		Get(g.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 

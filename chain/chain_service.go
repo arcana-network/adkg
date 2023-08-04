@@ -3,12 +3,9 @@ package chain
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -217,35 +214,15 @@ func VerifierParams(appID, provider string) (vp *common.VerifierParams, err erro
 	if err != nil {
 		return nil, err
 	}
-	log.WithField("url", u.String()).Debug("FetchClientID")
-	req, err := http.NewRequest("GET", u.String(), nil)
+	var r GatewayResponse
+	res, err := req.R().
+		SetSuccessResult(&r).
+		Get(u.String())
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("FetchClientID.client.Do()")
-		return nil, err
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("FetchClientID.ReadBody")
-		return nil, err
-	}
-	r := GatewayResponse{}
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("FetchClientID.Unmarshal")
-		return nil, err
+	if res.IsErrorState() {
+		return nil, errors.New("error_during_call")
 	}
 	for _, v := range r.Creds {
 		if provider == v.Provider {
@@ -280,8 +257,8 @@ func (s *ChainService) RegisterNode(epoch int, declaredIP string, TMP2PConnectio
 		return nil, err
 	}
 	log.WithFields(log.Fields{
-		"declaredIP": declaredIP,
-		"epoch":      epoch,
+		"DeclaredIP": declaredIP,
+		"Epoch":      epoch,
 	}).Info("RegisterNode()")
 	tx, err := s.nodeList.ListNode(txOpts, big.NewInt(int64(epoch)), declaredIP, s.pubKey.X, s.pubKey.Y, "", "")
 	if err != nil {
@@ -433,12 +410,16 @@ func (chainService *ChainService) IsRunning() bool {
 }
 
 func (chainService *ChainService) getBuffer() int {
-	buffer, err := chainService.nodeList.BufferSize(nil)
+	buffer, _ := chainService.broker.CacheMethods().GetBuffer()
+	if buffer != 0 {
+		return buffer
+	}
+	b, err := chainService.nodeList.BufferSize(nil)
 	if err != nil {
 		return DEFAULT_KEY_BUFFER
 	}
-
-	return int(buffer.Int64())
+	chainService.broker.CacheMethods().SetBuffer(int(b.Int64()))
+	return int(b.Int64())
 }
 
 func (e *ChainService) verifyDataWithNodelist(pk common.Point, sig []byte, data []byte) (senderDetails common.KeygenNodeDetails, err error) {

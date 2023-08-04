@@ -1260,6 +1260,29 @@ func (cam *CacheMethods) StoreVerifierToClientID(appID, verifier string, params 
 		log.WithError(methodResponse.Error).Error("StoreVerifierToClientID")
 	}
 }
+
+func (cam *CacheMethods) SetBuffer(buffer int) {
+	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "set_buffer", buffer)
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("SetBuffer")
+	}
+}
+
+func (cam *CacheMethods) GetBuffer() (buffer int, err error) {
+	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "get_buffer")
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("GetBuffer")
+		err = methodResponse.Error
+		return
+	}
+	err = CastOrUnmarshal(methodResponse.Data, &buffer)
+	if err != nil {
+		log.WithError(err).Error("GetBuffer")
+		return
+	}
+	return
+}
+
 func (cam *CacheMethods) StorePartitionForApp(appID string, partitioned bool) {
 	methodResponse := ServiceMethod(cam.bus, cam.caller, cam.service, "store_app_partition", appID, partitioned)
 	if methodResponse.Error != nil {
