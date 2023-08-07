@@ -68,14 +68,11 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 		return false, "", errors.New("invalid payload parameters")
 	}
 
-	log.WithFields(log.Fields{
-		"params":   p,
-		"verifier": g,
-	}).Debug("Passwordless")
-
 	var body PasswordlessAuthResponse
 
-	if _, err := req.R().SetSuccessResult(&body).Get(g.Endpoint + p.IDToken); err != nil {
+	if _, err := req.R().
+		SetSuccessResult(&body).
+		Get(g.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 

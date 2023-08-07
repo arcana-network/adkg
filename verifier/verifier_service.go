@@ -9,7 +9,7 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var ErrorIDNotVerified = errors.New("ID is not verified")
+var ErrorIDNotVerified = errors.New("user_not_verified")
 
 type VerifierService struct {
 	providerMap *ProviderMap

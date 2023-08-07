@@ -103,7 +103,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	ProcessUnverifiedShares(sessionStore, curve, k, T, self)
 
-	if len(sessionStore.PubKeyShares) >= k { // t+1
+	if len(sessionStore.PubKeyShares) >= k && !sessionStore.Over { // t+1
 		identities := make([]int, 0)
 
 		for i := range sessionStore.PubKeyShares {
@@ -164,6 +164,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		if err != nil {
 			return
 		}
+		sessionStore.Over = true
 
 		go self.ReceiveBFTMessage(*msg)
 	}
@@ -203,7 +204,6 @@ func VerifyShare(s common.PubKeyShare,
 	if aBar.Equal(aDash) && bBar.Equal(bDash) {
 		return hZj, true
 	}
-	log.Infof("could not verify share")
 	return nil, false
 }
 

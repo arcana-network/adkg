@@ -61,7 +61,9 @@ func (provider *SteamProvider) Verify(rawPayload *bijson.RawMessage, params *com
 	}
 
 	var body SteamAuthResponse
-	if _, err := req.R().SetSuccessResult(&body).Get(provider.Endpoint + p.IDToken); err != nil {
+	if _, err := req.R().
+		SetSuccessResult(&body).
+		Get(provider.Endpoint + p.IDToken); err != nil {
 		return false, "", err
 	}
 

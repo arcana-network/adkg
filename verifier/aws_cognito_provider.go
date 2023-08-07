@@ -56,7 +56,10 @@ func (a *AWSCognitoVerifier) callAndVerify(p AWSCognitoVerifierParams, params *c
 	// req.DevMode()
 
 	var authResp AWSCognitoAuthResponse
-	_, err := req.R().SetHeader("Authorization", "Bearer "+p.IDToken).SetSuccessResult(&authResp).Get(url)
+	_, err := req.R().
+		SetHeader("Authorization", "Bearer "+p.IDToken).
+		SetSuccessResult(&authResp).
+		Get(url)
 	if err != nil {
 		// panic("№1")
 		return false

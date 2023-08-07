@@ -204,6 +204,7 @@ type ADKGSession struct {
 	C                      map[int][]curves.Point
 	PubKeyShares           map[int]curves.Point
 	PubKeySharesUnverified map[int]PubKeyShare
+	Over                   bool
 	Decisions              map[int]int
 	ABAComplete            bool
 	ABAStarted             []int

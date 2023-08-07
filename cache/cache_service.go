@@ -134,6 +134,14 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 
 		_ = common.CastOrUnmarshal(args[0], &appID)
 		return c.RetrieveAppPartition(appID)
+
+	case "set_buffer":
+		var buffer int
+		_ = common.CastOrUnmarshal(args[0], &buffer)
+		c.setBuffer(buffer)
+		return nil, nil
+	case "get_buffer":
+		return c.getBuffer(), nil
 	}
 	return nil, fmt.Errorf("cache service method %v not found", method)
 }
@@ -141,6 +149,18 @@ func (c *CacheService) Call(method string, args ...interface{}) (interface{}, er
 func (c *CacheService) StoreVerifierClientID(appID, verifier string, params *common.VerifierParams) {
 	key := strings.Join([]string{appID, verifier}, common.Delimiter1)
 	c.verifierCache.Set(key, params, time.Minute*5)
+}
+
+func (c *CacheService) setBuffer(buffer int) {
+	c.verifierCache.Set("key_buffer", buffer, time.Hour*1)
+}
+
+func (c *CacheService) getBuffer() int {
+	val, found := c.verifierCache.Get("key_buffer")
+	if !found {
+		return 0
+	}
+	return val.(int)
 }
 
 func (c *CacheService) RetrieveVerifierClientID(appID, verifier string) *common.VerifierParams {
