@@ -107,6 +107,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			log.WithField("error", err).Error("NewKeysetProposeMessage")
 			return
 		}
+		c.ReadySent = true
 		go self.Broadcast(*readyMsg)
 	}
 

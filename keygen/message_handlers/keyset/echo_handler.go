@@ -106,12 +106,12 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	// Broadcast ready message if echo count > 2f + 1
 	if c.EC >= ((2*f)+1) && !c.ReadySent {
 		// Send Ready Message
-		c.ReadySent = true
 		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
 		if err != nil {
 			log.WithField("error", err).Error("NewKeysetProposeMessage")
 			return
 		}
+		c.ReadySent = true
 		go self.Broadcast(*readyMsg)
 	}
 
