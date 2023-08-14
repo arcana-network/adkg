@@ -348,6 +348,7 @@ func (t *TendermintService) RegisterQuery(query string) (chan []byte, context.Ca
 		} else {
 			responseCh <- d
 		}
+		close(responseCh)
 		err = t.bftrpc.Unsubscribe(context.Background(), "self", query)
 		if err != nil {
 			log.WithError(err).Error("Query:Unsubscribe()")
