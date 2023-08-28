@@ -28,10 +28,10 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 			return false, err
 		}
 
-		if !state.KeyAvailable() {
-			log.WithError(ErrKeyNotAvailable).Error("ValidateTx:Assignment")
-			return false, ErrKeyNotAvailable
-		}
+		// if !state.KeyAvailable() {
+		// 	log.WithError(ErrKeyNotAvailable).Error("ValidateTx:Assignment")
+		// 	return false, ErrKeyNotAvailable
+		// }
 		return true, nil
 
 	case byte(2):
@@ -150,7 +150,8 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		}
 
 		if !abci.state.KeyAvailable() {
-			return false, &tags, nil
+			abci.state.ConsecutiveFailedPubKeyAssigns++
+			return false, &tags, errors.New("key not available!")
 		}
 
 		var dkgID string
@@ -169,6 +170,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 				break
 			}
 		}
+		abci.state.ConsecutiveFailedPubKeyAssigns = 0
 		log.WithFields(log.Fields{
 			"selected-key":     abci.state.KeygenPubKeys[dkgID],
 			"total-key-in-map": len(abci.state.KeygenPubKeys),

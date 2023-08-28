@@ -204,7 +204,7 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 
 	defaultConfig.Consensus.CreateEmptyBlocks = false
 
-	defaultConfig.Mempool.Size = 10000
+	defaultConfig.Mempool.Size = 20000
 
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"
 	defaultConfig.FastSyncMode = false
