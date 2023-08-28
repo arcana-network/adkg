@@ -99,7 +99,7 @@ func getPrivKey(broker *common.MessageBroker) libp2pcrypto.PrivKey {
 }
 
 func createLibp2pNode(privKey libp2pcrypto.PrivKey, ctx context.Context) (node host.Host, err error) {
-	limiter := rcmgr.NewFixedLimiter(rcmgr.InfiniteLimits)
+	limiter := rcmgr.NewFixedLimiter(rcmgr.DefaultLimits.AutoScale())
 	rcm, err := rcmgr.NewResourceManager(limiter)
 	if err != nil {
 		return
@@ -163,6 +163,7 @@ func (p *P2PService) ForwardP2PToEventBus(proto string) {
 	p.p2pNode.SetStreamHandler(protocol.ID(proto), func(s network.Stream) {
 		buf, err := io.ReadAll(s)
 		if err != nil {
+			log.WithError(err).Error("stream_read")
 			if e := s.Reset(); e != nil {
 				log.WithError(e).Error("could not reset stream")
 			}

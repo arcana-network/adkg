@@ -138,8 +138,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 	if err != nil {
 		return false, &tags, fmt.Errorf("could not get current epoch with err: %v", err)
 	}
-	t := int(currEpochInfo.T.Int64())
-	n := int(currEpochInfo.N.Int64())
+	threshold := int(currEpochInfo.K.Int64())
 	switch msgType {
 	case byte(1): // Assignment tx
 
@@ -284,9 +283,8 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 				}
 			}
 
-			if len(abci.state.KeygenDecisions[key].Nodes) == n-t {
-				log.Infof("abci.decisions_threshold=%d", n-t)
-
+			log.Infof("abci.decisions: current=%d, threshold=%d", len(abci.state.KeygenDecisions[key].Nodes), threshold)
+			if len(abci.state.KeygenDecisions[key].Nodes) == threshold {
 				log.Infof("Generated PK: index=%d, publickey=%s%s", keyIndex.Int64(), m.PublicKey.X.Text(16), m.PublicKey.Y.Text(16))
 				err = abci.broker.DBMethods().StorePublicKeyToIndex(m.PublicKey, keyIndex)
 				if err != nil {
