@@ -198,10 +198,10 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 
 	buffer := abci.broker.ChainMethods().KeyBuffer()
 	var maxKeyInit int
-	if buffer > 250 {
-		maxKeyInit = buffer / 250
+	if buffer > 500 {
+		maxKeyInit = buffer / 500
 	} else {
-		maxKeyInit = buffer
+		maxKeyInit = 100
 	}
 
 	if int(abci.state.LastCreatedIndex)-int(abci.state.LastUnassignedIndex) < buffer {

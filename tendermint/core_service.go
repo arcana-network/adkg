@@ -204,6 +204,8 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 
 	defaultConfig.Consensus.CreateEmptyBlocks = false
 
+	defaultConfig.Mempool.Size = 10000
+
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"
 	defaultConfig.FastSyncMode = false
 	// defaultConfig.RPC.ListenAddress = fmt.Sprintf("tcp://%s:26657", config.GlobalConfig.IPAddress)
