@@ -875,7 +875,6 @@ func currentNodesMonitor(e *ChainService) {
 		e.Lock()
 		e.nodeRegisterMap[currEpoch].NodeList = currNodeList
 		e.Unlock()
-		interval.Stop()
 		break
 	}
 }
