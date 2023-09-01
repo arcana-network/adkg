@@ -369,6 +369,7 @@ func registerNode(e *ChainService) {
 
 func whitelistMonitor(e *ChainService) {
 	interval := time.NewTicker(10 * time.Second)
+	defer interval.Stop()
 	for range interval.C {
 		isWhitelisted, err := e.nodeList.IsWhitelisted(nil, big.NewInt(int64(e.currentEpoch)), *e.addr)
 		if err != nil {
@@ -552,6 +553,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		_ = common.CastOrUnmarshal(args[0], &args0)
 
 		interval := time.NewTicker(1 * time.Second)
+		defer interval.Stop()
 		if chainService.nodeRegisterMap[args0] != nil && len(chainService.nodeRegisterMap[args0].NodeList) > 0 {
 			return nil, nil
 		}
@@ -830,7 +832,7 @@ func (e *ChainService) GetNodeRef(nodeAddress ethCommon.Address) (n *common.Node
 
 func currentNodesMonitor(e *ChainService) {
 	interval := time.NewTicker(10 * time.Second)
-
+	defer interval.Stop()
 	for range interval.C {
 		currEpoch := e.broker.ChainMethods().GetCurrentEpoch()
 		currEpochInfo, err := e.GetEpochInfo(currEpoch, true)
@@ -873,6 +875,7 @@ func currentNodesMonitor(e *ChainService) {
 		e.Lock()
 		e.nodeRegisterMap[currEpoch].NodeList = currNodeList
 		e.Unlock()
+		interval.Stop()
 		break
 	}
 }

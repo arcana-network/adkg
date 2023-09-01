@@ -74,7 +74,7 @@ func (m CoinInitMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 		uJi = uJi.Add(share)
 	}
 	// Create proof
-	proof := generateProof(curve, gTilde, uJi)
+	proof := generateProof(curve, gTilde, uJi, self)
 
 	// Create message data
 	gITilde := gTilde.Mul(uJi)
@@ -93,11 +93,11 @@ func (m CoinInitMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 func generateProof(
 	curve *curves.Curve,
 	gTilde curves.Point,
-	xI curves.Scalar) []byte {
+	xI curves.Scalar, self common.DkgParticipant) []byte {
 
 	s := curve.NewScalar().Random(rand.Reader)
 
-	g := curve.Point.Generator()
+	g, _ := self.CurveParams(curve.Name)
 
 	h := g.Mul(s)
 	hTilde := gTilde.Mul(s)
