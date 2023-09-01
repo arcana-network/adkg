@@ -246,6 +246,7 @@ func createTendermintNode(defaultConfig *cfg.Config) (*nm.Node, error) {
 
 func abciMonitor(t *TendermintService) {
 	interval := time.NewTicker(5 * time.Second)
+	defer interval.Stop()
 	for range interval.C {
 		bftClient, err := http.New(fmt.Sprintf("tcp://%s:26657", "127.0.0.1"), "/websocket")
 		if err != nil {

@@ -24,14 +24,14 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 	case byte(1):
 		var parsedTx AssignmentTx
 		if err := bijson.Unmarshal(tx, &parsedTx); err != nil {
-			log.WithError(err).Error("ValidateTx:Assignment")
+			log.WithError(err).Error("CheckTx:Assignment")
 			return false, err
 		}
 
-		// if !state.KeyAvailable() {
-		// 	log.WithError(ErrKeyNotAvailable).Error("ValidateTx:Assignment")
-		// 	return false, ErrKeyNotAvailable
-		// }
+		if !state.KeyAvailable() {
+			log.WithError(ErrKeyNotAvailable).Error("CheckTx:Assignment")
+			return false, ErrKeyNotAvailable
+		}
 		return true, nil
 
 	case byte(2):

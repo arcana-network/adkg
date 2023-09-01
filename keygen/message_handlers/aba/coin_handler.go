@@ -44,14 +44,14 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	curve := common.CurveFromName(m.Curve)
 	u, err := unpack(curve, m.Data)
 	if err != nil {
-		log.WithError(err).Info("Could not unpack data in aba_coin_share")
+		log.WithError(err).Error("Could not unpack data in aba_coin_share")
 		return
 	}
 	n, k, _ := self.Params()
 
 	roundLeader, err := m.RoundID.Leader()
 	if err != nil {
-		log.WithError(err).Info("Could not get round leader in aba_coin_share")
+		log.WithError(err).Error("Could not get round leader in aba_coin_share")
 		return
 	}
 
@@ -126,11 +126,14 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		"publicKey": gI.ToAffineCompressed(),
 		"T":         sessionStore.T,
 		"C":         sessionStore.C,
-		"verified":  verify(u, gTilde, gI, curve),
+		"verified":  verify(u, gTilde, gI, curve, self),
 	}).Debug("aba_coin_msg_before_verified")
 
-	if verify(u, gTilde, gI, curve) {
+	if verify(u, gTilde, gI, curve, self) {
 		store.SetCoinShare(sender.Index, u.GiTilde)
+	} else {
+		log.Error("Coin share not verified, returning")
+		return
 	}
 
 	coinShares := store.CoinShares()
@@ -273,8 +276,9 @@ func unpack(curve *curves.Curve, msg []byte) (*Unpack, error) {
 	return &d, nil
 }
 
-func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve) bool {
-	g := curve.Point.Generator()
+func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common.DkgParticipant) bool {
+	g, _ := self.CurveParams(curve.Name)
+
 	cBar := aba.Hash(g, u.H, gTilde, u.HTilde, gI, u.GiTilde, curve)
 
 	hBar := g.Mul(u.Z).Sub(gI.Mul(cBar))
