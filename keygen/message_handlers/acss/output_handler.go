@@ -83,7 +83,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 			return
 		}
 
-		_, k, _ := self.Params()
+		_, k, f := self.Params()
 
 		curve := common.CurveFromName(m.Curve)
 		share, verifier, verified := acss.Predicate(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
@@ -106,7 +106,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 			log.Errorf("didnt pass acss_predicate")
 		}
 
-		if kcommon.CountBit(sessionStore.TPrime) == k {
+		if kcommon.CountBit(sessionStore.TPrime) == f+1 {
 			adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
 			if err != nil {
 				log.Error("Could not get ADKGID from roundID")

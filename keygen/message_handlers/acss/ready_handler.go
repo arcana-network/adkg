@@ -108,7 +108,11 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			return
 		}
 		c.ReadySent = true
-		go self.Broadcast(*readyMsg)
+		self.Broadcast(*readyMsg)
+	}
+
+	if keygen.State.Phase == common.Ended {
+		return
 	}
 
 	for i := 0; i <= f; i += 1 {
@@ -130,6 +134,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			log.Debugf("HashCompare, hash=%v, mHash=%v", hash, m.Hash)
 
 			if bytes.Equal(hash, m.Hash) {
+				keygen.State.Phase = common.Ended
 				outputMsg, err := NewOutputMessage(m.RoundID, M, m.Curve)
 				if err != nil {
 					log.Errorf("could not create output, err=%s", err)

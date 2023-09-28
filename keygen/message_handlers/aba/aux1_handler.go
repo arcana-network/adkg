@@ -54,40 +54,32 @@ func (m Aux1Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 
 	//Otherwise, add sender
 	store.SetValues("aux", r, v, sender.Index)
-	if store.Round() != r {
-		return
-	}
-	view := []int{}
+
+	auxsetVal := 0
 	shouldSendAuxset := false
 
-	bin := store.Bin("bin", r)
+	bin := store.GetBin("bin", r)
 	aux0Len := len(store.Values("aux", r, 0))
 	aux1Len := len(store.Values("aux", r, 1))
 
 	if Contains(bin, 1) && aux1Len >= n-f {
-		view = append(view, 1)
+		auxsetVal = 1
 		shouldSendAuxset = true
 	} else if Contains(bin, 0) && aux0Len >= n-f {
-		view = append(view, 0)
+		// Not required since default is 0
+		auxsetVal = 0
 		shouldSendAuxset = true
 	} else if aux0Len+aux1Len >= n-f && Contains(bin, 1) && Contains(bin, 0) {
-		view = append(view, 0, 1)
+		auxsetVal = 2
 		shouldSendAuxset = true
 	}
 
-	if !store.Sent("auxset", r, 1) && shouldSendAuxset {
-		store.SetSent("auxset", r, 1)
-		var auxsetVal = 0
-		if len(view) == 1 && view[0] == 1 {
-			auxsetVal = 1
-		} else if len(view) == 2 {
-			auxsetVal = 2
-		}
-
+	if !store.Sent("auxset", r, auxsetVal) && shouldSendAuxset {
 		msg, err := NewAuxsetMessage(m.RoundID, auxsetVal, m.R, m.Curve)
 		if err != nil {
 			return
 		}
-		go self.Broadcast(*msg)
+		store.SetSent("auxset", r, auxsetVal)
+		self.Broadcast(*msg)
 	}
 }

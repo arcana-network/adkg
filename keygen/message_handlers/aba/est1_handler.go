@@ -47,12 +47,9 @@ func (m Est1Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	store.Lock()
 	defer store.Unlock()
 
-	if store.Round() != r {
-		return
-	}
 	// Check if already present
 	if Contains(store.Values("est", r, v), sender.Index) {
-		log.Debugf("Got redundant EST message from %d", sender.Index)
+		log.Infof("Got redundant EST message from %d, est=%v", sender.Index, store.Values("est", r, v))
 		return
 	}
 	//Otherwise, add sender
@@ -61,23 +58,23 @@ func (m Est1Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	_, _, f := self.Params()
 	estLength := len(store.Values("est", r, v))
 	log.Debugf("EstCount: %d, required: %d, round: %v", estLength, f+1, m.RoundID)
-	if estLength > f+1 && !store.Sent("est", r, v) {
-		store.SetSent("est", r, v)
+	if estLength >= f+1 && !store.Sent("est", r, v) {
 		msg, err := NewEst1Message(m.RoundID, v, r, m.Curve)
 		if err != nil {
 			return
 		}
-		go self.Broadcast(*msg)
+		store.SetSent("est", r, v)
+		self.Broadcast(*msg)
 	}
 
 	if estLength == (2*f)+1 {
 		store.SetBin("bin", r, v)
-		w := store.Bin("bin", r)[0]
+		w := store.GetBin("bin", r)[0]
 		msg, err := NewAux1Message(m.RoundID, w, r, m.Curve)
 		if err != nil {
 			return
 		}
-		go self.Broadcast(*msg)
+		self.Broadcast(*msg)
 	}
 }
 

@@ -3,6 +3,7 @@ package aba
 import (
 	"crypto/rand"
 	"encoding/json"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
@@ -62,10 +63,41 @@ func (m CoinInitMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 		return
 	}
 
+	var TiSet []int
+	start := time.Now()
+
+	for {
+		sessionStore.Lock()
+
+		TiSet := kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+
+		log.WithFields(log.Fields{
+			"self":   self.ID(),
+			"sender": sender.Index,
+			"round":  m.RoundID,
+			"TiSet":  TiSet,
+		}).Info("aba_coin")
+
+		if len(TiSet) > 0 {
+			sessionStore.Unlock()
+			break
+		}
+		// Breakout if time since message received has exceeded 10s
+		if time.Since(start) > time.Second*20 {
+			sessionStore.Unlock()
+			log.Errorf("timeout coin_init message, round=%s", m.RoundID)
+			return
+		}
+
+		sessionStore.Unlock()
+
+		time.Sleep(200 * time.Millisecond)
+	}
+
 	sessionStore.Lock()
 	defer sessionStore.Unlock()
 
-	TiSet := kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+	TiSet = kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
 	for _, i := range TiSet {
 		share, err := curve.Scalar.SetBytes(sessionStore.S[i].Value)
 		if err != nil {

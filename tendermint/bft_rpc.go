@@ -166,7 +166,7 @@ func (bftrpc *BFTRPC) messageRunFunc(msg []byte) (interface{}, error) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Error("Retrying submission of bfttx... posssible pressure/overloaded tm")
+		}).Error("Retrying submission of tx")
 		return nil, err
 	}
 	return response, nil

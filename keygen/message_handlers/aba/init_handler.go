@@ -50,10 +50,12 @@ func (m *InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	store.Lock()
 	defer store.Unlock()
 
-	if store.Started() {
+	if store.GetStarted(r) {
 		return
 	}
-	store.SetStarted()
+	store.SetStarted(r)
+
+	log.Infof("ABA::Self: %d, Round: %d", self.ID(), r)
 
 	if !store.Sent("est", r, v) {
 		store.SetSent("est", r, v)
@@ -63,5 +65,4 @@ func (m *InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		}
 		go self.Broadcast(*msg)
 	}
-
 }

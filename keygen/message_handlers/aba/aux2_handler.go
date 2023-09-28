@@ -48,14 +48,6 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	store.Lock()
 	defer store.Unlock()
 
-	// If round has incremented ignore previous round messages
-	if store.Round() != r {
-		log.WithFields(log.Fields{
-			"Got":      r,
-			"Expected": store.Round(),
-		}).Debugf("Process():%s", Aux2MessageType)
-		return
-	}
 	n, _, f := self.Params()
 
 	// Check if already present
@@ -70,7 +62,7 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	aux2Len0 := len(store.Values("aux2", r, 0))
 	aux2Len1 := len(store.Values("aux2", r, 1))
 	aux2Len2 := len(store.Values("aux2", r, 2))
-	bin2 := store.Bin("bin2", r)
+	bin2 := store.GetBin("bin2", r)
 
 	log.WithFields(log.Fields{
 		"round":    m.RoundID,
@@ -188,9 +180,9 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 				}
 			}
 		} else {
+			log.Infof("Round::Current: %d, Next: %d", store.GetRound(), store.GetRound()+1)
 			w := values2[0]
-			store.IncrementRound()
-			msg, err := NewInitMessage(m.RoundID, w, store.Round(), m.Curve)
+			msg, err := NewInitMessage(m.RoundID, w, store.GetRound()+1, m.Curve)
 			if err != nil {
 				return
 			}

@@ -291,21 +291,31 @@ func (service *P2PService) sendP2PMessage(ctx context.Context, id peer.ID, p pro
 
 	s, err := service.p2pNode.NewStream(ctx, id, p)
 	if err != nil {
-		log.WithError(err).Error("p2p_new_stream")
+		log.WithError(err).Error("failed to create stream")
 		return err
 	}
-	defer s.Close()
 
-	_, err = s.Write(data)
+	err = writeMessage(s, data)
 	if err != nil {
-		log.WithError(err).Error("p2p_write")
-		e := s.Reset()
-		if e != nil {
-			log.WithError(e).Error("p2p_reset_stream")
+		log.WithError(err).Error("failed to write on stream")
+		resetErr := s.Reset()
+		if resetErr != nil {
+			log.WithError(resetErr).Error("[write] failed to reset stream")
 		}
+	}
+	return err
+}
+
+func writeMessage(s network.Stream, data []byte) error {
+	_, err := s.Write(data)
+	if err != nil {
 		return err
 	}
-	// s.CloseWrite()
+
+	err = s.Close()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

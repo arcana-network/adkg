@@ -42,20 +42,19 @@ func (m AuxsetMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 		return
 	}
 
+	n, _, f := self.Params()
+
 	store.Lock()
 	defer store.Unlock()
 
-	n, _, f := self.Params()
-
 	if Contains(store.Values("auxset", m.R, m.V), sender.Index) {
+		log.Debugf("Got redundant AUXSET message from %d for %s", sender.Index, m.RoundID)
 		return
 	}
 
 	store.SetValues("auxset", m.R, m.V, sender.Index)
-	if store.Round() != m.R {
-		return
-	}
-	bin := store.Bin("bin", m.R)
+
+	bin := store.GetBin("bin", m.R)
 	auxsetLen0 := len(store.Values("auxset", m.R, 0))
 	auxsetLen1 := len(store.Values("auxset", m.R, 1))
 	auxsetLen2 := len(store.Values("auxset", m.R, 2))

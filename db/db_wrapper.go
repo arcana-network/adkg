@@ -240,7 +240,6 @@ func (w *DBWrapper) Set(key []byte, value []byte) {
 
 func (w *DBWrapper) Get(key []byte) []byte {
 	key = nonNilBytes(key)
-	log.Info(key)
 	res, err := w.db.Get(key, nil)
 	if err != nil {
 		if err == errors.ErrNotFound {
