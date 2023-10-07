@@ -110,6 +110,14 @@ func (service *KeygenService) Call(method string, args ...interface{}) (interfac
 			"type":  args0.Method,
 		}).Info("Broker:ReceiveMessage()")
 		return nil, service.KeygenNode.Transport.Receive(details, args0)
+	case "cleanup":
+		var adkgid common.ADKGID
+		err := common.CastOrUnmarshal(args[0], &adkgid)
+		if err != nil {
+			return nil, err
+		}
+		service.KeygenNode.BFTDecided(adkgid)
+		return nil, nil
 	}
 	return nil, fmt.Errorf("keygen service method %v not found", method)
 }

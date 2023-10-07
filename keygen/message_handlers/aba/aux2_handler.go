@@ -180,7 +180,7 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 				}
 			}
 		} else {
-			log.Infof("Round::Current: %d, Next: %d", store.GetRound(), store.GetRound()+1)
+			log.Debugf("Round::Current: %d, Next: %d", store.GetRound(), store.GetRound()+1)
 			w := values2[0]
 			msg, err := NewInitMessage(m.RoundID, w, store.GetRound()+1, m.Curve)
 			if err != nil {

@@ -102,6 +102,26 @@ func (node *KeygenNode) cleanupSessionStore(id common.ADKGID) {
 	node.state.SessionStore.Complete(id)
 }
 
+func (node *KeygenNode) BFTDecided(id common.ADKGID) {
+	store, complete := node.state.SessionStore.GetOrSetIfNotComplete(id, common.DefaultADKGSession())
+	if complete {
+		return
+	}
+	store.Lock()
+	defer store.Unlock()
+	if store.Over {
+		keyIndex, err := id.GetIndex()
+		if err != nil {
+			return
+		}
+		node.StoreCompletedShare(keyIndex, *store.Share)
+		node.StoreCommitment(keyIndex, store.Commitments)
+		node.cleanup(id)
+	} else {
+		store.BFTDecided = true
+	}
+}
+
 func (node *KeygenNode) DetailsID() common.NodeDetailsID {
 	return node.details.ToNodeDetailsID()
 }

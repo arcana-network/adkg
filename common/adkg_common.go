@@ -204,6 +204,9 @@ type ADKGSession struct {
 	PubKeyShares           map[int]curves.Point
 	PubKeySharesUnverified map[int]PubKeyShare
 	Over                   bool
+	BFTDecided             bool
+	Share                  *big.Int
+	Commitments            ADKGMetadata
 	Decisions              map[int]int
 	ABAComplete            bool
 	ABAStarted             []int
