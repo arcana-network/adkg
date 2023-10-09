@@ -22,6 +22,31 @@ type ADKGID string
 func GenerateADKGID(index big.Int) ADKGID {
 	return ADKGID(strings.Join([]string{"ADKG", index.Text(16)}, Delimiter3))
 }
+func NewADKGID(index big.Int, curve CurveName) ADKGID {
+	baseStr := "ADKG"
+	if curve == ED25519 {
+		baseStr = strings.Join([]string{"ADKG", string(ED25519)}, Delimiter5)
+	}
+	return ADKGID(strings.Join([]string{baseStr, index.Text(16)}, Delimiter3))
+}
+
+func (id *ADKGID) GetCurve() (CurveName, error) {
+	str := string(*id)
+	substrs := strings.Split(str, Delimiter3)
+
+	if len(substrs) != 2 {
+		return "", errors.New("could not parse dkgid")
+	}
+
+	ids := strings.Split(substrs[0], Delimiter5)
+	if len(ids) == 1 {
+		return SECP256K1, nil
+	}
+	if len(ids) == 2 && ids[1] == string(ED25519) {
+		return ED25519, nil
+	}
+	return "", errors.New("invalid curve")
+}
 
 func (id *ADKGID) GetIndex() (big.Int, error) {
 	str := string(*id)

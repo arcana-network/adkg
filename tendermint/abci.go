@@ -76,6 +76,11 @@ type MappingCounter struct {
 	KeyCount      int
 }
 
+type ED25519Store struct {
+	LastCreatedIndex    uint `json:"last_created_index"`
+	LastUnassignedIndex uint `json:"last_unassigned_index"`
+}
+
 type State struct {
 	LastUnassignedIndex            uint                         `json:"last_unassigned_index"`
 	LastCreatedIndex               uint                         `json:"last_created_index"`
@@ -84,6 +89,7 @@ type State struct {
 	KeygenDecisions                map[string]KeygenDecision    `json:"keygen_decisions"`
 	KeygenPubKeys                  map[string]KeygenPubKey      `json:"keygen_pubkeys"`
 	ConsecutiveFailedPubKeyAssigns uint                         `json:"consecutive_failed_pubkey_assigns"`
+	ED25519Store                   ED25519Store                 `json:"ed25519_store"`
 }
 
 func (state *State) KeyAvailable() bool {
@@ -113,6 +119,10 @@ func (a *ABCI) NewABCI(broker *common.MessageBroker) *ABCI {
 			LastCreatedIndex:    0,
 			KeygenDecisions:     make(map[string]KeygenDecision),
 			KeygenPubKeys:       make(map[string]KeygenPubKey),
+			ED25519Store: ED25519Store{
+				LastCreatedIndex:    0,
+				LastUnassignedIndex: 0,
+			},
 		}
 		abci.info = &AppInfo{
 			Height: 0,

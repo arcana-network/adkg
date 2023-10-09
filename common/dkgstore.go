@@ -18,6 +18,7 @@ const (
 	Delimiter2 = "\x1d"
 	Delimiter3 = "\x1e"
 	Delimiter4 = "\x1f"
+	Delimiter5 = "\x1a"
 )
 
 type KeygenMessageVersion string
