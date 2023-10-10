@@ -48,9 +48,10 @@ type KeygenDecision struct {
 }
 
 type getIndexesQuery struct {
-	Provider string `json:"provider"`
-	UserID   string `json:"user_id"`
-	AppID    string `json:"app_id"`
+	Provider string           `json:"provider"`
+	UserID   string           `json:"user_id"`
+	AppID    string           `json:"app_id"`
+	Curve    common.CurveName `json:"curve_name"`
 }
 
 func getPartitionedKeyspace(appID, userID string) []byte {
@@ -76,7 +77,7 @@ type MappingCounter struct {
 	KeyCount      int
 }
 
-type ED25519Store struct {
+type C25519State struct {
 	LastCreatedIndex    uint `json:"last_created_index"`
 	LastUnassignedIndex uint `json:"last_unassigned_index"`
 }
@@ -89,11 +90,17 @@ type State struct {
 	KeygenDecisions                map[string]KeygenDecision    `json:"keygen_decisions"`
 	KeygenPubKeys                  map[string]KeygenPubKey      `json:"keygen_pubkeys"`
 	ConsecutiveFailedPubKeyAssigns uint                         `json:"consecutive_failed_pubkey_assigns"`
-	ED25519Store                   ED25519Store                 `json:"ed25519_store"`
+	C25519State                    C25519State                  `json:"c25519_state"`
 }
 
-func (state *State) KeyAvailable() bool {
-	return state.LastUnassignedIndex < state.LastCreatedIndex
+func (state *State) KeyAvailable(curve common.CurveName) bool {
+	if curve == common.SECP256K1 {
+		return state.LastUnassignedIndex < state.LastCreatedIndex
+	}
+	if curve == common.ED25519 {
+		return state.C25519State.LastUnassignedIndex < state.C25519State.LastCreatedIndex
+	}
+	return false
 }
 
 type AppInfo struct {
@@ -119,7 +126,7 @@ func (a *ABCI) NewABCI(broker *common.MessageBroker) *ABCI {
 			LastCreatedIndex:    0,
 			KeygenDecisions:     make(map[string]KeygenDecision),
 			KeygenPubKeys:       make(map[string]KeygenPubKey),
-			ED25519Store: ED25519Store{
+			C25519State: C25519State{
 				LastCreatedIndex:    0,
 				LastUnassignedIndex: 0,
 			},
@@ -241,6 +248,29 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 			if err != nil {
 				log.WithError(err).Error("Could not receive keygenmessage share")
 			}
+		}
+	}
+
+	// TODO: Reduce buffer here
+	end := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+buffer)
+	for i := int(abci.state.C25519State.LastCreatedIndex); i < end; i++ {
+		id := common.NewADKGID(*big.NewInt(int64(i)), common.ED25519)
+		round := common.RoundDetails{
+			ADKGID: id,
+			Dealer: abci.broker.ChainMethods().GetSelfIndex(),
+			Kind:   "acss",
+		}
+		msg, err := acss.NewShareMessage(
+			round.ID(),
+			common.SECP256K1,
+		)
+		if err != nil {
+			log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
+			continue
+		}
+		err = abci.broker.KeygenMethods().ReceiveMessage(*msg)
+		if err != nil {
+			log.WithError(err).Error("Could not receive keygenmessage share")
 		}
 	}
 	return abcitypes.ResponseEndBlock{}

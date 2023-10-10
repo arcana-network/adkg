@@ -28,7 +28,7 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 			return false, err
 		}
 
-		if !state.KeyAvailable() {
+		if !state.KeyAvailable(parsedTx.Curve) {
 			log.WithError(ErrKeyNotAvailable).Error("CheckTx:Assignment")
 			return false, ErrKeyNotAvailable
 		}
@@ -94,11 +94,6 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 	return false, errors.New("tx type not recognized")
 }
 
-func (app *ABCI) resetKeyAssigns() {
-	app.refreshFailedKeyAssigns()
-	app.state.LastUnassignedIndex = app.state.LastCreatedIndex
-}
-
 func (app *ABCI) assignKey(pk common.KeyAssignmentPublic) {
 	app.state.LastUnassignedIndex = uint(pk.Index.Int64()) + 1
 	app.state.NewKeyAssignments = append(app.state.NewKeyAssignments, pk)
@@ -143,13 +138,13 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 	case byte(1): // Assignment tx
 
 		log.Debug("Received assignment tx on tendermint")
-		var parsedTx AssignmentTx
-		if err := bijson.Unmarshal(bftTx, &parsedTx); err != nil {
+		var tx AssignmentTx
+		if err := bijson.Unmarshal(bftTx, &tx); err != nil {
 			log.WithError(err).Error("AssignmentBFTTx failed")
 			return false, &tags, err
 		}
 
-		if !abci.state.KeyAvailable() {
+		if !abci.state.KeyAvailable(tx.Curve) {
 			abci.state.ConsecutiveFailedPubKeyAssigns++
 			return false, &tags, errors.New("key not available!")
 		}
@@ -159,7 +154,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		var pk common.Point
 		assignedKeyIndex := *big.NewInt(int64(abci.state.LastUnassignedIndex))
 		for {
-			pk, keyIndexes = abci.getKeyAssignment(assignedKeyIndex, parsedTx)
+			pk, keyIndexes = abci.getKeyAssignment(assignedKeyIndex, tx)
 			dkgID = string(common.GenerateADKGID(assignedKeyIndex))
 			if assignedKeyIndex.Cmp(new(big.Int).SetInt64(int64(abci.state.LastCreatedIndex))) > -1 {
 				return false, &tags, errors.New("could not assign key, key not found")
@@ -178,7 +173,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 
 		abci.refreshFailedKeyAssigns()
 
-		keyAssignment := createKeyAssignment(parsedTx, assignedKeyIndex, pk)
+		keyAssignment := createKeyAssignment(tx, assignedKeyIndex, pk)
 
 		err := abci.storeKeyMapping(assignedKeyIndex, keyAssignment)
 		if err != nil {
@@ -186,11 +181,11 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		}
 
 		// Get aggregate login options here
-		partitioned, err := getAppKeyPartition(abci.broker, parsedTx.AppID)
+		partitioned, err := getAppKeyPartition(abci.broker, tx.AppID)
 		if err != nil {
-			return false, &tags, fmt.Errorf("AppID %v not found", parsedTx.AppID)
+			return false, &tags, fmt.Errorf("AppID %v not found", tx.AppID)
 		}
-		verifierKey := getVerifierKey(parsedTx, partitioned)
+		verifierKey := getVerifierKey(tx, partitioned)
 
 		log.WithFields(log.Fields{
 			"verifierKey": string(verifierKey),
@@ -304,8 +299,15 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 
 				index := keyIndex.Int64()
 
-				if uint(index) > abci.state.LastCreatedIndex {
-					abci.state.LastCreatedIndex = uint(index)
+				curve, _ := adkgid.GetCurve()
+				if curve == common.SECP256K1 {
+					if uint(index) > abci.state.LastCreatedIndex {
+						abci.state.LastCreatedIndex = uint(index)
+					}
+				} else if curve == common.ED25519 {
+					if uint(index) > abci.state.C25519State.LastCreatedIndex {
+						abci.state.C25519State.LastCreatedIndex = uint(index)
+					}
 				}
 
 				_ = abci.broker.KeygenMethods().Cleanup(adkgid)
