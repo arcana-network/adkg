@@ -152,11 +152,15 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			}
 			zI = zI.Add(shareScalar) //x
 		}
-
-		self.StoreCompletedShare(keyIndex, *zI.BigInt())
-		self.StoreCommitment(keyIndex, common.ADKGMetadata{Commitments: sessionStore.C, T: T})
-
-		self.Cleanup(adkgid)
+		if sessionStore.BFTDecided {
+			self.StoreCompletedShare(keyIndex, *zI.BigInt())
+			self.StoreCommitment(keyIndex, common.ADKGMetadata{Commitments: sessionStore.C, T: T})
+			self.Cleanup(adkgid)
+		} else {
+			sessionStore.Share = zI.BigInt()
+			sessionStore.Commitments = common.ADKGMetadata{Commitments: sessionStore.C, T: T}
+			sessionStore.Over = true
+		}
 
 		log.Debugf("share for index %d = %s", keyIndex.Int64(), (*zI.BigInt()).Text(16))
 
@@ -164,7 +168,6 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		if err != nil {
 			return
 		}
-		sessionStore.Over = true
 
 		go self.ReceiveBFTMessage(*msg)
 	}

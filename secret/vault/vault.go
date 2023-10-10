@@ -42,7 +42,7 @@ func (manager *VaultManager) Setup() error {
 	}
 
 	client.SetToken(manager.token)
-	log.Info("namespace", manager.namespace)
+	log.Infof("namespace=%s", manager.namespace)
 	client.SetNamespace(manager.namespace)
 
 	manager.client = client

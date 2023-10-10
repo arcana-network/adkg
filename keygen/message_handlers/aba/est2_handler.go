@@ -47,9 +47,6 @@ func (m Est2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	store.Lock()
 	defer store.Unlock()
 
-	if store.Round() != r {
-		return
-	}
 	_, _, f := self.Params()
 
 	if Contains(store.Values("est2", r, v), sender.Index) {
@@ -59,7 +56,7 @@ func (m Est2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 
 	store.SetValues("est2", r, v, sender.Index)
 	est2Len := len(store.Values("est2", r, v))
-	if est2Len > f && !store.Sent("est2", r, v) {
+	if est2Len >= f+1 && !store.Sent("est2", r, v) {
 		store.SetSent("est2", r, v)
 		msg, err := NewEst2Message(m.RoundID, v, r, m.Curve)
 		if err != nil {
@@ -68,9 +65,9 @@ func (m Est2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 		go self.Broadcast(*msg)
 	}
 
-	if est2Len == (2*f)+1 && !Contains(store.Bin("bin2", r), v) {
+	if est2Len == (2*f)+1 {
 		store.SetBin("bin2", r, v)
-		bin2 := store.Bin("bin2", r)
+		bin2 := store.GetBin("bin2", r)
 		w := bin2[0]
 		msg, err := NewAux2Message(m.RoundID, w, r, m.Curve)
 		if err != nil {

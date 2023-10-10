@@ -47,7 +47,7 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		log.WithError(err).Error("Could not unpack data in aba_coin_share")
 		return
 	}
-	n, k, _ := self.Params()
+	n, k, f := self.Params()
 
 	roundLeader, err := m.RoundID.Leader()
 	if err != nil {
@@ -61,7 +61,7 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		return
 	}
 	store.Lock()
-	coinID := string(m.RoundID) + strconv.Itoa(store.Round())
+	coinID := string(m.RoundID) + strconv.Itoa(store.GetRound())
 	store.Unlock()
 
 	gTilde := curve.Point.Hash([]byte(coinID))
@@ -97,8 +97,9 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			break
 		}
 		// Breakout if time since message received has exceeded 10s
-		if time.Since(start) > time.Second*10 {
+		if time.Since(start) > time.Second*20 {
 			sessionStore.Unlock()
+			log.Errorf("timeout coin_share message, round=%s", m.RoundID)
 			return
 		}
 
@@ -136,7 +137,7 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		return
 	}
 
-	coinShares := store.CoinShares()
+	coinShares := store.GetCoinShares()
 	log.WithFields(log.Fields{
 		"self":             self.ID(),
 		"sender":           sender.Index,
@@ -148,7 +149,7 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	_, ok := sessionStore.Decisions[int(roundLeader.Int64())]
 
-	if len(coinShares) >= k && !ok {
+	if len(coinShares) == f+1 && !ok {
 		identities := make([]int, 0)
 
 		for i := range coinShares {
@@ -229,7 +230,8 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		}).Info("aba_coin")
 
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
-		if n == len(sessionStore.Decisions) && sessionStore.ABAComplete {
+		if n == len(sessionStore.Decisions) && !sessionStore.KeyderivationStarted {
+			sessionStore.KeyderivationStarted = true
 			msg, err := keyderivation.NewInitMessage(m.RoundID, m.Curve)
 			if err != nil {
 				return

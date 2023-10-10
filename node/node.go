@@ -59,7 +59,7 @@ func Start(conf *config.Config) {
 	}
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
 			debug.FreeOSMemory()

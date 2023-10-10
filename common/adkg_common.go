@@ -198,13 +198,15 @@ type ADKGSession struct {
 	T          map[int]int
 	TProposals map[int]int
 	TPrime     int
-	IsTSet     bool
 	// Share mapping of acss dealer -> share
 	S                      map[int]sharing.ShamirShare
 	C                      map[int][]curves.Point
 	PubKeyShares           map[int]curves.Point
 	PubKeySharesUnverified map[int]PubKeyShare
 	Over                   bool
+	BFTDecided             bool
+	Share                  *big.Int
+	Commitments            ADKGMetadata
 	Decisions              map[int]int
 	ABAComplete            bool
 	ABAStarted             []int
@@ -336,68 +338,70 @@ func (store *ABAStoreMap) Complete(r RoundID) {
 
 type ABAState struct {
 	sync.Mutex
-	started      bool
-	round        int
-	coinShares   map[int]curves.Point
-	estValues    map[int]map[int][]int
-	auxValues    map[int]map[int][]int
-	estValues2   map[int]map[int][]int
-	auxValues2   map[int]map[int][]int
-	auxsetValues map[int]map[int][]int
-	estSent2     map[int]map[int]bool
-	estSent      map[int]map[int]bool
-	auxsetSent   map[int]bool
-	binValues    map[int][]int
-	binValues2   map[int][]int
+	Started      map[int]bool
+	Round        int
+	CoinShares   map[int]curves.Point
+	EstValues    map[int]map[int][]int
+	AuxValues    map[int]map[int][]int
+	EstValues2   map[int]map[int][]int
+	AuxValues2   map[int]map[int][]int
+	AuxsetValues map[int]map[int][]int
+	EstSent2     map[int]map[int]bool
+	EstSent      map[int]map[int]bool
+	AuxsetSent   map[int]bool
+	BinValues    map[int][]int
+	BinValues2   map[int][]int
 }
 
 func DefaultABAStore() *ABAState {
 	s := ABAState{
-		coinShares:   make(map[int]curves.Point),
-		estValues:    make(map[int]map[int][]int),
-		auxValues:    make(map[int]map[int][]int),
-		estValues2:   make(map[int]map[int][]int),
-		auxValues2:   make(map[int]map[int][]int),
-		auxsetValues: make(map[int]map[int][]int),
-		estSent2:     make(map[int]map[int]bool),
-		estSent:      make(map[int]map[int]bool),
-		auxsetSent:   make(map[int]bool),
-		binValues:    make(map[int][]int),
-		binValues2:   make(map[int][]int),
+		Started:      make(map[int]bool),
+		CoinShares:   make(map[int]curves.Point),
+		EstValues:    make(map[int]map[int][]int),
+		AuxValues:    make(map[int]map[int][]int),
+		EstValues2:   make(map[int]map[int][]int),
+		AuxValues2:   make(map[int]map[int][]int),
+		AuxsetValues: make(map[int]map[int][]int),
+		EstSent2:     make(map[int]map[int]bool),
+		EstSent:      make(map[int]map[int]bool),
+		AuxsetSent:   make(map[int]bool),
+		BinValues:    make(map[int][]int),
+		BinValues2:   make(map[int][]int),
 	}
 	return &s
 }
-func (s *ABAState) CoinShares() map[int]curves.Point {
-	return s.coinShares
+
+func (s *ABAState) GetCoinShares() map[int]curves.Point {
+	return s.CoinShares
 }
 
 func (s *ABAState) SetCoinShare(i int, p curves.Point) {
-	s.coinShares[i] = p
+	s.CoinShares[i] = p
 }
 func (s *ABAState) IncrementRound() {
-	s.round = s.round + 1
+	s.Round = s.Round + 1
 }
 
-func (s *ABAState) Round() int {
-	return s.round
+func (s *ABAState) GetRound() int {
+	return s.Round
 }
-func (s *ABAState) SetStarted() {
-	s.started = true
+func (s *ABAState) SetStarted(r int) {
+	s.Started[r] = true
 }
 
-func (s *ABAState) Started() bool {
-	return s.started
+func (s *ABAState) GetStarted(r int) bool {
+	return s.Started[r]
 }
 
 // kind can  be "est" or "est2" or "auxset", will panic otherwise
 func (s *ABAState) Sent(kind string, r, v int) bool {
 	switch kind {
 	case "est":
-		return s.estSent[r][v]
+		return s.EstSent[r][v]
 	case "est2":
-		return s.estSent2[r][v]
+		return s.EstSent2[r][v]
 	case "auxset":
-		return s.auxsetSent[r]
+		return s.AuxsetSent[r]
 	// case "est1"
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.GetSent(%s)", kind))
@@ -408,19 +412,19 @@ func (s *ABAState) Sent(kind string, r, v int) bool {
 func (s *ABAState) SetSent(kind string, r, v int) {
 	switch kind {
 	case "est":
-		if s.estSent[r] == nil {
-			s.estSent[r] = make(map[int]bool)
+		if s.EstSent[r] == nil {
+			s.EstSent[r] = make(map[int]bool)
 		}
-		s.estSent[r][v] = true
+		s.EstSent[r][v] = true
 		return
 	case "est2":
-		if s.estSent2[r] == nil {
-			s.estSent2[r] = make(map[int]bool)
+		if s.EstSent2[r] == nil {
+			s.EstSent2[r] = make(map[int]bool)
 		}
-		s.estSent2[r][v] = true
+		s.EstSent2[r][v] = true
 		return
 	case "auxset":
-		s.auxsetSent[r] = true
+		s.AuxsetSent[r] = true
 		return
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.SetSent(%s)", kind))
@@ -428,12 +432,12 @@ func (s *ABAState) SetSent(kind string, r, v int) {
 }
 
 // kind can  be "bin" or "bin2", will panic otherwise
-func (s *ABAState) Bin(kind string, r int) []int {
+func (s *ABAState) GetBin(kind string, r int) []int {
 	switch kind {
 	case "bin":
-		return s.binValues[r]
+		return s.BinValues[r]
 	case "bin2":
-		return s.binValues2[r]
+		return s.BinValues2[r]
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.GetBin(%s)", kind))
 	}
@@ -443,16 +447,16 @@ func (s *ABAState) Bin(kind string, r int) []int {
 func (s *ABAState) SetBin(kind string, r, v int) {
 	switch kind {
 	case "bin":
-		if s.binValues[r] == nil {
-			s.binValues[r] = []int{}
+		if s.BinValues[r] == nil {
+			s.BinValues[r] = []int{}
 		}
-		s.binValues[r] = append(s.binValues[r], v)
+		s.BinValues[r] = append(s.BinValues[r], v)
 		return
 	case "bin2":
-		if s.binValues2[r] == nil {
-			s.binValues2[r] = []int{}
+		if s.BinValues2[r] == nil {
+			s.BinValues2[r] = []int{}
 		}
-		s.binValues2[r] = append(s.binValues2[r], v)
+		s.BinValues2[r] = append(s.BinValues2[r], v)
 		return
 	}
 }
@@ -461,15 +465,15 @@ func (s *ABAState) SetBin(kind string, r, v int) {
 func (s *ABAState) Values(kind string, r, v int) []int {
 	switch kind {
 	case "est":
-		return s.estValues[r][v]
+		return s.EstValues[r][v]
 	case "est2":
-		return s.estValues2[r][v]
+		return s.EstValues2[r][v]
 	case "aux":
-		return s.auxValues[r][v]
+		return s.AuxValues[r][v]
 	case "aux2":
-		return s.auxValues2[r][v]
+		return s.AuxValues2[r][v]
 	case "auxset":
-		return s.auxsetValues[r][v]
+		return s.AuxsetValues[r][v]
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.Get(%s)", kind))
 	}
@@ -479,34 +483,34 @@ func (s *ABAState) Values(kind string, r, v int) []int {
 func (s *ABAState) SetValues(kind string, r, v, node int) {
 	switch kind {
 	case "est":
-		if s.estValues[r] == nil {
-			s.estValues[r] = map[int][]int{}
+		if s.EstValues[r] == nil {
+			s.EstValues[r] = map[int][]int{}
 		}
-		s.estValues[r][v] = append(s.estValues[r][v], node)
+		s.EstValues[r][v] = append(s.EstValues[r][v], node)
 		return
 	case "est2":
-		if s.estValues2[r] == nil {
-			s.estValues2[r] = map[int][]int{}
+		if s.EstValues2[r] == nil {
+			s.EstValues2[r] = map[int][]int{}
 		}
-		s.estValues2[r][v] = append(s.estValues2[r][v], node)
+		s.EstValues2[r][v] = append(s.EstValues2[r][v], node)
 		return
 	case "aux":
-		if s.auxValues[r] == nil {
-			s.auxValues[r] = map[int][]int{}
+		if s.AuxValues[r] == nil {
+			s.AuxValues[r] = map[int][]int{}
 		}
-		s.auxValues[r][v] = append(s.auxValues[r][v], node)
+		s.AuxValues[r][v] = append(s.AuxValues[r][v], node)
 		return
 	case "aux2":
-		if s.auxValues2[r] == nil {
-			s.auxValues2[r] = map[int][]int{}
+		if s.AuxValues2[r] == nil {
+			s.AuxValues2[r] = map[int][]int{}
 		}
-		s.auxValues2[r][v] = append(s.auxValues2[r][v], node)
+		s.AuxValues2[r][v] = append(s.AuxValues2[r][v], node)
 		return
 	case "auxset":
-		if s.auxsetValues[r] == nil {
-			s.auxsetValues[r] = map[int][]int{}
+		if s.AuxsetValues[r] == nil {
+			s.AuxsetValues[r] = map[int][]int{}
 		}
-		s.auxsetValues[r][v] = append(s.auxsetValues[r][v], node)
+		s.AuxsetValues[r][v] = append(s.AuxsetValues[r][v], node)
 		return
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.Set(%s)", kind))

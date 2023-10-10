@@ -43,7 +43,7 @@ func (m InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	if err != nil {
 		return
 	}
-	n, k, _ := self.Params()
+	n, _, _ := self.Params()
 
 	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
 	if complete {
@@ -71,8 +71,6 @@ func (m InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 		"T":       T,
 		"keysets": keysets,
 	}).Debug("keyderivation_init")
-
-	ProcessUnverifiedShares(sessionStore, curve, k, T, self)
 
 	zI := curve.Scalar.Zero()
 	for _, j := range T {

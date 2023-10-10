@@ -308,6 +308,8 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 					abci.state.LastCreatedIndex = uint(index)
 				}
 
+				_ = abci.broker.KeygenMethods().Cleanup(adkgid)
+
 				log.WithFields(log.Fields{
 					"key":    m.PublicKey,
 					"index":  abci.state.LastCreatedIndex,
