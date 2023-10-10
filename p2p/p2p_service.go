@@ -146,12 +146,9 @@ func (service *P2PService) GetState() int32 {
 
 func (service *P2PService) Connect(addr multiaddr.Multiaddr) {
 	peer, err := peer.AddrInfoFromP2pAddr(addr)
-	log.Info(service)
-	log.Info(peer)
 	if err != nil {
 		log.Error(err)
 	}
-	log.Info(service)
 	if err := service.p2pNode.Connect(service.context, *peer); err != nil {
 		log.Error(err)
 		panic(err)

@@ -606,7 +606,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 				log.WithField("nodeRegisterMap", chainService.nodeRegisterMap).Error("could not get node list")
 				continue
 			}
-			currEpochInfo, err := chainService.GetEpochInfo(nodeEpoch, true)
+			currEpochInfo, err := chainService.GetEpochInfo(nodeEpoch, false)
 			if err != nil {
 				log.WithError(err).Error("could not get current epoch info")
 				continue
