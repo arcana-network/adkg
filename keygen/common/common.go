@@ -48,15 +48,29 @@ func CountBit(n int) int {
 	return count
 }
 
-func CurvePointToPoint(p curves.Point) common.Point {
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
+}
+
+func CurvePointToPoint(p curves.Point, c common.CurveName) common.Point {
 	bytes := p.ToAffineUncompressed()
-	xBytes := bytes[1:33]
-	yBytes := bytes[33:]
-	x := *new(big.Int).SetBytes(xBytes)
-	y := *new(big.Int).SetBytes(yBytes)
-	return common.Point{
-		X: x,
-		Y: y,
+	if c == common.ED25519 {
+		xBytes := reverse(bytes[:32])
+		yBytes := reverse(bytes[32:])
+		return common.Point{
+			X: *new(big.Int).SetBytes(xBytes),
+			Y: *new(big.Int).SetBytes(yBytes),
+		}
+	} else {
+		xBytes := bytes[1:33]
+		yBytes := bytes[33:]
+		return common.Point{
+			X: *new(big.Int).SetBytes(xBytes),
+			Y: *new(big.Int).SetBytes(yBytes),
+		}
 	}
 }
 

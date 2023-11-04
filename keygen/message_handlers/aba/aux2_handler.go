@@ -98,7 +98,7 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 			if w == 2 {
 				// Create a coin
 				coinID := string(m.RoundID) + strconv.Itoa(m.R)
-				log.Infof("Node=%d, Round=%s,CoinID=%s", self.ID(), m.RoundID, coinID)
+				log.Debugf("Node=%d, Round=%s,CoinID=%s", self.ID(), m.RoundID, coinID)
 				msg, err := NewCoinInitMessage(m.RoundID, coinID, m.Curve)
 				if err != nil {
 					return

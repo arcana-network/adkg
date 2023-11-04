@@ -86,6 +86,7 @@ func (tgv *ProviderMap) Lookup(provider string) (Provider, error) {
 		return nil, errors.New("providers mapping not initialized")
 	}
 	if tgv.Providers[provider] == nil {
+		// return tgv.Providers["custom"], nil
 		return nil, errors.New("provider:" + provider + " not found")
 	}
 	return tgv.Providers[provider], nil
@@ -129,6 +130,7 @@ func (v *VerifierService) Start() error {
 		NewAWSCognitoVerifier(),
 		NewSteamProvider(),
 		firebaseProvider,
+		// NewCustomProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil

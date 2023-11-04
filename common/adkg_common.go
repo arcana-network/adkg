@@ -303,12 +303,12 @@ type DkgParticipant interface {
 	CurveParams(name string) (curves.Point, curves.Point)
 	// Receiving BFT message to broadcast
 	ReceiveBFTMessage(DKGMessage)
-	// Store completed share
-	StoreCompletedShare(index big.Int, si big.Int)
 	// Cleanup session store
 	Cleanup(id ADKGID)
+	// Store completed share
+	StoreCompletedShare(index big.Int, si big.Int, c CurveName)
 	// Store commitment to shares
-	StoreCommitment(index big.Int, metadata ADKGMetadata)
+	StoreCommitment(index big.Int, metadata ADKGMetadata, c CurveName)
 }
 
 type ParticipantState interface {

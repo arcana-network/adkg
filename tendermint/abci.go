@@ -25,6 +25,7 @@ import (
 var (
 	stateKey                    = []byte("sk")
 	keyMappingPrefixKey         = []byte("km")
+	EDKeyMappingPrefixKey       = []byte("ekm")
 	verifierToKeyIndexPrefixKey = []byte("vt")
 	appInfoKey                  = []byte("ai")
 )
@@ -51,15 +52,21 @@ type getIndexesQuery struct {
 	Provider string           `json:"provider"`
 	UserID   string           `json:"user_id"`
 	AppID    string           `json:"app_id"`
-	Curve    common.CurveName `json:"curve_name"`
+	Curve    common.CurveName `json:"curve"`
 }
 
-func getPartitionedKeyspace(appID, userID string) []byte {
+func getPartitionedKeyspace(appID, userID string, curve common.CurveName) []byte {
 	key := []byte(strings.Join([]string{appID, userID}, common.Delimiter1))
+	if curve == common.ED25519 {
+		key = []byte(strings.Join([]string{appID, userID, string(common.ED25519)}, common.Delimiter1))
+	}
 	return append(verifierToKeyIndexPrefixKey, key...)
 }
-func getUnpartitionedKeyspace(userID string) []byte {
+func getUnpartitionedKeyspace(userID string, curve common.CurveName) []byte {
 	key := []byte(strings.Join([]string{"global", userID}, common.Delimiter1))
+	if curve == common.ED25519 {
+		key = []byte(strings.Join([]string{"global", userID, string(common.ED25519)}, common.Delimiter1))
+	}
 	return append(verifierToKeyIndexPrefixKey, key...)
 }
 
@@ -222,7 +229,11 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 	}
 
 	if int(abci.state.LastCreatedIndex)-int(abci.state.LastUnassignedIndex) < buffer {
-
+		log.WithFields(log.Fields{
+			"EndBlockHeight":      req.Height,
+			"LastCreatedIndex":    int(abci.state.LastCreatedIndex),
+			"LastUnassignedIndex": int(abci.state.LastUnassignedIndex),
+		}).Info("EndBlock:ED25519")
 		end := MinOf(int(abci.state.LastCreatedIndex)+maxKeyInit, int(abci.state.LastUnassignedIndex)+buffer)
 		log.WithFields(log.Fields{
 			"Start":  int(abci.state.LastCreatedIndex),
@@ -251,9 +262,15 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 		}
 	}
 
-	// TODO: Reduce buffer here
-	end := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+buffer)
-	for i := int(abci.state.C25519State.LastCreatedIndex); i < end; i++ {
+	// TODO: Fix buffer here
+	edBuffer := buffer / 10
+	maxEDKeyInit := edBuffer / 10
+	endED := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxEDKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+edBuffer)
+	log.WithFields(log.Fields{
+		"LastCreatedIndex":    int(abci.state.C25519State.LastCreatedIndex),
+		"LastUnassignedIndex": int(abci.state.C25519State.LastUnassignedIndex),
+	}).Info("EndBlock:ED25519")
+	for i := int(abci.state.C25519State.LastCreatedIndex); i < endED; i++ {
 		id := common.NewADKGID(*big.NewInt(int64(i)), common.ED25519)
 		round := common.RoundDetails{
 			ADKGID: id,
@@ -262,7 +279,7 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 		}
 		msg, err := acss.NewShareMessage(
 			round.ID(),
-			common.SECP256K1,
+			common.ED25519,
 		)
 		if err != nil {
 			log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
@@ -331,7 +348,6 @@ func (abci *ABCI) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.Res
 
 	switch reqQuery.Path {
 	case "GetIndexesFromVerifierID":
-		log.Debug("got a query for GetIndexesFromVerifierID")
 		var queryArgs getIndexesQuery
 		err := bijson.Unmarshal(reqQuery.Data, &queryArgs)
 		if err != nil {
@@ -342,9 +358,11 @@ func (abci *ABCI) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.Res
 		if err != nil {
 			return abcitypes.ResponseQuery{Code: 10, Info: fmt.Sprintf("AppID %v not found", queryArgs.AppID)}
 		}
-		log.Infof("Partitioned value in ABCI=%v", partitioned)
-		verifierKey := getVerifierKey(AssignmentTx(queryArgs), partitioned)
 
+		//TODO: Fix logs here
+		tx := AssignmentTx(queryArgs)
+		log.Debugf("Partitioned value in ABCI=%v", partitioned)
+		verifierKey := getVerifierKey(tx, partitioned)
 		log.WithFields(log.Fields{
 			"verifierKey": string(verifierKey),
 		}).Debug("GetIndexesFromVerifierID")
@@ -448,8 +466,8 @@ func authenticateBftTx(tx []byte, broker *common.MessageBroker) (parsedTx Defaul
 	return
 }
 
-func (app *ABCI) retrieveKeyMapping(keyIndex big.Int) (*common.KeyAssignmentPublic, error) {
-	b, err := app.db.Get(prefixKeyMapping([]byte(keyIndex.Text(16))))
+func (app *ABCI) retrieveKeyMapping(keyIndex big.Int, curve common.CurveName) (*common.KeyAssignmentPublic, error) {
+	b, err := app.db.Get(prefixKeyMapping([]byte(keyIndex.Text(16)), curve))
 	if err != nil {
 		log.Error(err)
 		return nil, fmt.Errorf("retrieveKeyMapping, KeyMapping do not exist for index")
@@ -462,9 +480,9 @@ func (app *ABCI) retrieveKeyMapping(keyIndex big.Int) (*common.KeyAssignmentPubl
 	return &res, nil
 }
 
-func (app *ABCI) getIndexesFromVerifierID(provider, userID, appID string) (keyIndexes []big.Int, err error) {
+func (app *ABCI) getIndexesFromVerifierID(provider, userID, appID string, curve common.CurveName) (keyIndexes []big.Int, err error) {
 	// struct for query args
-	args := getIndexesQuery{AppID: appID, Provider: provider, UserID: userID}
+	args := getIndexesQuery{AppID: appID, Provider: provider, UserID: userID, Curve: curve}
 	argBytes, err := bijson.Marshal(args)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal query args error: %v", err)
@@ -485,12 +503,12 @@ func (app *ABCI) getIndexesFromVerifierID(provider, userID, appID string) (keyIn
 	return keyIndexes, nil
 }
 
-func (app *ABCI) storeKeyMapping(keyIndex big.Int, assignment common.KeyAssignmentPublic) error {
+func (app *ABCI) storeKeyMapping(keyIndex big.Int, curve common.CurveName, assignment common.KeyAssignmentPublic) error {
 	b, err := bijson.Marshal(assignment)
 	if err != nil {
 		return err
 	}
-	err = app.db.Set(prefixKeyMapping([]byte(keyIndex.Text(16))), b)
+	err = app.db.Set(prefixKeyMapping([]byte(keyIndex.Text(16)), curve), b)
 	return err
 }
 
@@ -503,7 +521,10 @@ func (app *ABCI) storeVerifierToKeyIndex(verifierKey []byte, keyIndexes []big.In
 	return err
 }
 
-func prefixKeyMapping(key []byte) []byte {
+func prefixKeyMapping(key []byte, curve common.CurveName) []byte {
+	if curve == common.ED25519 {
+		return append(EDKeyMappingPrefixKey, key...)
+	}
 	return append(keyMappingPrefixKey, key...)
 }
 

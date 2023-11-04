@@ -55,7 +55,7 @@ func (m *InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	}
 	store.SetStarted(r)
 
-	log.Infof("ABA::Self: %d, Round: %d", self.ID(), r)
+	log.Debugf("ABA::Self: %d, Round: %d", self.ID(), r)
 
 	if !store.Sent("est", r, v) {
 		store.SetSent("est", r, v)

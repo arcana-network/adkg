@@ -153,16 +153,18 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			zI = zI.Add(shareScalar) //x
 		}
 		if sessionStore.BFTDecided {
-			self.StoreCompletedShare(keyIndex, *zI.BigInt())
-			self.StoreCommitment(keyIndex, common.ADKGMetadata{Commitments: sessionStore.C, T: T})
+			c, err := adkgid.GetCurve()
+			if err != nil {
+				return
+			}
+			self.StoreCompletedShare(keyIndex, *zI.BigInt(), c)
+			self.StoreCommitment(keyIndex, common.ADKGMetadata{Commitments: sessionStore.C, T: T}, c)
 			self.Cleanup(adkgid)
 		} else {
 			sessionStore.Share = zI.BigInt()
 			sessionStore.Commitments = common.ADKGMetadata{Commitments: sessionStore.C, T: T}
 			sessionStore.Over = true
 		}
-
-		log.Debugf("share for index %d = %s", keyIndex.Int64(), (*zI.BigInt()).Text(16))
 
 		msg, err := NewPubKeygenMessage(m.RoundID, m.Curve, hZ)
 		if err != nil {
@@ -176,15 +178,19 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 func VerifyShare(s common.PubKeyShare,
 	curve *curves.Curve, gZj curves.Point, self common.DkgParticipant) (curves.Point, bool) {
 
+	length := 33
+	if curve.Name == "ed25519" {
+		length = 32
+	}
 	sBar, err := curve.Scalar.SetBytes(s.S)
 	if err != nil {
 		return nil, false
 	}
-	aBar, err := curve.Point.FromAffineCompressed(s.R[:33]) //g^k
+	aBar, err := curve.Point.FromAffineCompressed(s.R[:length]) //g^k
 	if err != nil {
 		return nil, false
 	}
-	bBar, err := curve.Point.FromAffineCompressed(s.R[33:]) //h^k
+	bBar, err := curve.Point.FromAffineCompressed(s.R[length:]) //h^k
 	if err != nil {
 		return nil, false
 	}

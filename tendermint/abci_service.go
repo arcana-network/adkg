@@ -74,19 +74,24 @@ func (a *ABCIService) Call(method string, args ...interface{}) (interface{}, err
 		return a.ABCI.state.LastUnassignedIndex, nil
 	case "retrieve_key_mapping":
 		var keyIndex big.Int
+		var curve common.CurveName
 		_ = common.CastOrUnmarshal(args[0], &keyIndex)
+		_ = common.CastOrUnmarshal(args[1], &curve)
 
-		keyDetails, err := a.ABCI.retrieveKeyMapping(keyIndex)
+		keyDetails, err := a.ABCI.retrieveKeyMapping(keyIndex, curve)
 		if err != nil {
 			return nil, err
 		}
 		return *keyDetails, err
 	case "get_indexes_from_verifier_id":
 		var provider, userID, appID string
+		var curve common.CurveName
 		_ = common.CastOrUnmarshal(args[0], &provider)
 		_ = common.CastOrUnmarshal(args[1], &userID)
 		_ = common.CastOrUnmarshal(args[2], &appID)
-		keyIndexes, err := a.ABCI.getIndexesFromVerifierID(provider, userID, appID)
+		_ = common.CastOrUnmarshal(args[3], &curve)
+
+		keyIndexes, err := a.ABCI.getIndexesFromVerifierID(provider, userID, appID, curve)
 		return keyIndexes, err
 	}
 

@@ -14,8 +14,6 @@ type DBService struct {
 	dbInstance *DBWrapper
 }
 
-var keyIndexToPubKeyBytes = []byte("h")
-
 func New() *DBService {
 	return &DBService{}
 }
@@ -72,29 +70,35 @@ func (d *DBService) Call(method string, args ...interface{}) (interface{}, error
 	case "index_to_public_key_exists":
 
 		var args0 big.Int
+		var args1 common.CurveName
 		_ = common.CastOrUnmarshal(args[0], &args0)
+		_ = common.CastOrUnmarshal(args[1], &args1)
 
-		exists := d.dbInstance.KeyIndexToPublicKeyExists(args0)
+		exists := d.dbInstance.KeyIndexToPublicKeyExists(args0, args1)
 		return exists, nil
 	case "store_public_key_to_index":
 
 		var args0 common.Point
 		var args1 big.Int
+		var args2 common.CurveName
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 
-		err := d.dbInstance.StorePublicKeyToKeyIndex(args0, args1)
+		err := d.dbInstance.StorePublicKeyToKeyIndex(args0, args1, args2)
 		return nil, err
 	case "retrieve_completed_share":
 
 		var args0 big.Int
+		var curve common.CurveName
+
 		_ = common.CastOrUnmarshal(args[0], &args0)
+		_ = common.CastOrUnmarshal(args[1], &curve)
 
 		rs := new(struct {
 			Si      big.Int
 			Siprime big.Int
 		})
-		si, sip, err := d.dbInstance.RetrieveCompletedShare(args0)
+		si, sip, err := d.dbInstance.RetrieveCompletedShare(args0, curve)
 		if si == nil {
 			si = big.NewInt(0)
 		}
@@ -116,21 +120,27 @@ func (d *DBService) Call(method string, args ...interface{}) (interface{}, error
 	case "store_completed_PSS_share":
 
 		var args0, args1, args2 big.Int
+		var curve common.CurveName
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
 		_ = common.CastOrUnmarshal(args[2], &args2)
+		_ = common.CastOrUnmarshal(args[3], &curve)
 
-		err := d.dbInstance.StoreCompletedPSSShare(args0, args1, args2)
+		err := d.dbInstance.StoreCompletedPSSShare(args0, args1, args2, curve)
 		return nil, err
 	case "store_sharing_commitment":
 
 		var args0 big.Int
 		var args1 []int
 		var args2 map[string][]common.Point
+		var curve common.CurveName
+
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
+		_ = common.CastOrUnmarshal(args[2], &args2)
+		_ = common.CastOrUnmarshal(args[3], &curve)
 
-		err := d.dbInstance.StoreCommitment(args0, args1, args2)
+		err := d.dbInstance.StoreCommitment(args0, args1, args2, curve)
 		return nil, err
 	case "store_connection_details":
 

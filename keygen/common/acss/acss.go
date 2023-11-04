@@ -79,7 +79,11 @@ func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
 func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point, error) {
 	commitment := make([]curves.Point, 0)
 	for i := 0; i < k; i++ {
-		cI, err := curve.Point.FromAffineCompressed(c[i*33 : (i*33)+33])
+		length := 33
+		if curve.Name == "ed25519" {
+			length = 32
+		}
+		cI, err := curve.Point.FromAffineCompressed(c[i*length : (i*length)+length])
 		if err == nil {
 			commitment = append(commitment, cI)
 		} else {

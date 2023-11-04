@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 
@@ -59,7 +60,8 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 	n, k, _ := self.Params()
 	priv := self.PrivateKey()
 
-	dealerKey, err := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
+	k256k1 := curves.K256()
+	dealerKey, err := k256k1.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
 	// dealerKey, err := curve.Point.FromAffineCompressed(m.DealerPublicKey)
 	if err != nil {
 		log.Errorf("could not deserialize dealer public key: %s", err)
