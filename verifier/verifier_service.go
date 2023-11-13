@@ -45,7 +45,7 @@ func (tgv *ProviderMap) ListProviders() []string {
 }
 
 func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *common.MessageBroker) (bool, string, error) {
-	var msg VerifyMessage
+	var msg common.GenericVerifierData
 	if err := bijson.Unmarshal(*rawMessage, &msg); err != nil {
 		return false, "", err
 	}
@@ -53,6 +53,11 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 	if err != nil {
 		return false, "", err
 	}
+
+	if msg.Provider == "global_key_proxy" {
+		return v.Verify(rawMessage, nil)
+	}
+
 	cleanedToken := v.CleanToken(msg.Token)
 	if cleanedToken != msg.Token {
 		return false, "", errors.New("cleaned token is different from original token")
@@ -130,6 +135,7 @@ func (v *VerifierService) Start() error {
 		NewAWSCognitoVerifier(),
 		NewSteamProvider(),
 		firebaseProvider,
+		NewGlobalKeyVerifier(v),
 		// NewCustomProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)

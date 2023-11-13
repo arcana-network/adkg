@@ -327,7 +327,7 @@ func (abci *ABCI) Commit() abcitypes.ResponseCommit {
 	return abcitypes.ResponseCommit{Data: currAppHash}
 }
 
-func getAppKeyPartition(broker *common.MessageBroker, appID string) (bool, error) {
+func GetAppKeyPartition(broker *common.MessageBroker, appID string) (bool, error) {
 	partitioned, err := broker.CacheMethods().GetPartitionForApp(appID)
 	if err != nil {
 		partitioned, err := broker.ChainMethods().GetPartitionForApp(appID)
@@ -354,7 +354,7 @@ func (abci *ABCI) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.Res
 			return abcitypes.ResponseQuery{Code: 10, Info: fmt.Sprintf("could not parse query into arguments: %v string ver: %s ", reqQuery.Data, string(reqQuery.Data))}
 		}
 
-		partitioned, err := getAppKeyPartition(abci.broker, queryArgs.AppID)
+		partitioned, err := GetAppKeyPartition(abci.broker, queryArgs.AppID)
 		if err != nil {
 			return abcitypes.ResponseQuery{Code: 10, Info: fmt.Sprintf("AppID %v not found", queryArgs.AppID)}
 		}
