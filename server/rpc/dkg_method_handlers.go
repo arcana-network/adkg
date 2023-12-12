@@ -634,9 +634,8 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 	sort.Slice(allKeyIndexesSorted, func(a, b int) bool {
 		return allKeyIndexesSorted[a].Cmp(&allKeyIndexesSorted[b]) == -1
 	})
-	for _, index := range allKeyIndexesSorted {
-		// check if we have enough validTokens according to Access Structure
-
+	if len(allKeyIndexesSorted) > 0 {
+		index := allKeyIndexesSorted[0]
 		pubKeyAccessStructure, err := broker.ABCIMethods().RetrieveKeyMapping(index)
 		log.WithFields(log.Fields{
 			"publicX": pubKeyAccessStructure.PublicKey.X,
@@ -734,7 +733,7 @@ func (c *ConnectionDetailsMessage) Validate(pubKeyX, pubKeyY big.Int, sig []byte
 	timeSigned := c.Timestamp
 	unixTime, err := strconv.ParseInt(timeSigned, 10, 64)
 	if err != nil {
-		log.WithError(err).Error("could not parse time signed ")
+		log.WithError(err).Error("could not parse time signed")
 		return false, err
 	}
 	if time.Unix(unixTime, 0).Add(10 * time.Minute).Before(time.Now()) {
