@@ -22,7 +22,7 @@ require (
 	github.com/tendermint/tendermint v0.34.24
 	github.com/tendermint/tm-db v0.6.6
 	github.com/torusresearch/bijson v0.1.0
-	golang.org/x/crypto v0.13.0
+	golang.org/x/crypto v0.14.0
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/arcana-network/groot v0.0.0-20220407023724-c02d70fc35f9
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-jwt/jwt/v5 v5.0.0
-	github.com/imroc/req/v3 v3.42.1
+	github.com/imroc/req/v3 v3.42.2
 	github.com/spf13/cobra v1.6.0
 )
 
@@ -61,6 +61,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -127,8 +128,10 @@ require (
 	go.uber.org/fx v1.20.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
@@ -141,6 +144,7 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coinbase/kryptology v1.8.0
+	github.com/coreos/go-oidc/v3 v3.7.0
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
@@ -208,13 +212,13 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20221014213838-99cd37c6964a // indirect
 	google.golang.org/grpc v1.50.1 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )

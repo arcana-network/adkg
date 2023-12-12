@@ -264,7 +264,7 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 
 	// TODO: Fix buffer here
 	edBuffer := buffer / 10
-	maxEDKeyInit := edBuffer / 10
+	maxEDKeyInit := 20
 	endED := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxEDKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+edBuffer)
 	log.WithFields(log.Fields{
 		"LastCreatedIndex":    int(abci.state.C25519State.LastCreatedIndex),
