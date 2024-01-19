@@ -61,7 +61,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 	log.Info("Keygen service starting...")
 	transport.Init()
 	transport.SetKeygenNode(newKeygenNode)
-	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.cleanup)
+	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.remove)
 	return newKeygenNode, nil
 }
 
@@ -77,8 +77,26 @@ func (node *KeygenNode) cleanup(id common.ADKGID) {
 	node.cleanupSessionStore(id)
 }
 
+func (node *KeygenNode) remove(id common.ADKGID) {
+	for _, n := range node.CurrentNodes.Nodes {
+		node.state.KeygenStore.Delete((&common.RoundDetails{
+			ADKGID: id,
+			Dealer: n.Index,
+			Kind:   "acss",
+		}).ID())
+		keysetID := (&common.RoundDetails{
+			ADKGID: id,
+			Dealer: n.Index,
+			Kind:   "keyset",
+		}).ID()
+		node.state.KeygenStore.Delete(keysetID)
+		node.state.ABAStore.Delete(keysetID)
+	}
+	node.state.SessionStore.Delete(id)
+}
+
 func (node *KeygenNode) Cleanup(id common.ADKGID) {
-	node.tracker.Remove(id)
+	node.cleanup(id)
 }
 
 func (node *KeygenNode) cleanupKeygenStore(id common.ADKGID) {

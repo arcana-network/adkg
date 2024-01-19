@@ -90,7 +90,11 @@ func (service *KeygenService) Call(method string, args ...interface{}) (interfac
 			if err != nil {
 				return nil, err
 			}
-			if !service.KeygenNode.tracker.Has(id) {
+			if !service.broker.DBMethods().GetKeygenStarted(string(id)) {
+				err := service.broker.DBMethods().SetKeygenStarted(string(id), true)
+				if err != nil {
+					return nil, err
+				}
 				service.KeygenNode.tracker.Add(id)
 			} else {
 				return nil, nil
@@ -108,7 +112,7 @@ func (service *KeygenService) Call(method string, args ...interface{}) (interfac
 		log.WithFields(log.Fields{
 			"index": args0.RoundID,
 			"type":  args0.Method,
-		}).Info("Broker:ReceiveMessage()")
+		}).Debug("Broker:ReceiveMessage()")
 		return nil, service.KeygenNode.Transport.Receive(details, args0)
 	case "cleanup":
 		var adkgid common.ADKGID

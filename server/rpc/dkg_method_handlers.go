@@ -229,22 +229,11 @@ func (c *CommitmentRequestResultData) FromString(data string) (bool, error) {
 }
 
 func getVerifierClientID(broker *common.MessageBroker, appID, verifier string) (string, error) {
-	cachedParams := broker.CacheMethods().RetrieveClientIDFromVerifier(appID, verifier)
-	log.WithField("cachedClientID", cachedParams).Info("getVerifierClientID")
-	if cachedParams == nil {
-		params, err := broker.ChainMethods().GetClientIDViaVerifier(appID, verifier)
-		log.WithField("clientID", params).Info("GetClientIDViaVerifier")
-
-		if err != nil {
-			return "", err
-		}
-		if params == nil {
-			return "", errors.New("could not get clientID from specified appID")
-		}
-		broker.CacheMethods().StoreVerifierToClientID(appID, verifier, params)
-		return params.ClientID, nil
+	params, err := broker.ChainMethods().GetClientIDViaVerifier(appID, verifier)
+	if err != nil {
+		return "", err
 	}
-	return cachedParams.ClientID, nil
+	return params.ClientID, nil
 }
 
 func (h KeyAssignHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {

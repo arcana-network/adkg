@@ -11,8 +11,8 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/multiformats/go-multibase"
+	"github.com/smallstep/pkcs7"
 	"github.com/torusresearch/bijson"
-	"go.mozilla.org/pkcs7"
 )
 
 type GlobalKeyMessage struct {

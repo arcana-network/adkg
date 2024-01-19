@@ -328,16 +328,8 @@ func (abci *ABCI) Commit() abcitypes.ResponseCommit {
 }
 
 func GetAppKeyPartition(broker *common.MessageBroker, appID string) (bool, error) {
-	partitioned, err := broker.CacheMethods().GetPartitionForApp(appID)
-	if err != nil {
-		partitioned, err := broker.ChainMethods().GetPartitionForApp(appID)
-		if err != nil {
-			return false, err
-		}
-		broker.CacheMethods().StorePartitionForApp(appID, partitioned)
-		return partitioned, nil
-	}
-	return partitioned, nil
+	partitioned, err := broker.ChainMethods().GetPartitionForApp(appID)
+	return partitioned, err
 }
 
 func (abci *ABCI) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {

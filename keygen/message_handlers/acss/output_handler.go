@@ -68,11 +68,8 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 	}
 
 	if !kcommon.HasBit(sessionStore.TPrime, int(dealer.Int64())) {
-		dealerPublicKey := self.PublicKey(int(dealer.Int64()))
-
 		// Recover shared symmetric key
 		priv := self.PrivateKey()
-		key := acss.SharedKey(priv, dealerPublicKey)
 
 		// Predicate from recovered output data
 		msg := messages.MessageData{}
@@ -86,7 +83,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 		_, k, f := self.Params()
 
 		curve := common.CurveFromName(m.Curve)
-		share, verifier, verified := acss.Predicate(key[:], msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
+		share, verifier, verified := acss.Predicate(priv.Bytes(), msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)
 
 		if verified {
 			log.Debugf("acss_verified: share=%v", *share)

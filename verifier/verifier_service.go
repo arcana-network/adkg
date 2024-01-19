@@ -71,19 +71,11 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 }
 
 func getVerifierParams(serviceMapper *common.MessageBroker, appID, verifier string) (*common.VerifierParams, error) {
-	cachedClientID := serviceMapper.CacheMethods().RetrieveClientIDFromVerifier(appID, verifier)
-	if cachedClientID == nil {
-		params, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
-		if err != nil {
-			return nil, err
-		}
-		if params == nil {
-			return nil, errors.New("could not get params from specified appID")
-		}
-		serviceMapper.CacheMethods().StoreVerifierToClientID(appID, verifier, params)
-		return params, nil
+	params, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
+	if err != nil {
+		return nil, err
 	}
-	return cachedClientID, nil
+	return params, nil
 }
 
 func (tgv *ProviderMap) Lookup(provider string) (Provider, error) {

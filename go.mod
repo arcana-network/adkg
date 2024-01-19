@@ -35,6 +35,7 @@ require (
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/imroc/req/v3 v3.42.2
+	github.com/smallstep/pkcs7 v0.0.0-20231107075624-be1870d87d13
 	github.com/spf13/cobra v1.6.0
 )
 
@@ -209,7 +210,6 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/vivint/infectious v0.0.0-20200605153912-25a574ae18a3
 	go.etcd.io/bbolt v1.3.6 // indirect
-	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.17.0 // indirect

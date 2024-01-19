@@ -164,6 +164,10 @@ func (store *ADKGSessionStore) Complete(r ADKGID) {
 	store.Map.Store(r, nil)
 }
 
+func (store *ADKGSessionStore) Delete(r ADKGID) {
+	store.Map.Delete(r)
+}
+
 type SharingStoreMap struct {
 	Map sync.Map
 }
@@ -191,6 +195,10 @@ func (store *SharingStoreMap) GetOrSet(r RoundID, input *SharingStore) (keygen *
 }
 func (store *SharingStoreMap) Complete(r RoundID) {
 	store.Map.Store(r, nil)
+}
+
+func (store *SharingStoreMap) Delete(r RoundID) {
+	store.Map.Delete(r)
 }
 
 func GetCStore(keygen *SharingStore, s string) *CStore {
@@ -359,6 +367,10 @@ func (store *ABAStoreMap) GetOrSet(r RoundID, input *ABAState) (keygen *ABAState
 
 func (store *ABAStoreMap) Complete(r RoundID) {
 	store.Map.Store(r, nil)
+}
+
+func (store *ABAStoreMap) Delete(r RoundID) {
+	store.Map.Delete(r)
 }
 
 type ABAState struct {
