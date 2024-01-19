@@ -9,7 +9,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.1.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.11
@@ -21,7 +21,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.2.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.12
@@ -33,7 +33,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.3.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.13
@@ -45,7 +45,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.4.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.14
@@ -57,7 +57,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.5.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.15
@@ -69,7 +69,7 @@ services:
     volumes:
       - ./local-setup-data/config.local.6.json:/config.json
     extra_hosts:
-    - "localhost:$DOCKERHOST"
+      - "localhost:$DOCKERHOST"
     networks:
       arcana:
         ipv4_address: 192.167.10.16
