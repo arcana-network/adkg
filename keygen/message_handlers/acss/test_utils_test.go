@@ -63,11 +63,11 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 }
 
 type MockTransport struct {
-	nodes       []*Node
-	nodeDetails map[common.NodeDetailsID]common.KeygenNodeDetails
-	output      chan string
-	messages    []common.DKGMessage // Store messages that are broadcasted
-	// ...
+	nodes               []*Node
+	nodeDetails         map[common.NodeDetailsID]common.KeygenNodeDetails
+	output              chan string
+	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
+	sentMessages        []common.DKGMessage
 }
 
 func NewMockTransport(nodes []*Node) *MockTransport {
@@ -86,7 +86,7 @@ func (t *MockTransport) Init(nodes []*Node) {
 }
 
 func (t *MockTransport) Broadcast(sender common.KeygenNodeDetails, m common.DKGMessage) {
-	t.messages = append(t.messages, m) // Save the message
+	t.broadcastedMessages = append(t.broadcastedMessages, m) // Save the message
 	for _, p := range t.nodes {
 		go func(node common.DkgParticipant) {
 			node.ReceiveMessage(sender, m)
@@ -96,12 +96,14 @@ func (t *MockTransport) Broadcast(sender common.KeygenNodeDetails, m common.DKGM
 
 // Method to retrieve broadcasted messages for assertions
 func (t *MockTransport) GetBroadcastedMessages() []common.DKGMessage {
-	return t.messages
+	return t.broadcastedMessages
 }
 
 // Sends message to the participant
 func (t *MockTransport) Send(sender, receiver common.KeygenNodeDetails, msg common.DKGMessage) {
 	// time.Sleep(500 * time.Millisecond)
+	t.sentMessages = append(t.sentMessages, msg) // Save the message
+
 	for _, n := range t.nodes {
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
 		if n.ID() == receiver.Index {
@@ -109,6 +111,10 @@ func (t *MockTransport) Send(sender, receiver common.KeygenNodeDetails, msg comm
 			break
 		}
 	}
+}
+
+func (t *MockTransport) GetSentMessages() []common.DKGMessage {
+	return t.sentMessages
 }
 
 type KeyMap struct {
@@ -349,6 +355,10 @@ func (node *Node) ProcessACSSMessages(sender common.KeygenNodeDetails, keygenMes
 
 func (n *Node) ID() int {
 	return n.id
+}
+
+func (n *Node) AdjustParamN(new_n int) {
+	n.n = new_n
 }
 
 func (n *Node) Params() (int, int, int) {
