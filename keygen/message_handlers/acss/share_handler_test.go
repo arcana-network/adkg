@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -89,7 +90,15 @@ func processShareMsg(t *testing.T) {
 				assert.Equal(t, len(msg_data.ShareMap), 7)
 
 				// Check 6: the shares and commitments can be verified
-				// TODO
+				_, k, _ := node.Params()
+				sender_id, _ := msg.RoundID.Leader()
+				node_sk := node.PrivateKey()
+				sender_pk := nodes[sender_id.Int64()].keypair.PublicKey
+				aes_key := acss.SharedKey(node_sk, sender_pk)
+				curve := common.CurveFromName(common.SECP256K1)
+				_, _, verified := acss.Predicate(aes_key[:], msg_data.ShareMap[uint32(node.ID())][:],
+					msg_data.Commitments[:], k, curve)
+				assert.True(t, verified)
 			}
 		}(n)
 
