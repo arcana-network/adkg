@@ -1,7 +1,9 @@
 package acss
 
 import (
+	"bytes"
 	cryptorand "crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"math/rand"
 	"reflect"
@@ -189,15 +191,113 @@ func TestSharedKey(t *testing.T) {
 	}
 }
 
-func TestPredicate(t *testing.T) {
+// Testcase predicate returns true
+func TestPredicateVerified(t *testing.T) {
+
 	curve := curves.K256()
-	k256 := curve.Point.Generator().(*curves.PointK256)
-	dealerPoint := k256.Generator()
-	var scalar = new(curves.ScalarK256).New(8)
-	key := SharedKey(scalar, dealerPoint)
-	commit := dealerPoint.ToAffineCompressed()
-	_, _, b := Predicate(key[:], []byte("foobarfoobarfoobarfoobarfoobarfoobar"), commit, 1, curve)
-	t.Log(b)
+	// KEYS
+	myKeyPair := GenerateKeyPair(curve)
+	dealerKeyPair := GenerateKeyPair(curve)
+
+	sharedKey := SharedKey(myKeyPair.PrivateKey, dealerKeyPair.PublicKey)
+
+	// THE SECRET
+	secret_scalar := GenerateSecret(curve)
+	var threshold uint32 = 3
+	var n uint32 = 5
+
+	// returns (*sharing.FeldmanVerifier, []sharing.ShamirShare, error)
+	verifier, shares, _ := GenerateCommitmentAndShares(secret_scalar, threshold, n, curve)
+	initialCompressedCommitments := CompressCommitments(verifier)
+
+	// Prep the right form for the Predicate function
+	commitmentsByteArray := CompressCommitments(verifier)
+	share0 := shares[0]
+	shareByteArray := make([]byte, 4+len(share0.Value))
+
+	// Serialize the Id as a 4-byte big endian uint32
+	binary.BigEndian.PutUint32(shareByteArray[:4], share0.Id)
+	// Append the Value bytes
+	copy(shareByteArray[4:], share0.Value)
+	// Encrypt with key combo equal to sharedKey
+	sharesEncrypted, _ := Encrypt(shareByteArray, dealerKeyPair.PublicKey, myKeyPair.PrivateKey)
+
+	resultShare, resultVerifier, b := Predicate(sharedKey[:], sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
+	resultCompressedCommitments := CompressCommitments(resultVerifier)
+
+	// predicate should return true
+	if !b {
+		t.Fatal("Predicate should be true")
+	} else {
+		t.Log(b)
+	}
+
+	// share should be correct
+	if resultShare.Id != share0.Id || !bytes.Equal(resultShare.Value, share0.Value) {
+		t.Fatal("Predicate should return share that was used")
+	} else {
+		t.Log(b)
+	}
+
+	// verifier should be correct
+	if !bytes.Equal(initialCompressedCommitments, resultCompressedCommitments) {
+		t.Fatal("Predicate should return verifier that was used")
+	} else {
+		t.Log(b)
+	}
+}
+
+// Testcases predicate returns false
+// Test 1: wrong decryption key
+// Test 2: mismatch shares and commitments
+func TestPredicateError(t *testing.T) {
+
+	curve := curves.K256()
+	// KEYS
+	myKeyPair := GenerateKeyPair(curve)
+	dealerKeyPair := GenerateKeyPair(curve)
+
+	sharedKey := SharedKey(myKeyPair.PrivateKey, dealerKeyPair.PublicKey)
+	wrongKey := SharedKey(dealerKeyPair.PrivateKey, dealerKeyPair.PublicKey)
+
+	// THE SECRET
+	secret_scalar := GenerateSecret(curve)
+	var threshold uint32 = 3
+	var n uint32 = 5
+
+	// returns (*sharing.FeldmanVerifier, []sharing.ShamirShare, error)
+	verifier, shares, _ := GenerateCommitmentAndShares(secret_scalar, threshold, n, curve)
+	verifier_second_batch, _, _ := GenerateCommitmentAndShares(secret_scalar, threshold, n, curve)
+
+	// Prep the right form for the Predicate function
+	commitmentsByteArray := CompressCommitments(verifier)
+	second_batch_commitmentsByteArray := CompressCommitments(verifier_second_batch)
+	share0 := shares[0]
+	shareByteArray := make([]byte, 4+len(share0.Value))
+
+	// Serialize the Id as a 4-byte big endian uint32
+	binary.BigEndian.PutUint32(shareByteArray[:4], share0.Id)
+	// Append the Value bytes
+	copy(shareByteArray[4:], share0.Value)
+	// Encrypt with key combo equal to sharedKey
+	sharesEncrypted, _ := Encrypt(shareByteArray, dealerKeyPair.PublicKey, myKeyPair.PrivateKey)
+
+	// Test 1: wrong decryption key
+	_, _, b1 := Predicate(wrongKey[:], sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
+
+	// predicate should return false
+	if b1 {
+		t.Fatal("Predicate should be false for an incorrect decryption key")
+	}
+
+	// Test 2: mismatch shares and commitments
+	_, _, b2 := Predicate(sharedKey[:], sharesEncrypted, second_batch_commitmentsByteArray, len(verifier.Commitments), curve)
+
+	// predicate should return false
+	if b2 {
+		t.Fatal("Predicate should be false for incorrect commitments")
+	}
+
 }
 
 func TestSplit(t *testing.T) {

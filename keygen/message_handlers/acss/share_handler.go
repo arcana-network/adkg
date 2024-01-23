@@ -68,6 +68,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	keygen.Started = true
 
+	// TODO FIX this has to be commented out for the tests to run
 	telemetry.IncrementKeysGenerated()
 
 	curve := common.CurveFromName(m.Curve)
