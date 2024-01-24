@@ -30,6 +30,7 @@ func getFixedScalar(c *curves.Curve) (curves.Scalar, error) {
 	}
 }
 
+// CurveParams returns g, h generator points of the given curve
 func CurveParams(curveName string) (curves.Point, curves.Point) {
 	var c *curves.Curve
 

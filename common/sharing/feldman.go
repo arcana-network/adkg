@@ -17,6 +17,7 @@ type FeldmanVerifier struct {
 	Commitments []curves.Point
 }
 
+// Verify verifies the share against the commitments store in FeldmanVerifier
 func (v FeldmanVerifier) Verify(share *ShamirShare) error {
 	curve := curves.GetCurveByName(v.Commitments[0].CurveName())
 	err := share.Validate(curve)

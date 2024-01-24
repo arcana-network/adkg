@@ -22,7 +22,10 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
+// total number of nodes
 var n int = 7
+
+// number of max malicious nodes
 var f int = 3
 
 func TestRandom(t *testing.T) {

@@ -21,6 +21,8 @@ type ProposeMessage struct {
 	Data    []byte
 }
 
+// NewAcssProposeMessage create a DKGMessage with ProposeMessageType
+// that is used in the proposal phase.
 func NewAcssProposeMessage(id common.RoundID, d []byte, curve common.CurveName) (*common.DKGMessage, error) {
 	m := ProposeMessage{
 		id,
@@ -37,10 +39,14 @@ func NewAcssProposeMessage(id common.RoundID, d []byte, curve common.CurveName) 
 	return &msg, nil
 }
 
+// Process handles a ProposeMessage. It decrypts the shamir share from sender
+// and verifies the commitment. If verified, it encodes ProposeMessage data with
+// FEC and send EchoMessage with FEC share to every node.
 func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Propose: Round=%sReceived Propose", m.RoundID)
 
 	curve := common.CurveFromName(m.Curve)
+	// retrieve the leader node index
 	leader, err := m.RoundID.Leader()
 	if err != nil {
 		log.Errorf("Cound not get leader from roundID, err=%s", err)
@@ -58,14 +64,12 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 	// Generated shared symmetric key
 	n, k, _ := self.Params()
 	priv := self.PrivateKey()
-
 	dealerKey, err := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
 	// dealerKey, err := curve.Point.FromAffineCompressed(m.DealerPublicKey)
 	if err != nil {
 		log.Errorf("could not deserialize dealer public key: %s", err)
 		return
 	}
-
 	key := acss.SharedKey(priv, dealerKey)
 
 	// Verify self share against commitments

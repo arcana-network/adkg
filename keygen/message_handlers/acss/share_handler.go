@@ -19,6 +19,8 @@ type ShareMessage struct {
 	Curve   common.CurveName
 }
 
+// NewShareMessage create a DKGMessage with ShareMessageType
+// that is used in the sharing phase
 func NewShareMessage(id common.RoundID, curve common.CurveName) (*common.DKGMessage, error) {
 	m := ShareMessage{
 		id,
@@ -33,6 +35,11 @@ func NewShareMessage(id common.RoundID, curve common.CurveName) (*common.DKGMess
 	msg := common.CreateMessage(m.RoundID, m.Kind, bytes)
 	return &msg, nil
 }
+
+// Process handles a ShareMessage, generates a random secret and create
+// a polynomial w.r.t. the secret and thershold set in the node.
+// It calculates the commitment of the polynomial and the Shamir shares
+// of each node. Finally it create a ProposeMessage and broadcasts to all nodes.
 func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	log.Debugf("sender=%d, self=%d", sender.Index, self.ID())
 	if sender.Index != self.ID() {
@@ -50,6 +57,8 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		CStore:  make(map[string]*common.CStore),
 		Started: false,
 	}
+	// get or store defaultKeygen in state with roundID as key
+	// keygen is set to defaultKeygen if roundID is empty
 	keygen, complete := state.GetOrSetIfNotComplete(m.RoundID, defaultKeygen)
 
 	if complete {
@@ -68,6 +77,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	keygen.Started = true
 
+	// TODO FIX this has to be commented out for the test to run
 	telemetry.IncrementKeysGenerated()
 
 	curve := common.CurveFromName(m.Curve)
@@ -75,6 +85,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	secret := acss.GenerateSecret(curve)
 
 	// Generate share and commitments
+	// n=num of nodes, k=threhsold, f=num of malicious nodes
 	n, k, f := self.Params()
 
 	log.Debugf("keygenid=%s;n=%d;k=%d;f=%d", m.RoundID, n, k, f)
@@ -85,7 +96,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		log.Errorf("acss.GenerateCommitmentAndShares():err=%v", err)
 		return
 	}
-	// Compress commitments
+	// Compress commitments (concate in affineCompressed bytes form)
 	compressedCommitments := acss.CompressCommitments(commitments)
 
 	// Init share map
@@ -94,7 +105,6 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	// encrypt each share with node respective generated symmetric key, add to share map
 	for _, share := range shares {
 		nodePublicKey := self.PublicKey(int(share.Id))
-
 		cipherShare, err := acss.Encrypt(share.Bytes(), nodePublicKey,
 			self.PrivateKey())
 		if err != nil {

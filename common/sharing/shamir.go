@@ -25,6 +25,8 @@ type ShamirShare struct {
 	Value []byte `json:"value"`
 }
 
+// Validate checks if the share id is zero and checks
+// the curve scalar type match the share value
 func (ss ShamirShare) Validate(curve *curves.Curve) error {
 	if ss.Id == 0 {
 		return fmt.Errorf("invalid identifier")
@@ -66,6 +68,8 @@ func NewShamir(threshold, limit uint32, curve *curves.Curve) (*Shamir, error) {
 	return &Shamir{threshold, limit, curve}, nil
 }
 
+// Split generates a random polynomial with reader and secret,
+// and returns the Shamir shares of the polynomial.
 func (s Shamir) Split(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, error) {
 	if secret.IsZero() {
 		return nil, fmt.Errorf("invalid secret")
@@ -74,6 +78,8 @@ func (s Shamir) Split(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, e
 	return shares, nil
 }
 
+// getPolyAndShares Creates a random polynomial with reader and secret,
+// and returns the Shamir shares and the polynomial.
 func (s Shamir) getPolyAndShares(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, *sharing.Polynomial) {
 	poly := new(sharing.Polynomial).Init(secret, s.threshold, reader)
 	shares := make([]*ShamirShare, s.limit)

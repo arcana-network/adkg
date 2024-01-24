@@ -19,6 +19,8 @@ import (
 	"github.com/vivint/infectious"
 )
 
+// Encrypt encrypts share using aes
+// with key = self.private_key * receipient.public_key
 func Encrypt(share []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
 	key := public.Mul(priv)
 	keyHash := sha256.Sum256(key.ToAffineCompressed())
@@ -67,6 +69,7 @@ func decryptAES(key []byte, ciphertext []byte) ([]byte, error) {
 	return input, nil
 }
 
+// CompressCommitments concat a Feldman commitment in affineCompressed bytes
 func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
 	c := make([]byte, 0)
 	for _, v := range v.Commitments {
@@ -90,6 +93,8 @@ func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point
 	return commitment, nil
 }
 
+// verifierFromCommits returns a FeldmanVerifier on given
+// degree (k) and compressed commits (c) and curve type
 func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*sharing.FeldmanVerifier, error) {
 
 	commitment, err := DecompressCommitments(k, c, curve)
@@ -115,6 +120,9 @@ func GenerateSecret(c *curves.Curve) curves.Scalar {
 	return secret
 }
 
+// GenerateCommitmentAndShares generates a random polynomial and its Shamir shares
+// with s as secret, k as degree, and n as the number of shares.
+// It returns the feldman commitment and n Shamir shares of the polynomial.
 func GenerateCommitmentAndShares(s curves.Scalar, k, n uint32, curve *curves.Curve) (*sharing.FeldmanVerifier, []sharing.ShamirShare, error) {
 	f, err := sharing.NewFeldman(k, n, curve)
 	if err != nil {
@@ -128,11 +136,14 @@ func GenerateCommitmentAndShares(s curves.Scalar, k, n uint32, curve *curves.Cur
 	return feldcommit, shares, nil
 }
 
+// Split generates a random polynomial and its Shamir shares.
+// It returns the feldman commitment and n Shamir shares of the polynomial.
 func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, reader io.Reader) (*sharing.FeldmanVerifier, []sharing.ShamirShare, error) {
 
 	shares, poly := getPolyAndShares(secret, threshold, limit, curve, reader)
 	verifier := new(sharing.FeldmanVerifier)
 	verifier.Commitments = make([]curves.Point, threshold)
+	// calculates feldman commitment of the polynomial
 	for i := range verifier.Commitments {
 		base, _ := sharing.CurveParams(curve.Name)
 		verifier.Commitments[i] = base.Mul(poly.Coefficients[i])
@@ -140,6 +151,8 @@ func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, r
 	return verifier, shares, nil
 }
 
+// getPolyAndShares Creates a random polynomial and sets thresold as degree and scalar as secret
+// It returns a ploynomial and Shamir shares of every node
 func getPolyAndShares(
 	secret curves.Scalar,
 	threshold, limit uint32,
@@ -163,7 +176,8 @@ func SharedKey(priv curves.Scalar, dealerPublicKey curves.Point) [32]byte {
 	return keyHash
 }
 
-// Predicate verifies if the share fits the polynomial commitments
+// Predicate decrypt the shamir share and verifies
+// if it fits the polynomial commitments
 func Predicate(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
 
 	shareBytes, err := decryptAES(key, cipher)
@@ -186,6 +200,7 @@ func Predicate(key []byte, cipher []byte, commits []byte, k int, curve *curves.C
 	return &share, verifier, true
 }
 
+// Encode encodes msg with an FEC encoder
 func Encode(encoder *infectious.FEC, msg []byte) ([]infectious.Share, error) {
 	shares := make([]infectious.Share, encoder.Total())
 	output := func(s infectious.Share) {

@@ -85,6 +85,9 @@ func (d *RoundDetails) FromID(roundID RoundID) error {
 	return nil
 }
 
+// Leader returns the node index inside the RoundID
+// e.g. RoundID="ADKG\x1e1\x1facss\x1f4",
+// Delimiter4="x1f", and node index=4
 func (r *RoundID) Leader() (big.Int, error) {
 	str := string(*r)
 	substrs := strings.Split(str, Delimiter4)
@@ -256,7 +259,7 @@ func GetADKGIDFromRoundID(roundID RoundID) (ADKGID, error) {
 type DkgParticipant interface {
 	// For ADKG state
 	ParticipantState
-	// Get Protocol n, k and f
+	// Get Protocol n (number of nodes), k (threshold) and t (num of malicious nodes)
 	Params() (n int, k int, t int)
 	// Node Index
 	ID() int
