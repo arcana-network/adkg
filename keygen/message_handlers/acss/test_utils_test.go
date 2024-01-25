@@ -45,15 +45,16 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 	log.Info("Creating nodes...")
 	i := 1
 
+	// Note `NewNode` is called with k=f+1
 	for j := 0; j < count; j++ {
 		log.Infof("Creating node %d", i)
-		node := NewNode(i, n, f, nodeList[i], transport, false)
+		node := NewNode(i, n, f+1, nodeList[i], transport, false)
 		nodes = append(nodes, node)
 		i++
 	}
 	for j := 0; j < faultyCount; j++ {
 		log.Infof("Creating faulty node %d", i)
-		node := NewNode(i, n, f, nodeList[i], transport, true)
+		node := NewNode(i, n, f+1, nodeList[i], transport, true)
 		nodes = append(nodes, node)
 		i++
 	}
