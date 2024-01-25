@@ -88,6 +88,10 @@ func TestGetPolyAndShares(t *testing.T) {
 			t.Error("a share and its evaluation in the polynomial are not the same.")
 		}
 	}
+
+	if poly.Coefficients[0].Cmp(secret) != 0 {
+		t.Error("the constant in the polynomial is different to the secret value.")
+	}
 }
 
 // TestCombinePoints test if the combination proces in the exponent agrees with
