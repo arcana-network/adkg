@@ -76,3 +76,37 @@ func TestFeldmanCombineAndCombinePoint(t *testing.T) {
 		t.Errorf("the reconstructed points %v and %v are not equal", reconstrPoint, secretPower)
 	}
 }
+
+func TestFeldmanLagrangeCoefficients(t *testing.T) {
+	feldman := feldmanSetup()
+	secret := feldman.Curve.Scalar.Random(rand.Reader)
+	_, shares, err := feldman.Split(secret, rand.Reader)
+	if err != nil {
+		t.Errorf("failure while creating the shares: %v", err)
+	}
+
+	mapShares := make(map[uint32]*ShamirShare)
+	for i, share := range shares {
+		mapShares[uint32(i+1)] = share
+	}
+
+	coeffs, err := feldman.LagrangeCoeffs(mapShares)
+	if err != nil {
+		t.Errorf("error constructing the Lagrange coefficients: %v", err)
+	}
+
+	linearComb := feldman.Curve.Scalar.Zero()
+	for xPoint, c := range coeffs {
+		shareScalar := feldman.Curve.Scalar.Zero()
+		shareScalar, err = shareScalar.SetBytes(shares[xPoint-1].Value)
+		if err != nil {
+			t.Errorf("failure setting the bytes of the scalar: %v", err)
+		}
+		prod := c.Mul(shareScalar)
+		linearComb = linearComb.Add(prod)
+	}
+
+	if linearComb.Cmp(secret) != 0 {
+		t.Error("the coefficient don't interpolate the same secret.")
+	}
+}

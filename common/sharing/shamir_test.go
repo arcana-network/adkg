@@ -203,7 +203,10 @@ func TestLagrangeCoefficients(t *testing.T) {
 	linearComb := shamir.curve.Scalar.Zero()
 	for xPoint, c := range coeffs {
 		shareScalar := shamir.curve.Scalar.Zero()
-		shareScalar.SetBytes(shares[xPoint-1].Value)
+		shareScalar, err = shareScalar.SetBytes(shares[xPoint-1].Value)
+		if err != nil {
+			t.Errorf("failure setting the bytes of the scalar: %v", err)
+		}
 		prod := c.Mul(shareScalar)
 		linearComb = linearComb.Add(prod)
 	}
