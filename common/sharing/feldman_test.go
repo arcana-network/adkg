@@ -48,3 +48,31 @@ func TestFeldmanVerfication(t *testing.T) {
 		}
 	}
 }
+
+func TestFeldmanCombineAndCombinePoint(t *testing.T) {
+	feldman := feldmanSetup()
+	secret := feldman.Curve.Scalar.Random(rand.Reader)
+
+	_, shares, err := feldman.Split(secret, rand.Reader)
+	if err != nil {
+		t.Error("failure during the share construction and commitment.")
+	}
+
+	reconstrScalar, err := feldman.Combine(shares[:]...)
+	if err != nil {
+		t.Errorf("error during the reconstruction of the shares: %v", err)
+	}
+
+	if reconstrScalar.Cmp(secret) != 0 {
+		t.Errorf("the values %v and %v should be equal", reconstrScalar, secret)
+	}
+
+	reconstrPoint, err := feldman.CombinePoints(shares[:]...)
+	if err != nil {
+		t.Errorf("error during the point reconstruction: %v", err)
+	}
+	secretPower := feldman.Curve.ScalarBaseMult(secret)
+	if !reconstrPoint.Equal(secretPower) {
+		t.Errorf("the reconstructed points %v and %v are not equal", reconstrPoint, secretPower)
+	}
+}
