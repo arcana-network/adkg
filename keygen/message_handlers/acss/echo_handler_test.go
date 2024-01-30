@@ -24,7 +24,7 @@ Expects:
 func TestReceiveFirstEchoMessage(t *testing.T) {
 	// Node 3 is the dealer of this round and is the one that sends shares to all nodes
 	// Node 0 is the receiver of all echoes
-	nodes, transport, node0, round, hash, encodedShares := setup()
+	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	// We skip the part where node0 "really" receives the share, we immediately send an echo to all other nodes
 	for _, nodeDetails := range node0.Nodes() {
@@ -72,7 +72,7 @@ func TestReceiveFirstEchoMessage(t *testing.T) {
 	assert.Equal(t, len(broadcastedMessages), 0, "No `Ready` messages should have been broadcasted")
 }
 
-func setup() ([]*Node, *MockTransport, *Node, common.RoundDetails, []byte, []infectious.Share) {
+func setupEchoHandlerTest() ([]*Node, *MockTransport, *Node, common.RoundDetails, []byte, []infectious.Share) {
 	id := common.GenerateADKGID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
@@ -125,7 +125,7 @@ Expects: the node broadcast a "Ready" message
 func TestReadyMsgSentCase1(t *testing.T) {
 	// Node0 needs to receive 2*3+1=7 echoes; an echo from each node
 
-	nodes, transport, node0, round, hash, encodedShares := setup()
+	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	// All nodes will echo to node0
 	for _, echoingNode := range nodes {
@@ -138,7 +138,7 @@ func TestReadyMsgSentCase1(t *testing.T) {
 	// Give some time for all echoes to be processed.
 	time.Sleep(500 * time.Millisecond)
 
-	// After receiving 2*f+1 (=7) echoes, node0 broadcasts a Ready message
+	// After receiving 2*f+1 echoes, node0 broadcasts a Ready message
 	// (none of the other nodes should broadcast)
 	broadcastedMessages := transport.GetBroadcastedMessages()
 	assert.Equal(t, 1, len(broadcastedMessages), "Node0 should broadcast the Ready message")
@@ -146,7 +146,7 @@ func TestReadyMsgSentCase1(t *testing.T) {
 
 // manually set the EC and RC values in CStore before sending the EchoMessage to the node
 func sendEchoWithCStore(cEC int, cRC int, readySent bool) *MockTransport {
-	nodes, transport, node0, round, hash, encodedShares := setup()
+	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	echoingNode := nodes[1]
 
@@ -159,7 +159,7 @@ func sendEchoWithCStore(cEC int, cRC int, readySent bool) *MockTransport {
 		hash,
 	}
 	cid := msg.Fingerprint()
-	defaultKeygen := getDefaultKeygen(round)
+	defaultKeygen := NewDefaultKeygen(round)
 
 	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
 	c := common.GetCStore(keygen, cid)
@@ -173,19 +173,6 @@ func sendEchoWithCStore(cEC int, cRC int, readySent bool) *MockTransport {
 	return transport
 }
 
-func getDefaultKeygen(round common.RoundDetails) *common.SharingStore {
-	defaultKeygen := &common.SharingStore{
-		RoundID: round.ID(),
-		State: common.RBCState{
-			Phase:         common.Initial,
-			ReceivedReady: make(map[int]bool),
-			ReceivedEcho:  make(map[int]bool),
-		},
-		CStore: make(map[string]*common.CStore),
-	}
-	return defaultKeygen
-}
-
 func checkMessageWasBroadcast(transport *MockTransport, t *testing.T) {
 	broadcastedMessages := transport.GetBroadcastedMessages()
 	assert.Equal(t, 1, len(broadcastedMessages), "Node0 should broadcast the Ready message")
@@ -196,7 +183,6 @@ func checkNoMessageBroadcast(transport *MockTransport, t *testing.T) {
 	assert.Equal(t, 0, len(broadcastedMessages), "Node0 shouldn't broadcast the Ready message")
 }
 
-// In test f=3
 /*
 Function: Process
 Case: a node receives an echo and in the CStore EC = f, RC = f+1 and readySent = false
@@ -283,7 +269,7 @@ func TestShouldNOTBroadcast4(t *testing.T) {
 
 // return early if keygen process is already complete
 func TestKeygenAlreadyComplete(t *testing.T) {
-	nodes, transport, node0, round, hash, encodedShares := setup()
+	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	// In node0 we mark the keygen round as complete
 	state := node0.State().KeygenStore
@@ -300,14 +286,14 @@ func TestKeygenAlreadyComplete(t *testing.T) {
 	// Give some time for all echoes to be processed.
 	time.Sleep(500 * time.Millisecond)
 
-	// Even though node0 receives 2*f+1 (=7) echoes, no Ready msg is sent because keygen was already marked complete
+	// Even though node0 receives 2*f+1 echoes, no Ready msg is sent because keygen was already marked complete
 	broadcastedMessages := transport.GetBroadcastedMessages()
 	assert.Equal(t, 0, len(broadcastedMessages), "No message should be broadcasted")
 }
 
 // return early if echo was already received
 func TestEchoAlreadyReceived(t *testing.T) {
-	nodes, transport, node0, round, hash, encodedShares := setup()
+	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	echoingNode := nodes[1]
 
@@ -320,7 +306,7 @@ func TestEchoAlreadyReceived(t *testing.T) {
 		hash,
 	}
 	cid := msg.Fingerprint()
-	defaultKeygen := getDefaultKeygen(round)
+	defaultKeygen := NewDefaultKeygen(round)
 
 	// Send Echo for the 1st time
 	node0.ReceiveMessage(echoingNode.Details(), *msgToSend)

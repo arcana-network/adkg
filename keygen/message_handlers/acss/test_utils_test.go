@@ -13,6 +13,7 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyset"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/torusresearch/bijson"
@@ -20,7 +21,8 @@ import (
 
 // TODO not hardcode this
 var n int = 7
-var f int = 3
+var k int = 3
+var f int = k-1
 
 // TODO move test_utils
 
@@ -28,7 +30,7 @@ func getSingleNode() (*Node, *MockTransport) {
 	nodes := []*Node{}
 	keypair := acssc.GenerateKeyPair(curves.K256())
 	transport := NewMockTransport(nodes)
-	node := NewNode(1, n, f, keypair, transport, false)
+	node := NewNode(1, n, k, keypair, transport, false)
 	transport.Init([]*Node{node})
 	return node, transport
 }
@@ -48,13 +50,13 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 	// Note `NewNode` is called with k=f+1
 	for j := 0; j < count; j++ {
 		log.Infof("Creating node %d", i)
-		node := NewNode(i, n, f+1, nodeList[i], transport, false)
+		node := NewNode(i, n, k, nodeList[i], transport, false)
 		nodes = append(nodes, node)
 		i++
 	}
 	for j := 0; j < faultyCount; j++ {
 		log.Infof("Creating faulty node %d", i)
-		node := NewNode(i, n, f+1, nodeList[i], transport, true)
+		node := NewNode(i, n, k, nodeList[i], transport, true)
 		nodes = append(nodes, node)
 		i++
 	}
@@ -490,4 +492,16 @@ func NewNode(id, n, k int, keypair common.KeyPair, transport *MockTransport, isF
 		shares:    make(map[int64]*big.Int),
 	}
 	return &node
+}
+
+func NewDefaultKeygen(round common.RoundDetails) *common.SharingStore {
+	return &common.SharingStore{
+			RoundID: round.ID(),
+			State: common.RBCState{
+					Phase:         common.Initial,
+					ReceivedReady: make(map[int]bool),
+					ReceivedEcho:  make(map[int]bool),
+			},
+			CStore: make(map[string]*common.CStore),
+	}
 }
