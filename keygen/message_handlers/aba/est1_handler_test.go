@@ -28,8 +28,8 @@ func TestSendEst1(t *testing.T) {
 	for i := 1; i < f+1; i++ {
 		store.SetValues("est", r, vote, nodes[i].id)
 	}
-	
-	// the (f+1)-th message should trigger sending 
+
+	// the (f+1)-th message should trigger sending
 	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
 	time.Sleep(1 * time.Second)
 
@@ -56,11 +56,11 @@ func TestSendAux1(t *testing.T) {
 	// mark the EST1 msg as sent
 	store.SetSent("est", r, vote)
 
-	for i := 1; i < (2*f+1); i++ {
+	for i := 1; i < (2*f + 1); i++ {
 		store.SetValues("est", r, vote, nodes[i].id)
 	}
-	
-	// the (2f+1)-th message should trigger sending 
+
+	// the (2f+1)-th message should trigger sending
 	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
 	time.Sleep(1 * time.Second)
 
@@ -104,7 +104,7 @@ func TestKeygenAlreadyComplete(t *testing.T) {
 	// Set the keygen state to completed
 	state := receiverNode.State()
 	state.ABAStore.Complete(round.ID())
-	
+
 	// Send f+1 Est1 messages, which normally should trigger sending Est1 message
 	// but since keygen is marked complete won't trigger broadcast
 	for i := 0; i < f+1; i++ {
@@ -134,7 +134,7 @@ func TestEstAlreadyReceived(t *testing.T) {
 	for i := 0; i < f; i++ {
 		store.SetValues("est", r, vote, nodes[i].id)
 	}
-	
+
 	// Node0 again sends est1 message which triggers early return
 	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
 	time.Sleep(1 * time.Second)

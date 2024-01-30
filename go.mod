@@ -123,7 +123,8 @@ require (
 	golang.org/x/exp v0.0.0-20230118134722-a68e582fa157 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
-	golang.org/x/tools v0.5.0 // indirect
+	golang.org/x/tools v0.5.1-0.20230111220935-a7f7db3f17fc // indirect
+	golang.org/x/tools/cmd/cover v0.1.0-deprecated // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect

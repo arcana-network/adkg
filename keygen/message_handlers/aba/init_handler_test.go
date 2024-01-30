@@ -27,7 +27,7 @@ func TestProcessInitMessageVote1(t *testing.T) {
 	r := 0
 	vote := 1
 	transport, nodes, msg, round := abaTestSetup(r, vote)
-	
+
 	// Check est "sent" is not yet set to true
 	store, _ := nodes[1].State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
 	assert.False(t, store.Sent("est", r, vote))
@@ -139,10 +139,10 @@ Expects: early return; no msg broadcast
 // 	transport, nodes, msg, round := abaTestSetup(vote, r)
 
 // 	store, _ := nodes[1].State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
-	
+
 // 	store.SetStarted(r)
 // 	log.Infof("bool %v", store.GetStarted(r) )
-	
+
 // 	nodes[1].ReceiveMessage(nodes[1].Details(), *msg)
 // 	time.Sleep(1 * time.Second)
 
