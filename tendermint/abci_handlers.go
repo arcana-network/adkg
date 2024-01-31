@@ -1,6 +1,7 @@
 package tendermint
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -68,7 +69,7 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 				return false, errors.New("Key already processed")
 			}
 
-			key := string(adkgid)
+			key := string(adkgid) + hex.EncodeToString(common.Keccak256(m.PublicKey.X.Bytes()))
 
 			// Otherwise try to get decision
 			decision, ok := abci.state.KeygenDecisions[key]
@@ -227,7 +228,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 				return false, &tags, errors.New("Key already processed")
 			}
 
-			key := string(adkgid)
+			key := string(adkgid) + hex.EncodeToString(common.Keccak256(m.PublicKey.X.Bytes()))
 
 			// Otherwise try to get decision
 			decision, ok := abci.state.KeygenDecisions[key]

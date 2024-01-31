@@ -233,7 +233,7 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 			"EndBlockHeight":      req.Height,
 			"LastCreatedIndex":    int(abci.state.LastCreatedIndex),
 			"LastUnassignedIndex": int(abci.state.LastUnassignedIndex),
-		}).Info("EndBlock:ED25519")
+		}).Info("EndBlock")
 		end := MinOf(int(abci.state.LastCreatedIndex)+maxKeyInit, int(abci.state.LastUnassignedIndex)+buffer)
 		log.WithFields(log.Fields{
 			"Start":  int(abci.state.LastCreatedIndex),
@@ -262,9 +262,8 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 		}
 	}
 
-	// TODO: Fix buffer here
 	edBuffer := buffer / 10
-	maxEDKeyInit := 20
+	maxEDKeyInit := maxKeyInit / 10
 	endED := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxEDKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+edBuffer)
 	log.WithFields(log.Fields{
 		"LastCreatedIndex":    int(abci.state.C25519State.LastCreatedIndex),
