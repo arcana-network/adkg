@@ -1,4 +1,4 @@
-// The reason for this file to be here instead of in `aba/` is because of import cycle
+// TODO: move this tests into aba/
 package keygen
 
 import (
