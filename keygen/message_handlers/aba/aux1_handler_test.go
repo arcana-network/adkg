@@ -16,7 +16,8 @@ Function: Process
 Case: f+1 NewAux1Message messages for this round, r and v have been received and node[n-1] hasn't broadcast NewAux1Message yet
 Expects: node[n-1] broadcasts AuxsetMessage
 */
-func TestSendAux1Msg(t *testing.T) {
+// CASE1: for binVal = 1
+func TestSendAux1MsgCase1(t *testing.T) {
 	r := 0
 	vote := 1
 
@@ -36,10 +37,20 @@ func TestSendAux1Msg(t *testing.T) {
 		store.SetValues("aux", r, vote, nodes[i].id)
 	}
 
+	//check that the store sets correctly
+	for i := 1; i < n-1; i++ {
+		assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[i].id), true)
+	}
+
 	store.SetBin("bin", r, vote)
 
 	assert.NotNil(t, store.GetBin("bin", r))
+	assert.Equal(t, Contains(store.GetBin("bin", r), 1), true)
+
 	assert.GreaterOrEqual(t, len(store.Values("aux", r, vote)), n-f)
+
+	//check that before sending msg aux value is not present
+	assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[0].id), false)
 
 	// the (f+1)-th message should trigger sending
 	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
@@ -49,6 +60,123 @@ func TestSendAux1Msg(t *testing.T) {
 	countBroadcastedAux1Msg := getCountMsg(transport, AuxsetMessageType)
 
 	assert.Equal(t, 1, countBroadcastedAux1Msg, "This node should have broadcasted an Aux1MessageType")
+
+	//check that after sending msg aux value is present
+	assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[0].id), true)
+	assert.Equal(t, store.Sent("auxset", r, vote), true)
+
+	assert.Equal(t, Contains(store.Values("auxset", r, vote), receiverNode.id), true)
+
+}
+
+// CASE2: for binVal = 0
+func TestSendAux1MsgCase2(t *testing.T) {
+	r := 0
+	vote := 0
+
+	//setup
+	transport, nodes, msg, round := AuxTestSetup(r, vote)
+
+	receiverNode := nodes[n-1]
+
+	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+
+	assert.Equal(t, complete, false, "should not be complete")
+
+	// node[n-1] will receive NewAux1Message from node0
+	// store already received NewAux1Message messages from n-2 other nodes
+
+	for i := 1; i < n-1; i++ {
+		store.SetValues("aux", r, vote, nodes[i].id)
+	}
+
+	//check that the store sets correctly
+	for i := 1; i < n-1; i++ {
+		assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[i].id), true)
+	}
+
+	store.SetBin("bin", r, vote)
+
+	assert.NotNil(t, store.GetBin("bin", r))
+	assert.Equal(t, Contains(store.GetBin("bin", r), 0), true)
+
+	assert.GreaterOrEqual(t, len(store.Values("aux", r, vote)), n-f)
+
+	//check that before sending msg aux value is not present
+	assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[0].id), false)
+
+	// the (f+1)-th message should trigger sending
+	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
+	time.Sleep(1 * time.Second)
+
+	// Check that AuxsetMessageType was broadcasted
+	countBroadcastedAux1Msg := getCountMsg(transport, AuxsetMessageType)
+
+	assert.Equal(t, 1, countBroadcastedAux1Msg, "This node should have broadcasted an Aux1MessageType")
+
+	//check that after sending msg aux value is present
+	assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[0].id), true)
+	assert.Equal(t, store.Sent("auxset", r, vote), true)
+
+	assert.Equal(t, Contains(store.Values("auxset", r, vote), receiverNode.id), true)
+
+}
+
+// CASE3: aux0Len+aux1Len >= n-f && Contains(bin, 1) && Contains(bin, 0)
+func TestSendAux1MsgCase3(t *testing.T) {
+	r := 0
+	vote := 0
+
+	//setup
+	transport, nodes, msg, round := AuxTestSetup(r, vote)
+
+	receiverNode := nodes[n-1]
+
+	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+
+	assert.Equal(t, complete, false, "should not be complete")
+
+	// node[n-1] will receive NewAux1Message from node0
+	// store already received NewAux1Message messages from n-2 other nodes
+
+	for i := 1; i < n-1; i++ {
+		store.SetValues("aux", r, vote, nodes[i].id)
+	}
+
+	//check that the store sets correctly
+	for i := 1; i < n-1; i++ {
+		assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[i].id), true)
+	}
+
+	store.SetBin("bin", r, 0)
+	store.SetBin("bin", r, 1)
+
+	assert.NotNil(t, store.GetBin("bin", r))
+	assert.Equal(t, Contains(store.GetBin("bin", r), 0), true)
+	assert.Equal(t, Contains(store.GetBin("bin", r), 1), true)
+
+	assert.GreaterOrEqual(t, len(store.Values("aux", r, 0))+len(store.Values("aux", r, 1)), n-f)
+
+	//check that before sending msg aux value is not present
+	assert.Equal(t, Contains(store.Values("aux", r, 0), nodes[0].id), false)
+	assert.Equal(t, Contains(store.Values("aux", r, 1), nodes[0].id), false)
+
+	// the (f+1)-th message should trigger sending
+	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
+	time.Sleep(1 * time.Second)
+
+	// Check that AuxsetMessageType was broadcasted
+	countBroadcastedAux1Msg := getCountMsg(transport, AuxsetMessageType)
+
+	assert.Equal(t, 1, countBroadcastedAux1Msg, "This node should have broadcasted an Aux1MessageType")
+
+	//check that after sending msg aux value is present
+	assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[0].id), true)
+
+	assert.Equal(t, store.Sent("auxset", r, 2), true)
+
+	assert.Equal(t, Contains(store.Values("auxset", r, vote), receiverNode.id), true)
+
 }
 
 /*
