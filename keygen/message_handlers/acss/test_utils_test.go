@@ -71,6 +71,7 @@ type MockTransport struct {
 	output              chan string
 	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
 	sentMessages        []common.DKGMessage
+	receivedMessages 		[]common.DKGMessage
 }
 
 func NewMockTransport(nodes []*Node) *MockTransport {
@@ -137,6 +138,7 @@ type Node struct {
 }
 
 func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+	node.transport.receivedMessages = append(node.transport.receivedMessages, keygenMessage) // Save the message
 	node.messageCount = node.messageCount + 1
 	switch {
 	case strings.HasPrefix(keygenMessage.Method, "acss"):
@@ -152,6 +154,30 @@ func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage 
 		log.Infof("No handler found. MsgType=%s", keygenMessage.Method)
 		// return fmt.Errorf("KeygenMessage method %v not found", keygenMessage.Method)
 	}
+}
+
+func (node *Node) CountReceivedMessages(msgType string) int {
+	receivedMessages := node.transport.receivedMessages
+	filteredMessages := make([]common.DKGMessage, 0)
+
+	for _, msg := range receivedMessages {
+		if msg.Method == msgType {
+			filteredMessages = append(filteredMessages, msg)
+		}
+	}
+	return len(filteredMessages)
+}
+
+func (node *Node) GetReceivedMessages(msgType string) []common.DKGMessage {
+	receivedMessages := node.transport.receivedMessages
+	filteredMessages := make([]common.DKGMessage, 0)
+
+	for _, msg := range receivedMessages {
+		if msg.Method == msgType {
+			filteredMessages = append(filteredMessages, msg)
+		}
+	}
+	return filteredMessages
 }
 
 func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
