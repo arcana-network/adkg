@@ -152,7 +152,6 @@ func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage 
 
 	default:
 		log.Infof("No handler found. MsgType=%s", keygenMessage.Method)
-		// return fmt.Errorf("KeygenMessage method %v not found", keygenMessage.Method)
 	}
 }
 
@@ -330,7 +329,6 @@ func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, 
 	}
 }
 
-// E: process "acss" msg
 func (node *Node) ProcessACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case ShareMessageType:

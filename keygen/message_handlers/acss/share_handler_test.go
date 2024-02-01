@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"sync"
 	"testing"
 	"time"
 
@@ -26,12 +25,12 @@ Happy path check;
 5. all ProposeMessages must have a share for all nodes in the sharesMap
 6. the shares & commitments in the sharesMap can be verified
 */
-func processShareMsg(t *testing.T) {
+func TestShareMsg(t *testing.T) {
 	id := common.GenerateADKGID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
-	nodes, transport := setupNodes(7, 0)
+	nodes, transport := setupNodes(n, 0)
 
 	timeout := time.After(30 * time.Second)
 	done := make(chan bool)
@@ -138,7 +137,7 @@ Checks:
 1. keygen state will not be initialized
 2. no ProposeMessage will be sent
 */
-func processSenderNotNode(t *testing.T) {
+func TestSenderNotNode(t *testing.T) {
 	id := common.GenerateADKGID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
@@ -188,7 +187,7 @@ Expects: early return
 Checks:
 1. no ProposeMessage will be sent
 */
-func processKeygenAlreadyCompleted(t *testing.T) {
+func TestKeygenAlreadyCompleted(t *testing.T) {
 	id := common.GenerateADKGID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
@@ -231,7 +230,7 @@ Function: Process
 Case: keygen state "Started" already true
 Expects: early return
 */
-func processKeygenAlreadyStarted(t *testing.T) {
+func TestKeygenAlreadyStarted(t *testing.T) {
 	id := common.GenerateADKGID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
@@ -279,36 +278,4 @@ func processKeygenAlreadyStarted(t *testing.T) {
 	// Check 1: no ProposeMessage will be sent
 	broadcastedMessages := transport.GetBroadcastedMessages()
 	assert.Equal(t, len(broadcastedMessages), 0)
-}
-
-type testFunc func(*testing.T)
-
-func TestACSS(t *testing.T) {
-	// To prevent any issues between different testcases, we call them in this way, instead of separate test functions
-
-	var wg sync.WaitGroup
-
-	// Tests to be executed
-	tests := []testFunc{
-		// Function: Process. Test Happy Path for catching "ShareMessage" msg
-		processShareMsg,
-		// Function: Process. Testcase: sender node not equal to node receiving the msg
-		processSenderNotNode,
-		// Function: Process. Testcase: keygen was already completed (triggers early return)
-		processKeygenAlreadyCompleted,
-		// Function: Process. Testcase: keygen already started (triggers early return)
-		processKeygenAlreadyStarted,
-		// Add any new test functions here...
-	}
-
-	// Iterate over the test functions and execute them concurrently
-	for _, test := range tests {
-		wg.Add(1)
-		go func(tf testFunc) {
-			defer wg.Done()
-			tf(t)
-		}(test)
-	}
-
-	wg.Wait()
 }
