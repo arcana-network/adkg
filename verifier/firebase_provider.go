@@ -143,7 +143,7 @@ func (f *FirebaseProvider) Verify(message *bijson.RawMessage, params *common.Ver
 	if err != nil {
 		return false, "", err
 	}
-	if time.Now().Sub(iat.Time) > f.Leeway {
+	if time.Since(iat.Time) > f.Leeway {
 		return false, "", errors.New("token was issued way too long ago")
 	}
 

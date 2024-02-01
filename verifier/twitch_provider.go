@@ -1,35 +1,30 @@
 package verifier
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/imroc/req/v3"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/torusresearch/bijson"
 )
 
 func NewTwitchProvider() *TwitchVerifier {
+	provider, err := oidc.NewProvider(context.TODO(), "https://id.twitch.tv/oauth2")
+	if err != nil {
+		panic(err)
+	}
 	return &TwitchVerifier{
-		Timeout: 60 * time.Second,
+		Timeout:  60 * time.Second,
+		provider: provider,
 	}
 }
 
-type TwitchAuthResponse struct {
-	AUD      string `json:"aud"`
-	EXP      int    `json:"exp"`
-	IAT      int    `json:"iat"`
-	ISS      string `json:"iss"`
-	SUB      string `json:"sub"`
-	AZP      string `json:"azp"`
-	Email    string `json:"email"`
-	Verified bool   `json:"email_verified"`
-}
-
 type TwitchVerifier struct {
-	Timeout time.Duration
+	Timeout  time.Duration
+	provider *oidc.Provider
 }
 
 type TwitchVerifierParams struct {
@@ -57,34 +52,39 @@ func (t *TwitchVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 		return false, "", errors.New("invalid payload parameters")
 	}
 
-	var body TwitchAuthResponse
+	verifier := t.provider.Verifier(&oidc.Config{ClientID: params.ClientID})
 
-	res, err := req.R().
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.IDToken)).
-		SetSuccessResult(&body).
-		Get("https://id.twitch.tv/oauth2/userinfo")
+	token, err := verifier.Verify(context.TODO(), p.IDToken)
 	if err != nil {
 		return false, "", err
 	}
 
-	if res.IsErrorState() {
-		return false, "", errors.New("twitch_auth_error")
+	if token.IssuedAt.Add(t.Timeout).Before(time.Now()) {
+		return false, "", errors.New("timesigned is more than 60 seconds ago " + token.IssuedAt.String())
 	}
 
-	timeSigned := time.Unix(int64(body.IAT), 0)
-
-	if !body.Verified {
-		return false, "", ErrorIDNotVerified
+	var claims map[string]interface{}
+	err = token.Claims(&claims)
+	if err != nil {
+		return false, "", err
 	}
 
-	if timeSigned.Add(t.Timeout).Before(time.Now()) {
-		return false, "", errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
+	email, ok := claims["email"].(string)
+	if !ok {
+		return false, "", errors.New("email_not_found")
 	}
-	if body.Email != p.UserID {
+
+	emailVerified, ok := claims["email_verified"].(bool)
+	if !ok {
+		return false, "", errors.New("email_verified_not_found")
+	}
+
+	if !emailVerified {
+		return false, "", errors.New("email_not_verified")
+	}
+
+	if email != p.UserID {
 		return false, "", errors.New("user_id_mismatch")
-	}
-	if body.AUD != params.ClientID {
-		return false, "", fmt.Errorf("client_id_mismatch: %s %s", params.ClientID, body.AUD)
 	}
 
 	return true, p.UserID, nil

@@ -27,11 +27,16 @@ type completedShare struct {
 	SiPrime big.Int `json:"si_prime"`
 }
 
+var keyIndexToPubKeyBytes = []byte("h")
+var keyIndexToPubKeyEDBytes = []byte("hED")
 var pubkeyToKeyIndexBytes = []byte("f")
+var pubkeyToKeyIndexEDBytes = []byte("fdd")
 var commitmentBytes = []byte("co")
+var commitmentEDBytes = []byte("mdom")
 var TBytes = []byte("t")
+var TEDBytes = []byte("de")
 var completedPSSShareBytes = []byte("b")
-var completedShareCountBytes = []byte("c")
+var completedEDPSSShareBytes = []byte("ad")
 var keygenIDBytes = []byte("g")
 var connectionDetailsBytes = []byte("i")
 var pssCommitmentMatrixBytes = []byte("e")
@@ -44,9 +49,12 @@ func NewDB(path string) (*DBWrapper, error) {
 	}
 	return &DBWrapper{db: db}, nil
 }
-func (t *DBWrapper) RetrieveCompletedShare(keyIndex big.Int) (*big.Int, *big.Int, error) {
+func (t *DBWrapper) RetrieveCompletedShare(keyIndex big.Int, curve common.CurveName) (*big.Int, *big.Int, error) {
 	keyIndexBytes := keyIndex.Bytes()
 	completedShareKey := append(completedPSSShareBytes, keyIndexBytes...)
+	if curve == common.ED25519 {
+		completedShareKey = append(completedEDPSSShareBytes, keyIndexBytes...)
+	}
 	res := t.Get(completedShareKey)
 	if res != nil {
 		var retrievedShare completedShare
@@ -59,9 +67,12 @@ func (t *DBWrapper) RetrieveCompletedShare(keyIndex big.Int) (*big.Int, *big.Int
 	return nil, nil, errors.New("Share not found!")
 }
 
-func (w *DBWrapper) StoreCompletedPSSShare(keyIndex big.Int, si big.Int, siprime big.Int) error {
+func (w *DBWrapper) StoreCompletedPSSShare(keyIndex big.Int, si big.Int, siprime big.Int, curve common.CurveName) error {
 	keyIndexBytes := keyIndex.Bytes()
 	completedShareKey := append(completedPSSShareBytes, keyIndexBytes...)
+	if curve == common.ED25519 {
+		completedShareKey = append(completedEDPSSShareBytes, keyIndexBytes...)
+	}
 	marshalledShare, err := bijson.Marshal(completedShare{
 		Si:      si,
 		SiPrime: siprime,
@@ -73,24 +84,27 @@ func (w *DBWrapper) StoreCompletedPSSShare(keyIndex big.Int, si big.Int, siprime
 	return nil
 }
 
-func (w *DBWrapper) StoreCommitment(keyIndex big.Int, T []int, metadata map[string][]common.Point) error {
+func (w *DBWrapper) StoreCommitment(keyIndex big.Int, T []int, metadata map[string][]common.Point, curve common.CurveName) error {
 	keyIndexBytes := keyIndex.Bytes()
 	commitmentKey := append(commitmentBytes, keyIndexBytes...)
+	if curve == common.ED25519 {
+		commitmentKey = append(commitmentEDBytes, keyIndexBytes...)
+	}
 
-	log.Debugf("coverted-meta=%v", metadata)
 	marshalledCommitment, err := bijson.Marshal(metadata)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("set-metadata=%v", marshalledCommitment)
 	w.Set(commitmentKey, marshalledCommitment)
 
 	// Storing T
 	tkey := append(TBytes, keyIndexBytes...)
-	log.Debugf("set-metadata-t=%v", T)
-
+	if curve == common.ED25519 {
+		tkey = append(TEDBytes, keyIndexBytes...)
+	}
 	tVal, _ := bijson.Marshal(T)
+
 	w.Set(tkey, tVal)
 
 	return nil
@@ -163,22 +177,31 @@ func (t *DBWrapper) RetrievePublicKeyToKeyIndex(publicKey common.Point) (*big.In
 func (w *DBWrapper) Has(key []byte) bool {
 	return w.Get(key) != nil
 }
-func (w *DBWrapper) KeyIndexToPublicKeyExists(keyIndex big.Int) bool {
+func (w *DBWrapper) KeyIndexToPublicKeyExists(keyIndex big.Int, curve common.CurveName) bool {
 	key := append(keyIndexToPubKeyBytes, keyIndex.Bytes()...)
+	if curve == common.ED25519 {
+		key = append(keyIndexToPubKeyEDBytes, keyIndex.Bytes()...)
+	}
 	return w.Has(key)
 }
 
-func (t *DBWrapper) StorePublicKeyToKeyIndex(publicKey common.Point, keyIndex big.Int) error {
+func (t *DBWrapper) StorePublicKeyToKeyIndex(publicKey common.Point, keyIndex big.Int, curve common.CurveName) error {
 	b, err := bijson.Marshal(publicKey)
 	if err != nil {
 		return err
 	}
 	// store pubkey -> key index
 	pkkey := append(pubkeyToKeyIndexBytes, b...)
+	if curve == common.ED25519 {
+		pkkey = append(pubkeyToKeyIndexEDBytes, keyIndex.Bytes()...)
+	}
 	t.Set(pkkey, keyIndex.Bytes())
 
 	// store key index -> pubkey
 	kikey := append(keyIndexToPubKeyBytes, keyIndex.Bytes()...)
+	if curve == common.ED25519 {
+		kikey = append(keyIndexToPubKeyEDBytes, keyIndex.Bytes()...)
+	}
 	t.Set(kikey, b)
 
 	return nil

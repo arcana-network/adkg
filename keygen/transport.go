@@ -50,8 +50,8 @@ func (tp *KeygenTransport) SendBroadcast(msg common.DKGMessage) error {
 	_, err := tp.broker.TendermintMethods().Broadcast(msg)
 	return err
 }
-func (tp *KeygenTransport) CheckIfNIZKPProcessed(keyIndex big.Int) bool {
-	return tp.broker.DBMethods().IndexToPublicKeyExists(keyIndex)
+func (tp *KeygenTransport) CheckIfNIZKPProcessed(keyIndex big.Int, curve common.CurveName) bool {
+	return tp.broker.DBMethods().IndexToPublicKeyExists(keyIndex, curve)
 }
 
 func (tp *KeygenTransport) Init() {

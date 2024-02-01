@@ -61,10 +61,12 @@ func TestKeygen(t *testing.T) {
 	timeout := time.After(30 * time.Second)
 	done := make(chan bool)
 
-	log.SetLevel(log.DebugLevel)
+	curve := curves.ED25519()
+
+	log.SetLevel(log.InfoLevel)
 	// runtime.GOMAXPROCS(10)
 	nodes, transport := setupNodes(7, 0)
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+	id := common.NewADKGID(*big.NewInt(int64(1)), common.ED25519)
 	for _, n := range nodes {
 		go func(node *Node) {
 			round := common.RoundDetails{
@@ -74,7 +76,7 @@ func TestKeygen(t *testing.T) {
 			}
 			msg, err := acss.NewShareMessage(
 				round.ID(),
-				common.SECP256K1,
+				common.ED25519,
 			)
 			if err != nil {
 				log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
@@ -95,26 +97,32 @@ func TestKeygen(t *testing.T) {
 			var identities []int
 			if outputCount == n {
 				for _, node := range nodes {
+					t.Logf("shares: %v", node.shares)
 					if _, ok := node.shares[1]; ok {
 						shares[node.id] = node.shares[1]
 						identities = append(identities, node.id)
 					}
 				}
 
-				coeff, _ := abacommon.LagrangeCoeffs(identities, curves.K256())
+				coeff, _ := abacommon.LagrangeCoeffs(identities, curve)
 
-				z := curves.K256().NewScalar().Zero()
+				z := curve.NewScalar().Zero()
+				t.Logf("coeef: %v", coeff)
 				for i := range coeff {
-					si, _ := curves.K256().NewScalar().SetBigInt(shares[i])
+					si, _ := curve.NewScalar().SetBigInt(shares[i])
 					z = z.Add(si.Mul(coeff[i]))
 				}
+				privateKey := z.BigInt().Bytes()
 
-				publicKey := curves.K256().ScalarBaseMult(z).ToAffineUncompressed()
+				// publicKey := curve.ScalarBaseMult(z).ToAffineCompressed()
 				// hexPublicKey := fmt.Sprintf("%x", publicKey)[:]
-				t.Logf("derivedPublicKey: %x", publicKey[1:])
-				// t.Logf("derivedPublicKey: %x", publicKey.ToAffineUncompressed())
+				// t.Logf("derivedPublicKey: %x", publicKey[1:])
+				t.Logf("privateKey: %x", privateKey)
+				t.Logf("compressedPublicKey: %x", curve.ScalarBaseMult(z).ToAffineUncompressed())
 				t.Logf("actualPublicKey: %s", output)
-				t.Logf("outputtedpublickeys: %s", outputs)
+				// t.Logf("outputtedpublickeys: %s", outputs)
+
+				// ed25519.GenerateKey(rand.Reader)
 				// if output != hexPublicKey {
 				// 	t.Errorf("public key did not match. actual= %s, expected=%s", output, hexPublicKey)
 				// }
@@ -545,10 +553,10 @@ func (node *Node) cleanupADKGSessionStore(id common.ADKGID) {
 	node.state.SessionStore.Complete(id)
 }
 
-func (n *Node) StoreCompletedShare(index big.Int, si big.Int) {
+func (n *Node) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
 	n.shares[index.Int64()] = &si
 }
-func (n *Node) StoreCommitment(index big.Int, metadata common.ADKGMetadata) {
+func (n *Node) StoreCommitment(index big.Int, metadata common.ADKGMetadata, c common.CurveName) {
 	// n.shares[index.Int64()] = &si
 }
 
@@ -576,7 +584,7 @@ func (n *Node) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
 func (n *Node) Details() common.KeygenNodeDetails {
 	return common.KeygenNodeDetails{
 		Index:  n.id,
-		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey),
+		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
 	}
 }
 
@@ -625,3 +633,10 @@ func NewNode(id, n, k int, keypair common.KeyPair, transport *MockTransport, isF
 	}
 	return &node
 }
+
+/*
+ "pub_key": {
+    "pub_x": "30751500467900546446724961453775005072988193096524024181060622836944644456038",
+    "pub_y": "73587403409812547304045989887786920898959202604647385417587975730610485594118"
+}
+*/

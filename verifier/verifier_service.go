@@ -45,7 +45,7 @@ func (tgv *ProviderMap) ListProviders() []string {
 }
 
 func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *common.MessageBroker) (bool, string, error) {
-	var msg VerifyMessage
+	var msg common.GenericVerifierData
 	if err := bijson.Unmarshal(*rawMessage, &msg); err != nil {
 		return false, "", err
 	}
@@ -53,6 +53,11 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 	if err != nil {
 		return false, "", err
 	}
+
+	if msg.Provider == "global_key_proxy" {
+		return v.Verify(rawMessage, nil)
+	}
+
 	cleanedToken := v.CleanToken(msg.Token)
 	if cleanedToken != msg.Token {
 		return false, "", errors.New("cleaned token is different from original token")
@@ -66,19 +71,11 @@ func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *com
 }
 
 func getVerifierParams(serviceMapper *common.MessageBroker, appID, verifier string) (*common.VerifierParams, error) {
-	cachedClientID := serviceMapper.CacheMethods().RetrieveClientIDFromVerifier(appID, verifier)
-	if cachedClientID == nil {
-		params, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
-		if err != nil {
-			return nil, err
-		}
-		if params == nil {
-			return nil, errors.New("could not get params from specified appID")
-		}
-		serviceMapper.CacheMethods().StoreVerifierToClientID(appID, verifier, params)
-		return params, nil
+	params, err := serviceMapper.ChainMethods().GetClientIDViaVerifier(appID, verifier)
+	if err != nil {
+		return nil, err
 	}
-	return cachedClientID, nil
+	return params, nil
 }
 
 func (tgv *ProviderMap) Lookup(provider string) (Provider, error) {
@@ -86,6 +83,7 @@ func (tgv *ProviderMap) Lookup(provider string) (Provider, error) {
 		return nil, errors.New("providers mapping not initialized")
 	}
 	if tgv.Providers[provider] == nil {
+		// return tgv.Providers["custom"], nil
 		return nil, errors.New("provider:" + provider + " not found")
 	}
 	return tgv.Providers[provider], nil
@@ -129,6 +127,8 @@ func (v *VerifierService) Start() error {
 		NewAWSCognitoVerifier(),
 		NewSteamProvider(),
 		firebaseProvider,
+		NewGlobalKeyVerifier(v),
+		// NewCustomProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil
