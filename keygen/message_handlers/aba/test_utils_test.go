@@ -68,6 +68,7 @@ type MockTransport struct {
 	output              chan string
 	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
 	sentMessages        []common.DKGMessage
+	receivedMessages    []common.DKGMessage
 }
 
 func NewMockTransport(nodes []*Node) *MockTransport {
@@ -383,4 +384,16 @@ func NewNode(id, n, k int, keypair common.KeyPair, transport *MockTransport, isF
 		shares:    make(map[int64]*big.Int),
 	}
 	return &node
+}
+
+func (node *Node) GetReceivedMessages(msgType string) []common.DKGMessage {
+	receivedMessages := node.transport.receivedMessages
+	filteredMessages := make([]common.DKGMessage, 0)
+
+	for _, msg := range receivedMessages {
+		if msg.Method == msgType {
+			filteredMessages = append(filteredMessages, msg)
+		}
+	}
+	return filteredMessages
 }

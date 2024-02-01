@@ -139,17 +139,36 @@ func TestSendAux1MsgCase3(t *testing.T) {
 	// node[n-1] will receive NewAux1Message from node0
 	// store already received NewAux1Message messages from n-2 other nodes
 
-	for i := 1; i < n-1; i++ {
-		store.SetValues("aux", r, vote, nodes[i].id)
+	for i := 1; i < n-f-1; i++ {
+		store.SetValues("aux", r, 0, nodes[i].id)
+		store.SetValues("aux", r, 1, nodes[i].id)
+
 	}
 
 	//check that the store sets correctly
-	for i := 1; i < n-1; i++ {
-		assert.Equal(t, Contains(store.Values("aux", r, vote), nodes[i].id), true)
+	for i := 1; i < n-f-1; i++ {
+		assert.Equal(t, Contains(store.Values("aux", r, 0), nodes[i].id), true)
+		assert.Equal(t, Contains(store.Values("aux", r, 1), nodes[i].id), true)
+
+	}
+
+	assert.Equal(t, Contains(store.Values("aux", r, 0), nodes[0].id), false)
+	assert.Equal(t, Contains(store.Values("aux", r, 1), nodes[0].id), false)
+
+	for i := n - f - 1; i < n; i++ {
+		assert.Equal(t, Contains(store.Values("aux", r, 0), nodes[i].id), false)
+		assert.Equal(t, Contains(store.Values("aux", r, 1), nodes[i].id), false)
+
 	}
 
 	store.SetBin("bin", r, 0)
 	store.SetBin("bin", r, 1)
+
+	aux0Len := len(store.Values("aux", r, 0))
+	aux1Len := len(store.Values("aux", r, 1))
+
+	assert.Equal(t, aux0Len, n-f-2)
+	assert.Equal(t, aux1Len, n-f-2)
 
 	assert.NotNil(t, store.GetBin("bin", r))
 	assert.Equal(t, Contains(store.GetBin("bin", r), 0), true)
@@ -175,7 +194,7 @@ func TestSendAux1MsgCase3(t *testing.T) {
 
 	assert.Equal(t, store.Sent("auxset", r, 2), true)
 
-	assert.Equal(t, Contains(store.Values("auxset", r, vote), receiverNode.id), true)
+	assert.Equal(t, Contains(store.Values("auxset", r, 2), receiverNode.id), true)
 
 }
 
