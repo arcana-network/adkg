@@ -30,45 +30,52 @@ func TestSendAux2Msg(t *testing.T) {
 
 	assert.Equal(t, complete, false, "should not be complete")
 
-	for i := 1; i < n-1; i++ {
+	for i := 1; i < n-f-1; i++ {
 		store.SetValues("aux2", r, 0, nodes[i].id)
 		store.SetValues("aux2", r, 1, nodes[i].id)
+	}
+	//setting more than n-f nodes values
+	for i := 0; i < n-1; i++ {
 		store.SetValues("aux2", r, 2, nodes[i].id)
 	}
 
 	//check that the store sets correctly
-	for i := 1; i < n-1; i++ {
+	for i := 1; i < n-f-1; i++ {
 		assert.Equal(t, Contains(store.Values("aux2", r, 0), nodes[i].id), true)
 		assert.Equal(t, Contains(store.Values("aux2", r, 1), nodes[i].id), true)
-		assert.Equal(t, Contains(store.Values("aux2", r, 2), nodes[i].id), true)
 	}
+
+	for i := n - f; i < n; i++ {
+		assert.Equal(t, Contains(store.Values("aux2", r, 0), nodes[i].id), false)
+		assert.Equal(t, Contains(store.Values("aux2", r, 1), nodes[i].id), false)
+	}
+
+	assert.Equal(t, Contains(store.Values("aux2", r, 0), nodes[0].id), false)
+	assert.Equal(t, Contains(store.Values("aux2", r, 1), nodes[0].id), false)
 
 	store.SetBin("bin2", r, 0)
 	store.SetBin("bin2", r, 1)
 	store.SetBin("bin2", r, 2)
 
 	assert.NotNil(t, store.GetBin("bin2", r))
+
 	assert.Equal(t, Contains(store.GetBin("bin2", r), 0), true)
 	assert.Equal(t, Contains(store.GetBin("bin2", r), 1), true)
 	assert.Equal(t, Contains(store.GetBin("bin2", r), 2), true)
 
-	assert.GreaterOrEqual(t, len(store.Values("aux2", r, vote)), n-f)
+	assert.GreaterOrEqual(t, len(store.Values("aux2", r, 2)), n-f)
+	assert.Less(t, len(store.Values("aux2", r, 1)), n-f)
+	assert.Less(t, len(store.Values("aux2", r, 0)), n-f)
 
 	//check that before sending msg aux2 value is not present
 	assert.Equal(t, Contains(store.Values("aux2", r, vote), nodes[0].id), false)
+	assert.Equal(t, Contains(store.Values("aux2", r, vote), receiverNode.id), false)
 
-	// the (f+1)-th message should trigger sending
 	receiverNode.ReceiveMessage(nodes[0].Details(), *msg)
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
-	// assert.Equal(t, receiverNode.messageCount, 1)
-
-	// Check that AuxsetMessageType was broadcasted
-
-	//TODO: msg is not broadcasted but Received
-	//TODO: expected an init msg
-	// countReceivedAux2Msg := receiverNode.GetReceivedMessages(InitMessageType)
-	// assert.Equal(t, 1, len(countReceivedAux2Msg), "This node should have broadcasted an CoinInitMessageType")
+	//inside of aux2_handler it calls receiveMessage again
+	assert.Equal(t, receiverNode.messageCount, 2)
 
 	//check that after sending msg aux value is present
 	assert.Equal(t, Contains(store.Values("aux2", r, vote), nodes[0].id), true)
