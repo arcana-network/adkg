@@ -5,6 +5,8 @@ import (
 	mrand "math/rand"
 	"testing"
 
+	"encoding/binary"
+
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
@@ -213,5 +215,62 @@ func TestLagrangeCoefficients(t *testing.T) {
 
 	if linearComb.Cmp(secret) != 0 {
 		t.Error("the coefficient don't interpolate the same secret.")
+	}
+}
+
+// TestBytes tests if the bytes of a share are correctly constructed.
+func TestBytes(t *testing.T) {
+	shamir := shamirSetup()
+	secret := shamir.curve.Scalar.Random(rand.Reader)
+
+	shares, err := shamir.Split(secret, rand.Reader)
+	if err != nil {
+		t.Errorf("failure while creating the shares: %v", err)
+	}
+
+	rndIndex := mrand.Intn(len(shares))
+	shareChoice := shares[rndIndex]
+
+	shareBytes := shareChoice.Bytes()
+
+	idBytes := shareBytes[:4]
+	valueBytes := shareBytes[4:]
+
+	reconsId := binary.BigEndian.Uint32(idBytes)
+	if reconsId != shareChoice.Id {
+		t.Error("The share ID is not the same.")
+	}
+
+	if len(valueBytes) != len(shareChoice.Value) {
+		t.Errorf("The share values are not the same. Lengths are different: %d and %d",
+			len(valueBytes),
+			len(shareChoice.Value),
+		)
+	}
+
+	for i := 0; i < len(valueBytes); i++ {
+		if valueBytes[i] != shareChoice.Value[i] {
+			t.Errorf("The share values are not the same. Values are different: %v and %v",
+				valueBytes[i],
+				shareChoice.Value[i],
+			)
+		}
+	}
+}
+
+// TestInterpolationRepeated tests if the interpolation fails when there are repeated
+// elements in the x-axis.
+func TestInterpolationRepeated(t *testing.T) {
+	shamir := shamirSetup()
+	x1 := shamir.curve.Scalar.Random(rand.Reader)
+	y1 := shamir.curve.Scalar.Random(rand.Reader)
+	y2 := shamir.curve.Scalar.Random(rand.Reader)
+
+	xAxis := []curves.Scalar{x1, x1}
+	yAxis := []curves.Scalar{y1, y2}
+
+	_, err := shamir.interpolate(xAxis, yAxis)
+	if err == nil {
+		t.Error("The interpolation should not work because there are x-axis points repeated.")
 	}
 }
