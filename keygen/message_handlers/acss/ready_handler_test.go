@@ -22,10 +22,10 @@ func TestCorrectlyReceivedFirstReadyMsg(t *testing.T) {
 	_, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 
 	msgToSend, _ := NewReadyMessage(round.ID(), encodedShares[node0.id-1], hash, common.CurveName(c.Name))
-	
+
 	defaultKeygen := NewDefaultKeygen(round)
-	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)	
-	
+	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
+
 	node0.ReceiveMessage(node0.Details(), *msgToSend)
 	time.Sleep(1 * time.Second)
 
@@ -42,7 +42,7 @@ func TestCorrectlyReceivedFirstReadyMsg(t *testing.T) {
 /*
 Function: Process
 Case: a node receives n `Ready` messages
-Expects: 
+Expects:
 - the node sends itself an `Output` message
 - keygen.State.Phase has to be set to ENDED
 - keygen.State.ReceivedReady set to true for sender
@@ -52,8 +52,8 @@ func TestReadyMsgFromAllNodes(t *testing.T) {
 	// Node 0 is the receiver of all the ready msg
 	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 	defaultKeygen := NewDefaultKeygen(round)
-	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)	
-	
+	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
+
 	// Node0 receives n "ready" messages
 	for _, nodeDetails := range node0.Nodes() {
 		senderEcho := nodes[nodeDetails.Index-1]
@@ -77,7 +77,7 @@ func TestReadyMsgFromAllNodes(t *testing.T) {
 /*
 Function: Process
 Case: a node receives 2*f+1 `Ready` messages
-Expects: 
+Expects:
 - the node sends itself an `Output` message
 - keygen.State.Phase has to be set to ENDED
 */
@@ -86,16 +86,16 @@ func TestReceivedThresholdReadyMsgs(t *testing.T) {
 	// Node 0 is the receiver of all the ready msg
 	nodes, _, node0, round, hash, encodedShares := setupEchoHandlerTest()
 	defaultKeygen := NewDefaultKeygen(round)
-	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)	
-	
+	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
+
 	// Node0 receives 2*f+1 "ready" messages
-	for i :=0 ; i < (2*f+1) ; i++ {
+	for i := 0; i < (2*f + 1); i++ {
 		senderEcho := nodes[i]
 		msgToSend, _ := NewReadyMessage(round.ID(), encodedShares[senderEcho.id-1], hash, common.CurveName(c.Name))
 		node0.ReceiveMessage(senderEcho.Details(), *msgToSend)
 	}
 	time.Sleep(1 * time.Second)
-	
+
 	// Checks
 	// 1. node0 should have been triggered to send itself an "output" message
 	// (meaning total msg count is 2*f+1)
@@ -106,11 +106,11 @@ func TestReceivedThresholdReadyMsgs(t *testing.T) {
 
 /*
 Function: Process
-Case: 
+Case:
 - a node receives (f+1)-th `Ready` message - by setting RC to f manually
 - has received f+1 echo messages - by setting c.EC manually
 - hasn't broadcast `Ready` message yet
-Expects: 
+Expects:
 - ReadySent is set to true
 - `Ready` message gets broadcasted
 */
@@ -122,7 +122,7 @@ func TestMustSendReady(t *testing.T) {
 
 	defaultKeygen := NewDefaultKeygen(round)
 	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
-	
+
 	senderEcho := nodes[1]
 	msgToSend, _ := NewReadyMessage(round.ID(), encodedShares[senderEcho.id-1], hash, common.CurveName(c.Name))
 	msg := EchoMessage{
@@ -133,23 +133,26 @@ func TestMustSendReady(t *testing.T) {
 		hash,
 	}
 	cid := msg.Fingerprint()
-	c := common.GetCStore(keygen, cid)
+	echoStore := keygen.GetEchoStore(cid, msg.Share, msg.Hash)
+
 	// Set Ready Count for this message to f, so the next one passes the threshold
-	c.RC = f
+	for i := 0; i < f; i++ {
+		keygen.ReadyStore = append(keygen.ReadyStore, msg.Share)
+	}
 	// Make sure ReadySent is false
-	c.ReadySent = false
+	keygen.State.ReadySent = false
 	// Set Echo count for this message to f+1
-	c.EC = f+1
+	echoStore.Count = f + 1
 
 	// Node0 should now broadcast a ReadyMessage
 	node0.ReceiveMessage(senderEcho.Details(), *msgToSend)
 	time.Sleep(1 * time.Second)
-	
+
 	// Checks
 	// 1. node0 should have broadcast a Ready message
 	assert.Equal(t, 1, countBroadcastedReadyMessages(transport))
 	// 2. ReadySent must now be set to true
-	assert.True(t, c.ReadySent)
+	assert.True(t, keygen.State.ReadySent)
 	// 3. no `Output` message should have been sent
 	// So messageCount should be 2 because of initial msg and broadcasted Ready msg
 	assert.True(t, node0.messageCount == 2)
@@ -164,11 +167,11 @@ with this line will make the test run:
 */
 /*
 Function: Process
-Case: 
+Case:
 - a node receives (f+1)-th `Ready` message - by sending f+1 Ready msgs
 - has received f+1 echo messages - by setting c.EC manually
 - hasn't broadcast `Ready` message yet
-Expects: 
+Expects:
 - ReadySent is set to true
 - `Ready` message gets broadcasted
 */
@@ -180,7 +183,7 @@ func TestMustSendReady2(t *testing.T) {
 
 	defaultKeygen := NewDefaultKeygen(round)
 	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
-	
+
 	curve := common.CurveName(c.Name)
 	senderReady1 := nodes[1]
 	msgToSend1, _ := NewReadyMessage(round.ID(), encodedShares[senderReady1.id-1], hash, curve)
@@ -192,9 +195,9 @@ func TestMustSendReady2(t *testing.T) {
 		hash,
 	}
 	cid := msg1.Fingerprint()
-	c := common.GetCStore(keygen, cid)
+	echoStore := keygen.GetEchoStore(cid, msg1.Share, msg1.Hash)
 	// Set Echo count for this message to f+1
-	c.EC = f+1
+	echoStore.Count = f + 1
 
 	// prep another f Ready messages
 	senderReady2 := nodes[2]
@@ -210,12 +213,12 @@ func TestMustSendReady2(t *testing.T) {
 	node0.ReceiveMessage(senderReady1.Details(), *msgToSend1)
 
 	time.Sleep(1 * time.Second)
-	
+
 	// Checks
 	// 1. node0 should have broadcast a Ready message
 	assert.Equal(t, 1, countBroadcastedReadyMessages(transport))
 	// 2. ReadySent must now be set to true
-	assert.True(t, c.ReadySent)
+	assert.True(t, keygen.State.ReadySent)
 }
 
 func countBroadcastedReadyMessages(transport *MockTransport) int {
@@ -243,10 +246,10 @@ func TestKeygenAlreadtCompleted(t *testing.T) {
 	// Node 0 is the receiver of all the ready msg
 	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 	defaultKeygen := NewDefaultKeygen(round)
-	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)	
+	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
 	// Set keygen to completed
 	node0.State().KeygenStore.Complete(round.ID())
-	
+
 	// Node0 receives n "ready" messages
 	for _, nodeDetails := range node0.Nodes() {
 		senderEcho := nodes[nodeDetails.Index-1]
@@ -279,15 +282,15 @@ func TestAlreadyReceivedReadyMessage(t *testing.T) {
 	// Node 0 is the receiver of all the ready msg
 	nodes, transport, node0, round, hash, encodedShares := setupEchoHandlerTest()
 	defaultKeygen := NewDefaultKeygen(round)
-	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)	
-	
+	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
+
 	// Node0 receives 2*f "ready" messages
-	for i :=0 ; i < 2*f ; i++ {
+	for i := 0; i < 2*f; i++ {
 		senderEcho := nodes[i]
 		msgToSend, _ := NewReadyMessage(round.ID(), encodedShares[senderEcho.id-1], hash, common.CurveName(c.Name))
 		node0.ReceiveMessage(senderEcho.Details(), *msgToSend)
 	}
-	// And then receives message 2*f+1 
+	// And then receives message 2*f+1
 	// but it is one that was already received
 	senderEcho := nodes[1]
 	msgToSend, _ := NewReadyMessage(round.ID(), encodedShares[senderEcho.id-1], hash, common.CurveName(c.Name))

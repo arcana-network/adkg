@@ -37,7 +37,7 @@ func TestReceiveFirstEchoMessage(t *testing.T) {
 				ReceivedReady: make(map[int]bool),
 				ReceivedEcho:  make(map[int]bool),
 			},
-			CStore: make(map[string]*common.CStore),
+			EchoStore: make(map[string]*common.EchoStore),
 		}
 
 		keygen, _ := receiverEcho.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
@@ -62,10 +62,11 @@ func TestReceiveFirstEchoMessage(t *testing.T) {
 		assert.True(t, state_after.State.ReceivedEcho[node0.Details().Index])
 
 		cid := echoMsg.Fingerprint()
-		c := common.GetCStore(keygen, cid)
+		eStore := keygen.GetEchoStore(cid, echoMsg.Share, echoMsg.Hash)
+		// c := common.GetCStore(keygen, cid)
 
 		// Check: Echo Count in receiving node is now set to 1
-		assert.Equal(t, c.EC, 1)
+		assert.Equal(t, eStore.Count, 1)
 	}
 
 	broadcastedMessages := transport.GetBroadcastedMessages()
@@ -162,11 +163,14 @@ func sendEchoWithCStore(cEC int, cRC int, readySent bool) *MockTransport {
 	defaultKeygen := NewDefaultKeygen(round)
 
 	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
-	c := common.GetCStore(keygen, cid)
+	eStore := keygen.GetEchoStore(cid, msg.Share, msg.Hash)
 	// Fill the CStore with the given values
-	c.RC = cRC
-	c.EC = cEC
-	c.ReadySent = readySent
+	for i := 0; i < cRC; i++ {
+		keygen.ReadyStore = append(keygen.ReadyStore, msg.Share)
+	}
+	// c.RC = cRC
+	eStore.Count = cEC
+	keygen.State.ReadySent = readySent
 	node0.ReceiveMessage(echoingNode.Details(), *msgToSend)
 	time.Sleep(500 * time.Millisecond)
 
@@ -313,13 +317,15 @@ func TestEchoAlreadyReceived(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	keygen, _ := node0.State().KeygenStore.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
-	c := common.GetCStore(keygen, cid)
-
+	eStore := keygen.GetEchoStore(cid, msg.Share, msg.Hash)
 	// With these values, the next valid echo should trigger broadcast of msg
 	// (but because the echo is double, it isn't valid)
-	c.RC = f + 1
-	c.EC = 2*f + 1
-	c.ReadySent = false
+	// c.RC = f + 1
+	for i := 0; i < f+1; i++ {
+		keygen.ReadyStore = append(keygen.ReadyStore, msg.Share)
+	}
+	eStore.Count = 2*f + 1
+	keygen.State.ReadySent = false
 
 	// Send echo for the 2nd time
 	node0.ReceiveMessage(echoingNode.Details(), *msgToSend)
