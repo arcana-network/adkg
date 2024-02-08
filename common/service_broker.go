@@ -126,6 +126,14 @@ func (broker *MessageBroker) KeygenMethods() *KeygenMethods {
 	}
 }
 
+func (broker *MessageBroker) PssMethods() *PssMethods {
+	return &PssMethods{
+		bus:     broker.bus,
+		caller:  broker.caller,
+		service: PSS_SERVICE_NAME,
+	}
+}
+
 func (broker *MessageBroker) TendermintMethods() *TendermintMethods {
 	return &TendermintMethods{
 		bus:     broker.bus,
@@ -691,6 +699,24 @@ func (cm *ChainMethods) SelfSignData(input []byte) (rawSig []byte) {
 	return
 }
 
+// Retrieve Old Committee or New Committee Nodes (depending on bool oldCommittee)
+func (cm *ChainMethods) GetCommitteeNodes(oldCommittee bool, epoch int) ([]NodeReference, error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_old_nodes", oldCommittee, epoch)
+	if methodResponse.Error != nil {
+		return nil, methodResponse.Error
+	}
+	var data []SerializedNodeReference
+	err := CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return nil, err
+	}
+	var deserializedData []NodeReference
+	for i := 0; i < len(data); i++ {
+		deserializedData = append(deserializedData, NodeReference{}.Deserialize(data[i]))
+	}
+	return deserializedData, nil
+}
+
 type MethodRequest struct {
 	Caller  string
 	Service string
@@ -1098,6 +1124,20 @@ func (km *KeygenMethods) ReceiveMessage(keygenMessage DKGMessage) error {
 }
 func (km *KeygenMethods) Cleanup(id ADKGID) error {
 	methodResponse := ServiceMethod(km.bus, km.caller, km.service, "cleanup", id)
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+type PssMethods struct {
+	caller  string
+	bus     eventbus.Bus
+	service string
+}
+
+func (pm *PssMethods) TriggerPss() error {
+	methodResponse := ServiceMethod(pm.bus, pm.caller, pm.service, "trigger_pss")
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}

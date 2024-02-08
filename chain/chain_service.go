@@ -137,6 +137,9 @@ func (service *ChainService) Start() error {
 
 	go currentNodesMonitor(service)
 
+	// Continuously check whether old committe is replaced by new committee of nodes
+	go pssFlagMonitor(service)
+
 	return nil
 }
 
@@ -375,6 +378,30 @@ func whitelistMonitor(e *ChainService) {
 		log.Info("node is not whitelisted yet!")
 	}
 }
+
+func pssFlagMonitor(e *ChainService) {
+	interval := time.NewTicker(10 * time.Second)
+	defer interval.Stop()
+	for range interval.C {
+
+		opts := &bind.CallOpts{}
+		// TODO add CheckPss on contract
+		pssFlag, err := e.nodeList.CheckPss(opts, big.NewInt(int64(e.currentEpoch)))
+		if err != nil {
+			log.WithError(err).Error("CheckPss()")
+		}
+
+		if pssFlag {
+				log.Info("Pss flag is set. Trigger PSS")
+				// Trigger PSS via PssService
+				err := e.broker.PssMethods().TriggerPss()
+				if err != nil {
+					log.WithError(err).Error("TriggerPss()")
+				}
+		} 
+	}
+}
+
 func (s *ChainService) IsSelfRegistered(epoch int) (bool, error) {
 	opts := s.CallOpts()
 	result, err := s.nodeList.NodeRegistered(opts, big.NewInt(int64(epoch)), *s.addr)
@@ -671,6 +698,19 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		_ = common.CastOrUnmarshal(args[0], &args0)
 
 		return chainService.getKeyPartition(args0)
+	case "get_comittee_nodes": // TODO implement
+		var oldComittee bool
+		var epoch int
+		_ = common.CastOrUnmarshal(args[0], &oldComittee)
+		_ = common.CastOrUnmarshal(args[1], &epoch)
+		nodeReferences := make([]common.SerializedNodeReference, 0)
+		if oldComittee {
+			// Retrieve old committee nodes & store in nodeReferences
+		} else {
+			// Retrieve new committee nodes & store in nodeReferences
+		}
+		
+		return nodeReferences, nil
 	}
 	return "", nil
 }

@@ -551,6 +551,13 @@ func (_NodeList *NodeListCaller) IsWhitelisted(opts *bind.CallOpts, epoch *big.I
 
 }
 
+// TODO this has to be actually added to the contract and generate a binding
+// this is just for illustration and so the code compiles
+func (_NodeList *NodeListCaller) CheckPss(opts *bind.CallOpts, epoch *big.Int) (bool, error) {
+	return false, nil
+}
+
+
 // IsWhitelisted is a free data retrieval call binding the contract method 0x7d22c35c.
 //
 // Solidity: function isWhitelisted(uint256 epoch, address nodeAddress) view returns(bool)

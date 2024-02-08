@@ -14,6 +14,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/db"
+	pss "github.com/arcana-network/dkgnode/dpss"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/keystore"
@@ -37,6 +38,7 @@ func Start(conf *config.Config) {
 		chain.New(bus),
 		p2p.New(bus),
 		keygen.New(bus),
+		pss.New(bus),
 		db.New(),
 		tendermint.NewCore(bus),
 		tendermint.NewABCI(bus),
