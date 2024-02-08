@@ -8,11 +8,11 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 )
 
-var Est2MessageType string = "aba_est2"
+var Est2MessageType common.MessageType = "aba_est2"
 
 type Est2Message struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	V       int
 	R       int
@@ -47,7 +47,7 @@ func (m Est2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	store.Lock()
 	defer store.Unlock()
 
-	_, _, f := self.Params()
+	_, _, f := self.Params(false)
 
 	if Contains(store.Values("est2", r, v), sender.Index) {
 		log.Debugf("Got redundant EST2 message from %d", sender.Index)

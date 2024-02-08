@@ -300,7 +300,7 @@ func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage 
 }
 
 func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch keygenMessage.Method {
+	switch common.MessageType(keygenMessage.Method) {
 	case keyset.InitMessageType:
 		log.Debugf("Got %s", keyset.InitMessageType)
 		var msg keyset.InitMessage
@@ -350,7 +350,7 @@ func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenM
 }
 
 func (node *Node) ProcessABAMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch keygenMessage.Method {
+	switch common.MessageType(keygenMessage.Method) {
 	case aba.InitMessageType:
 		log.Debugf("Got %s", aba.InitMessageType)
 		var msg aba.InitMessage
@@ -427,7 +427,7 @@ func (node *Node) ProcessABAMessages(sender common.KeygenNodeDetails, keygenMess
 }
 
 func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch keygenMessage.Method {
+	switch common.MessageType(keygenMessage.Method) {
 	case keyderivation.InitMessageType:
 		log.Debugf("Got %s", keyderivation.InitMessageType)
 		var msg keyderivation.InitMessage
@@ -450,7 +450,7 @@ func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, 
 }
 
 func (node *Node) ProcessACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch keygenMessage.Method {
+	switch common.MessageType(keygenMessage.Method) {
 	case acss.ShareMessageType:
 		log.Debugf("Got %s", acss.ShareMessageType)
 		var msg acss.ShareMessage
@@ -504,7 +504,7 @@ func (n *Node) ID() int {
 	return n.id
 }
 
-func (n *Node) Params() (int, int, int) {
+func (n *Node) Params(newCommittee bool) (int, int, int) {
 	return n.n, n.k, n.k - 1
 }
 
@@ -527,7 +527,7 @@ func (n *Node) Cleanup(id common.ADKGID) {
 }
 
 func (node *Node) cleanupKeygenStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
+	for _, n := range node.Nodes(false) {
 		node.state.KeygenStore.Complete((&common.RoundDetails{
 			ADKGID: id,
 			Dealer: n.Index,
@@ -541,7 +541,7 @@ func (node *Node) cleanupKeygenStore(id common.ADKGID) {
 	}
 }
 func (node *Node) cleanupABAStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
+	for _, n := range node.Nodes(false) {
 		node.state.ABAStore.Complete((&common.RoundDetails{
 			ADKGID: id,
 			Dealer: n.Index,
@@ -577,7 +577,7 @@ func (n *Node) Send(receiver common.KeygenNodeDetails, msg common.DKGMessage) er
 	return nil
 }
 
-func (n *Node) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
+func (n *Node) Nodes(newCommittee bool) map[common.NodeDetailsID]common.KeygenNodeDetails {
 	return n.transport.nodeDetails
 }
 
@@ -589,7 +589,7 @@ func (n *Node) Details() common.KeygenNodeDetails {
 }
 
 func (n *Node) ReceiveBFTMessage(msg common.DKGMessage) {
-	if msg.Method == keyderivation.PubKeygenType {
+	if msg.Method == string(keyderivation.PubKeygenType) {
 		var m keyderivation.PubKeygenMessage
 		if err := bijson.Unmarshal(msg.Data, &m); err != nil {
 			log.WithError(err).Infof("ReceiveBFTMessage()")
@@ -606,7 +606,7 @@ func (n *Node) PrivateKey() curves.Scalar {
 	return n.keypair.PrivateKey
 }
 
-func (n *Node) PublicKey(index int) curves.Point {
+func (n *Node) PublicKey(index int, newCommittee bool) curves.Point {
 	for _, n := range n.transport.nodes {
 		if n.ID() == index {
 			return n.keypair.PublicKey

@@ -11,11 +11,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ShareMessageType string = "key_derivation_pk_share"
+var ShareMessageType common.MessageType = "key_derivation_pk_share"
 
 type ShareMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	Share   []byte
 	R       []byte
@@ -41,7 +41,7 @@ func NewShareMessage(id common.RoundID, curve common.CurveName, share, r, s []by
 
 func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 
-	n, k, _ := self.Params()
+	n, k, _ := self.Params(false)
 	curve := common.CurveFromName(m.Curve)
 
 	adkgid, err := common.ADKGIDFromRoundID(m.RoundID)

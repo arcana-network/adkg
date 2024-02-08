@@ -62,10 +62,10 @@ func CreateDKGMessage(r DKGMessageRaw) DKGMessage {
 	}
 }
 
-func CreateMessage(id RoundID, kind string, data []byte) DKGMessage {
+func CreateMessage(id RoundID, kind MessageType, data []byte) DKGMessage {
 	return CreateDKGMessage(DKGMessageRaw{
 		RoundID: id,
-		Method:  kind,
+		Method:  string(kind),
 		Data:    data,
 	})
 }

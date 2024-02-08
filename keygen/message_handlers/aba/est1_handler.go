@@ -8,11 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var Est1MessageType string = "aba_est1"
+var Est1MessageType common.MessageType = "aba_est1"
 
 type Est1Message struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	V       int
 	R       int
@@ -55,7 +55,7 @@ func (m Est1Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	//Otherwise, add sender
 	store.SetValues("est", r, v, sender.Index)
 
-	_, _, f := self.Params()
+	_, _, f := self.Params(false)
 	estLength := len(store.Values("est", r, v))
 	log.Debugf("EstCount: %d, required: %d, round: %v", estLength, f+1, m.RoundID)
 	if estLength >= f+1 && !store.Sent("est", r, v) {

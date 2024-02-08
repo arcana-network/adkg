@@ -8,11 +8,11 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var PubKeygenType string = "key_derivation_pubkey_gen"
+var PubKeygenType common.MessageType = "key_derivation_pubkey_gen"
 
 type PubKeygenMessage struct {
 	RoundID   common.RoundID
-	Kind      string
+	Kind      common.MessageType
 	Curve     common.CurveName
 	PublicKey common.Point
 }

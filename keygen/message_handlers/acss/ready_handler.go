@@ -12,11 +12,11 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var ReadyMessageType string = "acss_ready"
+var ReadyMessageType common.MessageType = "acss_ready"
 
 type ReadyMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	Share   infectious.Share
 	Hash    []byte
@@ -97,7 +97,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	// increment the ready messages received
 	c.RC = c.RC + 1
-	n, k, f := self.Params()
+	n, k, f := self.Params(false)
 	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, k, self.ID())
 
 	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {

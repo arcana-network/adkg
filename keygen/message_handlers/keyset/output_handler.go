@@ -11,11 +11,11 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/aba"
 )
 
-var OutputMessageType string = "keyset_output"
+var OutputMessageType common.MessageType = "keyset_output"
 
 type OutputMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	M       []byte
 }

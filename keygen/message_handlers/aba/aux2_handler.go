@@ -10,11 +10,11 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 )
 
-var Aux2MessageType string = "aba_aux2"
+var Aux2MessageType common.MessageType = "aba_aux2"
 
 type Aux2Message struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	V       int
 	R       int
@@ -48,7 +48,7 @@ func (m Aux2Message) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	store.Lock()
 	defer store.Unlock()
 
-	n, _, f := self.Params()
+	n, _, f := self.Params(false)
 
 	// Check if already present
 	if Contains(store.Values("aux2", r, v), sender.Index) {

@@ -10,11 +10,11 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var EchoMessageType string = "keyset_echo"
+var EchoMessageType common.MessageType = "keyset_echo"
 
 type EchoMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	Share   infectious.Share
 	Hash    []byte
@@ -100,7 +100,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	// increment the echo messages received
 	c.EC = c.EC + 1
 
-	_, _, f := self.Params()
+	_, _, f := self.Params(false)
 
 	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), c.EC, (2*f + 1))
 	// Broadcast ready message if echo count > 2f + 1

@@ -12,11 +12,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var OutputMessageType string = "acss_output"
+var OutputMessageType common.MessageType = "acss_output"
 
 type OutputMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	M       []byte
 }
@@ -80,7 +80,7 @@ func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 			return
 		}
 
-		_, k, f := self.Params()
+		_, k, f := self.Params(false)
 
 		curve := common.CurveFromName(m.Curve)
 		share, verifier, verified := acss.Predicate(priv.Bytes(), msg.ShareMap[uint32(self.ID())], msg.Commitments, k, curve)

@@ -15,11 +15,11 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 )
 
-var CoinMessageType string = "aba_coin"
+var CoinMessageType common.MessageType = "aba_coin"
 
 type CoinMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	Data    []byte
 }
@@ -47,7 +47,7 @@ func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		log.WithError(err).Error("Could not unpack data in aba_coin_share")
 		return
 	}
-	n, k, f := self.Params()
+	n, k, f := self.Params(false)
 
 	roundLeader, err := m.RoundID.Leader()
 	if err != nil {

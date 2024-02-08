@@ -12,11 +12,11 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/messages"
 )
 
-var ProposeMessageType string = "acss_propose"
+var ProposeMessageType common.MessageType = "acss_propose"
 
 type ProposeMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	Data    []byte
 }
@@ -56,7 +56,7 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 	}
 
 	// Generated shared symmetric key
-	n, k, _ := self.Params()
+	n, k, _ := self.Params(false)
 	priv := self.PrivateKey()
 
 	// Verify self share against commitments
@@ -87,7 +87,7 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 			return
 		}
 
-		for _, n := range self.Nodes() {
+		for _, n := range self.Nodes(false) {
 			go func(node common.KeygenNodeDetails) {
 				msg, err := NewAcssEchoMessage(m.RoundID, shares[node.Index-1], hash, m.Curve)
 				if err != nil {

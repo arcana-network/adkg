@@ -11,11 +11,11 @@ import (
 	"github.com/arcana-network/dkgnode/telemetry"
 )
 
-var ShareMessageType string = "acss_share"
+var ShareMessageType common.MessageType = "acss_share"
 
 type ShareMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 }
 
@@ -75,7 +75,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	secret := acss.GenerateSecret(curve)
 
 	// Generate share and commitments
-	n, k, f := self.Params()
+	n, k, f := self.Params(false)
 
 	log.Debugf("keygenid=%s;n=%d;k=%d;f=%d", m.RoundID, n, k, f)
 	commitments, shares, err := acss.GenerateCommitmentAndShares(secret,
@@ -93,7 +93,7 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	// encrypt each share with node respective generated symmetric key, add to share map
 	for _, share := range shares {
-		nodePublicKey := self.PublicKey(int(share.Id))
+		nodePublicKey := self.PublicKey(int(share.Id), false)
 
 		cipherShare, err := acss.Encrypt(share.Bytes(), nodePublicKey,
 			self.PrivateKey())

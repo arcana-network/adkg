@@ -7,11 +7,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType string = "aba_init"
+var InitMessageType common.MessageType = "aba_init"
 
 type InitMessage struct {
 	RoundID common.RoundID
-	Kind    string
+	Kind    common.MessageType
 	Curve   common.CurveName
 	V       int
 	R       int
