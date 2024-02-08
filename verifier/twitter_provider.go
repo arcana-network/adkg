@@ -14,7 +14,6 @@ import (
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/config"
-	"github.com/arcana-network/dkgnode/keygen"
 )
 
 func NewTwitterProvider() *TwitterVerifier {
@@ -129,7 +128,7 @@ func getSignatureParams(token, secret, appID string) ([]byte, error) {
 		Timestamp:        strconv.FormatInt(time.Now().Unix(), 10),
 		NodeAddress:      serviceMapper.ChainMethods().GetSelfAddress(),
 	}
-	sig := keygen.ECDSASign(getSignatureMessage.String(), &privKey)
+	sig := common.ECDSASign(getSignatureMessage.String(), &privKey)
 	getSigParams := GetSignatureParams{
 		PubKeyX:             pubKey.X.Text(16),
 		PubKeyY:             pubKey.Y.Text(16),

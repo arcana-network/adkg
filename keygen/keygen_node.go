@@ -28,17 +28,22 @@ type KeygenNode struct {
 	CurrentNodes common.NodeNetwork
 	// Nodes form opposite committeeds
 	NewCommitteeNodes common.NodeNetwork
-	Transport         *KeygenTransport
+	Transport         common.NodeTransport
 	state             *common.NodeState
 	privateKey        curves.Scalar
 	publicKey         curves.Point
 	tracker           *KeygenTracker
 }
 
+// NodeDetails implements common.NodeProcessor.
+func (node *KeygenNode) NodeDetails() common.KeygenNodeDetails {
+	return node.details
+}
+
 func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDetails,
 	nodeList []common.KeygenNodeDetails, bus eventbus.Bus, T int, K int,
 	privateKey curves.Scalar) (*KeygenNode, error) {
-	transport := NewKeygenTransport(bus, GetKeygenProtocolPrefix(1))
+	transport := common.NewNodeTransport(bus, GetKeygenProtocolPrefix(1), "keygen-transport")
 	nodeNetwork := common.NodeNetwork{
 		N:     len(nodeList),
 		K:     K,
@@ -52,7 +57,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 	newKeygenNode := &KeygenNode{
 		broker:       broker,
 		details:      nodeDetails,
-		Transport:    transport,
+		Transport:    *transport,
 		CurrentNodes: nodeNetwork,
 		state: &common.NodeState{
 			KeygenStore:  &common.SharingStoreMap{},
@@ -65,7 +70,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 
 	log.Info("Keygen service starting...")
 	transport.Init()
-	transport.SetKeygenNode(newKeygenNode)
+	transport.SetNode(newKeygenNode)
 	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.remove)
 	return newKeygenNode, nil
 }
@@ -289,8 +294,8 @@ func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNode
 	return
 }
 
-func GetKeygenProtocolPrefix(currEpoch int) KeygenProtocolPrefix {
-	return KeygenProtocolPrefix("keygen" + "-" + strconv.Itoa(currEpoch) + "/")
+func GetKeygenProtocolPrefix(currEpoch int) common.ProtocolPrefix {
+	return common.ProtocolPrefix("keygen" + "-" + strconv.Itoa(currEpoch) + "/")
 }
 
 func (node *KeygenNode) State() *common.NodeState {

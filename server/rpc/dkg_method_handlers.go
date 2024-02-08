@@ -13,7 +13,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/crypto"
-	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/secp256k1"
 	"github.com/arcana-network/dkgnode/telemetry"
 	"github.com/arcana-network/dkgnode/tendermint"
@@ -763,7 +762,7 @@ func (c *ConnectionDetailsMessage) Validate(pubKeyX, pubKeyY big.Int, sig []byte
 		log.WithError(err).Error("signature expired")
 		return false, err
 	}
-	return keygen.ECDSAVerify(c.String(), &common.Point{X: pubKeyX, Y: pubKeyY}, sig), nil
+	return common.ECDSAVerify(c.String(), &common.Point{X: pubKeyX, Y: pubKeyY}, sig), nil
 }
 func (c *ConnectionDetailsMessage) String() string {
 	return strings.Join([]string{c.Timestamp, c.Message, c.NodeAddress.String()}, common.Delimiter1)

@@ -1,4 +1,4 @@
-package keygen
+package common
 
 import (
 	"crypto/ecdsa"
@@ -7,15 +7,14 @@ import (
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
 
-func BigIntToPoint(x, y *big.Int) common.Point {
-	return common.Point{X: *x, Y: *y}
+func BigIntToPoint(x, y *big.Int) Point {
+	return Point{X: *x, Y: *y}
 }
 
-func ECDSAVerify(str string, pubKey *common.Point, signature []byte) bool {
+func ECDSAVerify(str string, pubKey *Point, signature []byte) bool {
 	r := new(big.Int)
 	s := new(big.Int)
 	r.SetBytes(signature[:32])
