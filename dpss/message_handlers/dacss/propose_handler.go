@@ -12,18 +12,18 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssProposeMessageType common.MessageType = "dacss_propose"
+var DacssProposeMessageType string = "dacss_propose"
 
 type DacssProposeMessage struct {
 	RoundID      common.RoundID
 	NewCommittee bool
-	Kind         common.MessageType
+	Kind         string
 	Curve        *curves.Curve
 	Data         messages.MessageData
 }
 
 func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool) (*common.DKGMessage, error) {
-	m := DacssProposeMessage{
+	m := &DacssProposeMessage{
 		RoundID:      roundID,
 		NewCommittee: isNewCommittee,
 		Kind:         DacssProposeMessageType,
@@ -39,7 +39,7 @@ func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData
 	return &msg, nil
 }
 
-func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self common.PSSParticipant) {
 
 	log.Debugf("Received Propose message from %d on %d", sender.Index, self.ID())
 	log.Debugf("Propose: Node=%d, Value=%v", self.ID(), msg.Data)

@@ -8,7 +8,7 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssReadyMessageType common.MessageType = "dacss_ready"
+var AcssReadyMessageType string = "dacss_ready"
 
 const (
 	OldCommittee = iota
@@ -20,7 +20,7 @@ type DacssReadyMessage struct {
 	RoundID       common.RoundID
 	NewCommittee  bool
 	CommitteeType int
-	Kind          common.MessageType
+	Kind          string
 	Curve         *curves.Curve
 	Share         infectious.Share
 	Hash          []byte

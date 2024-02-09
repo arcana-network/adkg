@@ -10,12 +10,12 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssEchoMessageType common.MessageType = "dacss_echo"
+var DacssEchoMessageType string = "dacss_echo"
 
 type DacssEchoMessage struct {
 	RoundID       common.RoundID
 	CommitteeType int
-	Kind          common.MessageType
+	Kind          string
 	Curve         *curves.Curve
 	Share         infectious.Share
 	Hash          []byte // Hash of the shares.
@@ -61,9 +61,10 @@ func (m *DacssEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (msg *DacssEchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *DacssEchoMessage) Process(sender common.KeygenNodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
 	// Get state from node
+	// TODO fix state for DPSS
 	state := self.State().KeygenStore
 
 	// Create empty keygen state

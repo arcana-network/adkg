@@ -15,14 +15,14 @@ import (
 
 // ShareMessageType tells wich message are we sending. In this case, the share
 // message.
-var ShareMessageType common.MessageType = "dacss_share"
+var ShareMessageType string = "dacss_share"
 
 // DacssShareMessage has all the information for the initial message in the
 // sharing phase.
 type DacssShareMessage struct {
-	RoundID common.RoundID     // ID of the round.
-	Kind    common.MessageType // Type of the message.
-	Curve   *curves.Curve      // Curve used in the messages.
+	RoundID common.RoundID    // ID of the round.
+	Kind    string 						// Type of the message.
+	Curve   *curves.Curve     // Curve used in the messages.
 }
 
 // NewDacssShareMessage creates a new share message from the provided ID and
@@ -42,7 +42,7 @@ func NewDacssShareMessage(roundID common.RoundID, curve *curves.Curve) (*common.
 	return &msg, nil
 }
 
-func (msg *DacssShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *DacssShareMessage) Process(sender common.KeygenNodeDetails, self common.PSSParticipant) {
 	if sender.Index != self.ID() {
 		return
 	}
@@ -57,7 +57,7 @@ func (msg *DacssShareMessage) Process(sender common.KeygenNodeDetails, self comm
 	makeMessageAndSend(true, self, msg, secret, privKey)
 }
 
-func makeMessageAndSend(isNewCommittee bool, self common.DkgParticipant, msg *DacssShareMessage, secret curves.Scalar, privateKey curves.Scalar) {
+func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *DacssShareMessage, secret curves.Scalar, privateKey curves.Scalar) {
 	n, k, _ := self.Params(isNewCommittee)
 
 	// Generates shares and commitments
