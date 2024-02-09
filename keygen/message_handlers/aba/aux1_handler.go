@@ -7,11 +7,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var Aux1MessageType common.MessageType = "aba_aux1"
+var Aux1MessageType string = "aba_aux1"
 
 type Aux1Message struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 	V       int
 	R       int
@@ -37,7 +37,7 @@ func NewAux1Message(id common.RoundID, v, r int, curve common.CurveName) (*commo
 func (m Aux1Message) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	v, r := m.V, m.R
 
-	n, _, f := self.Params(false)
+	n, _, f := self.Params()
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID, common.DefaultABAStore())
 	if complete {
 		log.Infof("Keygen already complete: %s", m.RoundID)

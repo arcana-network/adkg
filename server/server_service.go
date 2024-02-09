@@ -14,7 +14,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
-	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/server/rpc"
 
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -72,7 +71,7 @@ func (c *ConnectionDetailsMessage) Validate(pubKeyX, pubKeyY big.Int, sig []byte
 		log.WithError(err).Error("signature expired")
 		return false, err
 	}
-	return keygen.ECDSAVerify(c.String(), &common.Point{X: pubKeyX, Y: pubKeyY}, sig), nil
+	return common.ECDSAVerify(c.String(), &common.Point{X: pubKeyX, Y: pubKeyY}, sig), nil
 }
 
 type ServerService struct {
@@ -149,7 +148,7 @@ func (s *ServerService) RequestConnectionDetails(endpoint string) (connectionDet
 		Timestamp:   strconv.FormatInt(time.Now().Unix(), 10),
 		NodeAddress: addr,
 	}
-	sig := keygen.ECDSASign(connectionDetailsMessage.String(), &privKey)
+	sig := common.ECDSASign(connectionDetailsMessage.String(), &privKey)
 	connectionDetailsParams := ConnectionDetailsParams{
 		PubKeyX:                  pubKey.X.Text(16),
 		PubKeyY:                  pubKey.Y.Text(16),

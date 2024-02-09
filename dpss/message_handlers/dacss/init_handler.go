@@ -9,12 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType common.MessageType = "init_dpss"
+var InitMessageType string = "init_dpss"
 
 type InitMessage struct {
 	RIndex    int
 	BatchSize int
-	Kind      common.MessageType
+	Kind      string
 	Curve     *curves.Curve
 }
 

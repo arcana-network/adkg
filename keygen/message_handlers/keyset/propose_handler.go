@@ -12,11 +12,11 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var ProposeMessageType common.MessageType = "keyset_propose"
+var ProposeMessageType string = "keyset_propose"
 
 type ProposeMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 	Data    []byte
 }
@@ -84,7 +84,7 @@ func OnKeysetVerified(roundID common.RoundID, curve common.CurveName, keyset []b
 		sessionStore.T[int(leader)] = data
 	}
 
-	n, k, _ := self.Params(false)
+	n, k, _ := self.Params()
 
 	// Create RS encoding
 	fec, err := infectious.NewFEC(k, n)
@@ -100,7 +100,7 @@ func OnKeysetVerified(roundID common.RoundID, curve common.CurveName, keyset []b
 		log.Debugf("error during fec encoding, err=%s", err)
 		return
 	}
-	for _, n := range self.Nodes(false) {
+	for _, n := range self.Nodes() {
 		log.Debugf("Sending echo: from=%d, to=%d", self.ID(), n.Index)
 		go func(node common.KeygenNodeDetails) {
 			echoMsg, err := NewEchoMessage(roundID, shares[node.Index-1], hash, curve)

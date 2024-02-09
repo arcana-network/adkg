@@ -31,6 +31,7 @@ type MessageBroker struct {
 	caller string
 }
 
+// TODO can we rename this to NodeDetails? Or solve this in some other way?
 type KeygenNodeDetails struct {
 	Index  int
 	PubKey Point

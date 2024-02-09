@@ -1,4 +1,4 @@
-package pss
+package dpss
 
 import (
 	"sync"

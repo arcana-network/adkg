@@ -1,4 +1,4 @@
-package keygen
+package common
 
 import (
 	"encoding/hex"
@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/arcana-network/dkgnode/common"
 )
 
 func TestBigIntToPoint(t *testing.T) {

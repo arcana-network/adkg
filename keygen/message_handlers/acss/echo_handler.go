@@ -10,11 +10,11 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 )
 
-var EchoMessageType common.MessageType = "acss_echo"
+var EchoMessageType string = "acss_echo"
 
 type EchoMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 	Share   infectious.Share
 	Hash    []byte
@@ -110,7 +110,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 		"roundID":    m.RoundID,
 	}).Debug("acss_echo_after")
 
-	_, _, f := self.Params(false)
+	_, _, f := self.Params()
 
 	// Broadcast ready message if echo count > 2f + 1
 	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), c.EC, (2*f + 1))

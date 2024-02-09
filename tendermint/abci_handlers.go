@@ -46,7 +46,7 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 		log.WithFields(log.Fields{
 			"type": msg.Method,
 		}).Info("CheckTx:DKGMessage")
-		if msg.Method == string(keyderivation.PubKeygenType) {
+		if msg.Method == keyderivation.PubKeygenType {
 			var m keyderivation.PubKeygenMessage
 			if err = bijson.Unmarshal(msg.Data, &m); err != nil {
 				log.WithFields(log.Fields{
@@ -197,7 +197,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		log.WithFields(log.Fields{
 			"type": msg.Method,
 		}).Debug("ValidateAndUpdateTx()")
-		if msg.Method == string(keyderivation.PubKeygenType) {
+		if msg.Method == keyderivation.PubKeygenType {
 			var m keyderivation.PubKeygenMessage
 			if err = bijson.Unmarshal(msg.Data, &m); err != nil {
 				log.WithFields(log.Fields{
