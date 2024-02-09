@@ -10,11 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType common.MessageType = "key_derivation_init"
+var InitMessageType string = "key_derivation_init"
 
 type InitMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 }
 
@@ -43,7 +43,7 @@ func (m InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	if err != nil {
 		return
 	}
-	n, _, _ := self.Params(false)
+	n, _, _ := self.Params()
 
 	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
 	if complete {

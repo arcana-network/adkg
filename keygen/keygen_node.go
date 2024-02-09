@@ -22,12 +22,7 @@ import (
 type KeygenNode struct {
 	broker  *common.MessageBroker
 	details common.KeygenNodeDetails
-	// if node is in new committee
-	// TODO: Check if the flag is needed.
-	//isNewCommittee bool
 	CurrentNodes common.NodeNetwork
-	// Nodes form opposite committeeds
-	NewCommitteeNodes common.NodeNetwork
 	Transport         common.NodeTransport
 	state             *common.NodeState
 	privateKey        curves.Scalar
@@ -75,16 +70,10 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 	return newKeygenNode, nil
 }
 
-func (node *KeygenNode) Params(newCommittee bool) (n, k, t int) {
-	if newCommittee {
-		n = node.NewCommitteeNodes.N
-		k = node.NewCommitteeNodes.K
-		t = node.NewCommitteeNodes.T
-	} else {
-		n = node.CurrentNodes.N
-		k = node.CurrentNodes.K
-		t = node.CurrentNodes.T
-	}
+func (node *KeygenNode) Params() (n, k, t int) {
+	n = node.CurrentNodes.N
+	k = node.CurrentNodes.K
+	t = node.CurrentNodes.T
 	return
 }
 
@@ -180,10 +169,7 @@ func (node *KeygenNode) ID() int {
 	return node.details.Index
 }
 
-func (node *KeygenNode) Nodes(newCommittee bool) map[common.NodeDetailsID]common.KeygenNodeDetails {
-	if newCommittee {
-		return node.NewCommitteeNodes.Nodes
-	}
+func (node *KeygenNode) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
 	return node.CurrentNodes.Nodes
 }
 
@@ -226,8 +212,8 @@ func (node *KeygenNode) ReceiveBFTMessage(msg common.DKGMessage) {
 	}
 }
 
-func (node *KeygenNode) PublicKey(index int, newCommittee bool) curves.Point {
-	for _, n := range node.Nodes(newCommittee) {
+func (node *KeygenNode) PublicKey(index int) curves.Point {
+	for _, n := range node.Nodes() {
 		if n.Index == index {
 			pk, err := curves.K256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
 			if err != nil {
@@ -312,7 +298,7 @@ func (node *KeygenNode) ProcessBroadcastMessage(keygenMessage common.DKGMessage)
 }
 
 func (node *KeygenNode) processKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch common.MessageType(keygenMessage.Method) {
+	switch keygenMessage.Method {
 	case keyset.InitMessageType:
 		log.Debugf("Got %s", keyset.InitMessageType)
 		var msg keyset.InitMessage
@@ -362,7 +348,7 @@ func (node *KeygenNode) processKeysetMessages(sender common.KeygenNodeDetails, k
 }
 
 func (node *KeygenNode) processABAMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch common.MessageType(keygenMessage.Method) {
+	switch keygenMessage.Method {
 	case aba.InitMessageType:
 		log.Debugf("Got %s", aba.InitMessageType)
 		var msg aba.InitMessage
@@ -439,7 +425,7 @@ func (node *KeygenNode) processABAMessages(sender common.KeygenNodeDetails, keyg
 }
 
 func (node *KeygenNode) processKeyDerivationMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-	switch common.MessageType(keygenMessage.Method) {
+	switch keygenMessage.Method {
 	case keyderivation.InitMessageType:
 		log.Debugf("Got %s", keyderivation.InitMessageType)
 		var msg keyderivation.InitMessage
@@ -463,7 +449,7 @@ func (node *KeygenNode) processKeyDerivationMessages(sender common.KeygenNodeDet
 
 func (node *KeygenNode) processACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
 	log.Debugf("Got %s, round=%s", keygenMessage.Method, keygenMessage.RoundID)
-	switch common.MessageType(keygenMessage.Method) {
+	switch keygenMessage.Method {
 	case acss.ShareMessageType:
 		var msg acss.ShareMessage
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)

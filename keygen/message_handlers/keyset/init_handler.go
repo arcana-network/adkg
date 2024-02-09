@@ -8,11 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType common.MessageType = "keyset_init"
+var InitMessageType string = "keyset_init"
 
 type InitMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Data    []byte
 	Curve   common.CurveName
 }

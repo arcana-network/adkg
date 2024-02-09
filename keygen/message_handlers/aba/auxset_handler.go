@@ -8,11 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var AuxsetMessageType common.MessageType = "aba_auxset"
+var AuxsetMessageType string = "aba_auxset"
 
 type AuxsetMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 	V       int
 	R       int
@@ -42,7 +42,7 @@ func (m AuxsetMessage) Process(sender common.KeygenNodeDetails, self common.DkgP
 		return
 	}
 
-	n, _, f := self.Params(false)
+	n, _, f := self.Params()
 
 	store.Lock()
 	defer store.Unlock()

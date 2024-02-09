@@ -295,10 +295,8 @@ func GetADKGIDFromRoundID(roundID RoundID) (ADKGID, error) {
 type DkgParticipant interface {
 	// For ADKG state
 	ParticipantState
-	// Params returns the parameters of the threat model of the protocol in which
-	// the node is participating. It returns the number of nodes in the committee
-	// n, the reconstruction threshold k, and the number of malicious nodes t.
-	Params(newCommittee bool) (n int, k int, t int)
+	// Get Protocol n (number of nodes), k (threshold) and t (num of malicious nodes)
+	Params() (n int, k int, t int)
 	// Node Index
 	ID() int
 	// Get self details
@@ -310,16 +308,15 @@ type DkgParticipant interface {
 	// Receive message to self
 	ReceiveMessage(sender KeygenNodeDetails, msg DKGMessage)
 	// Get public key of a node
-	//TODO: Check if newCommitte flag is required. Added since old nodes will have to update PK
-	PublicKey(index int, newCommittee bool) curves.Point
+	PublicKey(index int) curves.Point
 	// Get map of connected nodes
-	Nodes(newCommittee bool) map[NodeDetailsID]KeygenNodeDetails
+	Nodes() map[NodeDetailsID]KeygenNodeDetails
 	// Get self private key
 	PrivateKey() curves.Scalar
 	// Get public params for a curve, say g1 and g2
 	CurveParams(name string) (curves.Point, curves.Point)
 	// Receiving BFT message to broadcast
-	ReceiveBFTMessage(msg DKGMessage)
+	ReceiveBFTMessage(DKGMessage)
 	// Cleanup session store
 	Cleanup(id ADKGID)
 	// Store completed share

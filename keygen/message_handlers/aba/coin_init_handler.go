@@ -13,11 +13,11 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-var CoinInitMessageType common.MessageType = "aba_coin_init"
+var CoinInitMessageType string = "aba_coin_init"
 
 type CoinInitMessage struct {
 	RoundID common.RoundID
-	Kind    common.MessageType
+	Kind    string
 	Curve   common.CurveName
 	CoinID  string
 }
@@ -45,7 +45,7 @@ func (m CoinInitMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 
 	uJi := curve.Scalar.Zero()
 
-	n, _, _ := self.Params(false)
+	n, _, _ := self.Params()
 	roundLeader, err := m.RoundID.Leader()
 	if err != nil {
 		return
