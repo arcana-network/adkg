@@ -128,6 +128,7 @@ func (r *RoundID) Leader() (big.Int, error) {
 
 type RoundID string
 
+// KeygenNodeState
 type NodeState struct {
 	KeygenStore  *SharingStoreMap
 	SessionStore *ADKGSessionStore

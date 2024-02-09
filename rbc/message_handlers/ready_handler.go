@@ -8,7 +8,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	commonacss "github.com/arcana-network/dkgnode/keygen/message_handlers/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -161,16 +160,20 @@ func (m RbcReadyMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 
 				// TODO: Check this possible solution: =============
 				defer func() { keygen.State.Phase = common.Ended }()
-				if m.ProtoOrigin == "dacss" {
-					outputMsg := dacss.NewDacssOutputMessage(m.RoundID, M, m.Curve, self.ID(), "ready", m.NewCommittee)
-					go self.ReceiveMessage(self.Details(), outputMsg)
-				} else if m.ProtoOrigin == "acss" {
-					outputMsg, err := commonacss.NewOutputMessage(m.RoundID, M, common.CurveName(m.Curve.Name))
-					if err != nil {
-						return
-					}
-					go self.ReceiveMessage(self.Details(), *outputMsg)
-				}
+
+				// Send RBC Output message to NodeTransport
+				// On NodeTransport it has to be picked up by the correct msg handler (probably xxxOutputHandler)
+
+				// if m.ProtoOrigin == "dacss" {
+				// 	outputMsg := dacss.NewDacssOutputMessage(m.RoundID, M, m.Curve, self.ID(), "ready", m.NewCommittee)
+				// 	go self.ReceiveMessage(self.Details(), outputMsg)
+				// } else if m.ProtoOrigin == "acss" {
+				// 	outputMsg, err := commonacss.NewOutputMessage(m.RoundID, M, common.CurveName(m.Curve.Name))
+				// 	if err != nil {
+				// 		return
+				// 	}
+				// 	go self.ReceiveMessage(self.Details(), *outputMsg)
+				// }
 				// =================================================
 
 				// TODO: we have the message stored, what should we do with the
