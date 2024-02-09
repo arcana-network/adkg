@@ -47,8 +47,8 @@ func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore:  make(map[string]*common.CStore),
-		Started: false,
+		EchoStore: make(map[string]*common.EchoStore),
+		Started:   false,
 	}
 	keygen, complete := state.GetOrSetIfNotComplete(m.RoundID, defaultKeygen)
 

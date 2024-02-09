@@ -22,7 +22,7 @@ import (
 // TODO not hardcode this
 var n int = 7
 var k int = 3
-var f int = k-1
+var f int = k - 1
 
 // TODO move test_utils
 
@@ -71,7 +71,7 @@ type MockTransport struct {
 	output              chan string
 	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
 	sentMessages        []common.DKGMessage
-	receivedMessages 		[]common.DKGMessage
+	receivedMessages    []common.DKGMessage
 }
 
 func NewMockTransport(nodes []*Node) *MockTransport {
@@ -520,12 +520,12 @@ func NewNode(id, n, k int, keypair common.KeyPair, transport *MockTransport, isF
 
 func NewDefaultKeygen(round common.RoundDetails) *common.SharingStore {
 	return &common.SharingStore{
-			RoundID: round.ID(),
-			State: common.RBCState{
-					Phase:         common.Initial,
-					ReceivedReady: make(map[int]bool),
-					ReceivedEcho:  make(map[int]bool),
-			},
-			CStore: make(map[string]*common.CStore),
+		RoundID: round.ID(),
+		State: common.RBCState{
+			Phase:         common.Initial,
+			ReceivedReady: make(map[int]bool),
+			ReceivedEcho:  make(map[int]bool),
+		},
+		EchoStore: make(map[string]*common.EchoStore),
 	}
 }

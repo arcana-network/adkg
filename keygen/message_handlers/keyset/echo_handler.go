@@ -66,7 +66,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore: make(map[string]*common.CStore),
+		EchoStore: make(map[string]*common.EchoStore),
 	}
 
 	// Get or set if it doesn't exist
@@ -93,36 +93,38 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 
 	// Get keygen store by serializing the share and hash of the message
 	cid := m.Fingerprint()
-	c := common.GetCStore(keygen, cid)
-
-	log.Debugf("Round=%s, EchoCount=%v, self=%v", m.RoundID, c.EC, self.ID())
-
+	echoStore := keygen.GetEchoStore(cid, m.Share, m.Hash)
 	// increment the echo messages received
-	c.EC = c.EC + 1
+	echoStore.Count = echoStore.Count + 1
 
+	log.Debugf("Round=%s, EchoCount=%v, self=%v", m.RoundID, echoStore.Count, self.ID())
 	_, _, f := self.Params()
 
-	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), c.EC, (2*f + 1))
+	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), echoStore.Count, (2*f + 1))
 	// Broadcast ready message if echo count > 2f + 1
-	if c.EC >= ((2*f)+1) && !c.ReadySent {
+	if echoStore.Count >= ((2*f)+1) && !keygen.State.ReadySent {
 		// Send Ready Message
 		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
 		if err != nil {
 			log.WithField("error", err).Error("NewKeysetProposeMessage")
 			return
 		}
-		c.ReadySent = true
+		keygen.State.ReadySent = true
 		go self.Broadcast(*readyMsg)
 	}
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
-		// Broadcast ready message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
-		if err != nil {
-			log.WithField("error", err).Error("NewKeysetProposeMessage")
-			return
+	if len(keygen.ReadyStore) >= f+1 && !keygen.State.ReadySent {
+		echoStore := keygen.FindThresholdEchoStore(f + 1)
+		if echoStore != nil {
+			// Broadcast ready message
+			readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+			if err != nil {
+				log.WithField("error", err).Error("NewKeysetProposeMessage")
+				return
+			}
+			keygen.State.ReadySent = true
+			go self.Broadcast(*readyMsg)
 		}
-		c.ReadySent = true
-		go self.Broadcast(*readyMsg)
+
 	}
 }

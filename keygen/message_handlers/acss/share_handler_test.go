@@ -265,8 +265,8 @@ func TestKeygenAlreadyStarted(t *testing.T) {
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore:  make(map[string]*common.CStore),
-		Started: false,
+		EchoStore: make(map[string]*common.EchoStore),
+		Started:   false,
 	}
 	keygen, _ := state.GetOrSetIfNotComplete(round.ID(), defaultKeygen)
 	keygen.Started = true
