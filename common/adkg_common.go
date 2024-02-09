@@ -252,10 +252,13 @@ type PubKeyShare struct {
 	Share []byte
 }
 
+// Represents the state of the node in the RBC protocol
 type RBCState struct {
-	Phase         phase
-	ReceivedEcho  map[int]bool
-	ReceivedReady map[int]bool
+	Phase           phase        // Phase of within the protocol.
+	ReceivedEcho    map[int]bool // Echos received.
+	ReceivedReady   map[int]bool // Ready received.
+	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
+	OutputReceived  bool         // Tells if the output message was received at the end of the RBC protocol.
 }
 
 func Keccak256(data ...[]byte) []byte {

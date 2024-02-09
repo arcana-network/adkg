@@ -1,4 +1,4 @@
-package dacss
+package rbc
 
 import (
 	"encoding/json"
@@ -12,23 +12,28 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssProposeMessageType common.MessageType = "dacss_propose"
+var RbcProposeMessageType common.MessageType = "dacss_propose"
 
-type DacssProposeMessage struct {
-	RoundID      common.RoundID
-	NewCommittee bool
-	Kind         common.MessageType
-	Curve        *curves.Curve
-	Data         messages.MessageData
+// RbcProposeMessage represents the PROPOSE message in the RBC protocol
+type RbcProposeMessage struct {
+	RoundID     common.RoundID       // The current round ID.
+	Kind        common.MessageType   // The kind of the message inside the RBC protocol.
+	Curve       *curves.Curve        // The curve that we are using.
+	Data        messages.MessageData // The data of the message.
+	ProtoOrigin string               // The protocol that is calling RBC.
+	// TODO: is this the place for this?
+	NewCommittee bool // Defines if the message comes from an old or a new committee.
 }
 
-func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool) (*common.DKGMessage, error) {
-	m := DacssProposeMessage{
+// NewRbcProposeMessage creates a new PROPOSE message for the RBC protocol.
+func NewRbcProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, newCommittee bool, protoOrigin string) (*common.DKGMessage, error) {
+	m := RbcProposeMessage{
 		RoundID:      roundID,
-		NewCommittee: isNewCommittee,
-		Kind:         DacssProposeMessageType,
+		Kind:         RbcProposeMessageType,
 		Curve:        msgCurve,
 		Data:         msgData,
+		NewCommittee: newCommittee,
+		ProtoOrigin:  protoOrigin,
 	}
 	bytes, err := json.Marshal(m)
 	if err != nil {
@@ -39,8 +44,7 @@ func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData
 	return &msg, nil
 }
 
-func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
-
+func (msg *RbcProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Propose message from %d on %d", sender.Index, self.ID())
 	log.Debugf("Propose: Node=%d, Value=%v", self.ID(), msg.Data)
 
@@ -59,8 +63,8 @@ func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self co
 	// Generated shared symmetric key
 	n, k, _ := self.Params(msg.NewCommittee)
 
+	// Keys to verify the predicate.
 	dealerKey := self.PublicKey(int(leader.Int64()), msg.NewCommittee)
-
 	priv := self.PrivateKey()
 	key := acss.SharedKey(priv, dealerKey)
 
@@ -75,6 +79,7 @@ func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self co
 	if verified {
 
 		// Store dealerPublicKey
+		// TODO: The variable s is not being used.
 		s, err := common.GetSessionStoreFromRoundID(msg.RoundID, self)
 		if err != nil {
 			log.Debugf("Could not get session store for roundID=%s, self=%d", msg.RoundID, self.ID())
@@ -115,7 +120,7 @@ func (msg *DacssProposeMessage) Process(sender common.KeygenNodeDetails, self co
 
 				//This instruction corresponds to Line 10, Algorithm 4 from
 				//"Asynchronous data disemination and applications."
-				echoMsg, err := NewDacssEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, msg.Curve, self.ID(), msg.NewCommittee)
+				echoMsg, err := NewRbcEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, msg.Curve, self.ID(), msg.NewCommittee, msg.ProtoOrigin)
 				if err != nil {
 					log.WithField("error", err).Error("NewDacssEchoMessage")
 					return

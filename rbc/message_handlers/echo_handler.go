@@ -1,4 +1,4 @@
-package dacss
+package rbc
 
 import (
 	"encoding/hex"
@@ -10,9 +10,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssEchoMessageType common.MessageType = "dacss_echo"
+var RbcEchoMessageType common.MessageType = "dacss_echo"
 
-type DacssEchoMessage struct {
+type RbcEchoMessage struct {
 	RoundID       common.RoundID
 	CommitteeType int
 	Kind          common.MessageType
@@ -20,16 +20,18 @@ type DacssEchoMessage struct {
 	Share         infectious.Share
 	Hash          []byte // Hash of the shares.
 	NewCommittee  bool
+	ProtoOrigin   string
 }
 
-func NewDacssEchoMessage(id common.RoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.DKGMessage, error) {
-	m := DacssEchoMessage{
+func NewRbcEchoMessage(id common.RoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool, protoOrigin string) (*common.DKGMessage, error) {
+	m := RbcEchoMessage{
 		RoundID:      id,
 		NewCommittee: newCommittee,
-		Kind:         DacssEchoMessageType,
+		Kind:         RbcEchoMessageType,
 		Curve:        curve,
 		Share:        s,
 		Hash:         hash,
+		ProtoOrigin:  protoOrigin,
 	}
 	if newCommittee {
 		m.CommitteeType = 1
@@ -46,7 +48,7 @@ func NewDacssEchoMessage(id common.RoundID, s infectious.Share, hash []byte, cur
 	return &msg, nil
 }
 
-func (m *DacssEchoMessage) Fingerprint() string {
+func (m *RbcEchoMessage) Fingerprint() string {
 	var bytes []byte
 	delimiter := common.Delimiter2
 	bytes = append(bytes, m.Hash...)
@@ -61,7 +63,7 @@ func (m *DacssEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (msg *DacssEchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *RbcEchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore
@@ -114,7 +116,7 @@ func (msg *DacssEchoMessage) Process(sender common.KeygenNodeDetails, self commo
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			go func(node common.KeygenNodeDetails) {
 				// This corresponds to Line 12, Algorithm 4, RBC Protocol.
-				readyMsg, err := NewDacssReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee)
+				readyMsg, err := NewRbcReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee, msg.ProtoOrigin)
 				if err != nil {
 					log.WithField("error", err).Error("NewDacssReadyMessage")
 					return
