@@ -9,6 +9,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
+	"github.com/arcana-network/dkgnode/rbc/router"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 )
@@ -87,7 +88,9 @@ func makeMessageAndSend(isNewCommittee bool, self common.DkgParticipant, msg *Da
 	for _, n := range self.Nodes(isNewCommittee) {
 		go func(node common.KeygenNodeDetails) {
 			roundID := reCreateRoundID(msg.RoundID, isNewCommittee)
-			proposeMsg, err := NewDacssProposeMessage(roundID, msgData, msg.Curve, self.ID(), isNewCommittee)
+			rbcRouter := router.NewRbcRouter("dacss")
+			proposeMsg, err := rbcRouter.StartRbc(roundID, msgData, msg.Curve, self.ID(), isNewCommittee)
+
 			if err != nil {
 				log.WithField("error", err).Error("NewDacssProposeMessage")
 				return
