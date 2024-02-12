@@ -22,6 +22,7 @@ builds:
       - -X 'github.com/arcana-network/dkgnode/config.DefaultBlockchainRPCURL={{.Env.BLOCKCHAIN_RPC_URL}}'
       - -X 'github.com/arcana-network/dkgnode/config.DefaultPasswordlessUrl={{.Env.PASSWORDLESS_URL}}'
       - -X 'github.com/arcana-network/dkgnode/config.DefaultOAuthUrl={{.Env.OAUTH_URL}}'
+      # - -X 'github.com/arcana-network/dkgnode/config.DefaultGlobalKeyCertPool={{.Env.GLOBAL_KEY_CERT_POOL}}'
 
 archives:
   - format: tar.gz

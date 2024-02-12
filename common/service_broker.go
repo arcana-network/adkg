@@ -267,8 +267,8 @@ type KeyAssignmentPublic struct {
 	Verifiers map[string][]string // Verifier => VerifierID
 }
 
-func (am *ABCIMethods) RetrieveKeyMapping(keyIndex big.Int) (keyDetails KeyAssignmentPublic, err error) {
-	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "retrieve_key_mapping", keyIndex)
+func (am *ABCIMethods) RetrieveKeyMapping(keyIndex big.Int, curve CurveName) (keyDetails KeyAssignmentPublic, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "retrieve_key_mapping", keyIndex, curve)
 	if methodResponse.Error != nil {
 		return keyDetails, methodResponse.Error
 	}
@@ -281,8 +281,8 @@ func (am *ABCIMethods) RetrieveKeyMapping(keyIndex big.Int) (keyDetails KeyAssig
 	return
 }
 
-func (am *ABCIMethods) GetIndexesFromVerifierID(verifier, verifierID, appID string) (keyIndexes []big.Int, err error) {
-	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "get_indexes_from_verifier_id", verifier, verifierID, appID)
+func (am *ABCIMethods) GetIndexesFromVerifierID(verifier, verifierID, appID string, curve CurveName) (keyIndexes []big.Int, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "get_indexes_from_verifier_id", verifier, verifierID, appID, curve)
 	if methodResponse.Error != nil {
 		return keyIndexes, methodResponse.Error
 	}
@@ -980,8 +980,8 @@ func (dbm *DBMethods) RetrieveCommitmentMatrix(keyIndex big.Int) (c [][]Point, e
 	}
 	return data, nil
 }
-func (dbm *DBMethods) RetrieveCompletedShare(keyIndex big.Int) (Si big.Int, Siprime big.Int, err error) {
-	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "retrieve_completed_share", keyIndex)
+func (dbm *DBMethods) RetrieveCompletedShare(keyIndex big.Int, curve CurveName) (Si big.Int, Siprime big.Int, err error) {
+	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "retrieve_completed_share", keyIndex, curve)
 	if methodResponse.Error != nil {
 		err = methodResponse.Error
 		return
@@ -1006,24 +1006,24 @@ func (dbm *DBMethods) SetKeygenStarted(keygenID string, started bool) error {
 	return nil
 }
 
-func (dbm *DBMethods) StoreCompletedPSSShare(keyIndex big.Int, si big.Int, siprime big.Int) error {
-	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_completed_PSS_share", keyIndex, si, siprime)
+func (dbm *DBMethods) StoreCompletedPSSShare(keyIndex, si, siprime big.Int, c CurveName) error {
+	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_completed_PSS_share", keyIndex, si, siprime, c)
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}
 	return nil
 }
 
-func (dbm *DBMethods) StoreCommitment(keyIndex big.Int, T []int, metadata map[string][]Point) error {
-	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_sharing_commitment", keyIndex, T, metadata)
+func (dbm *DBMethods) StoreCommitment(keyIndex big.Int, T []int, metadata map[string][]Point, c CurveName) error {
+	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_sharing_commitment", keyIndex, T, metadata, c)
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}
 	return nil
 }
 
-func (dbm *DBMethods) StorePublicKeyToIndex(publicKey Point, keyIndex big.Int) error {
-	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_public_key_to_index", publicKey, keyIndex)
+func (dbm *DBMethods) StorePublicKeyToIndex(publicKey Point, keyIndex big.Int, c CurveName) error {
+	methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "store_public_key_to_index", publicKey, keyIndex, c)
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}
@@ -1050,9 +1050,9 @@ func (dbm *DBMethods) GetKeygenStarted(keygenID string) (started bool) {
 	return
 }
 
-func (dbm *DBMethods) IndexToPublicKeyExists(keyIndex big.Int) (exists bool) {
+func (dbm *DBMethods) IndexToPublicKeyExists(keyIndex big.Int, curve CurveName) (exists bool) {
 	err := retry.Do(func() error {
-		methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "index_to_public_key_exists", keyIndex)
+		methodResponse := ServiceMethod(dbm.bus, dbm.caller, dbm.service, "index_to_public_key_exists", keyIndex, curve)
 		if methodResponse.Error != nil {
 			return methodResponse.Error
 		}

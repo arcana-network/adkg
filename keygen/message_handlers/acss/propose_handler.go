@@ -59,15 +59,6 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 	n, k, _ := self.Params()
 	priv := self.PrivateKey()
 
-	dealerKey, err := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
-	// dealerKey, err := curve.Point.FromAffineCompressed(m.DealerPublicKey)
-	if err != nil {
-		log.Errorf("could not deserialize dealer public key: %s", err)
-		return
-	}
-
-	key := acss.SharedKey(priv, dealerKey)
-
 	// Verify self share against commitments
 	data := &messages.MessageData{}
 	err = data.Deserialize(m.Data)
@@ -75,7 +66,7 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 		log.Errorf("could not deserialize message data: %s", err)
 		return
 	}
-	_, _, verified := acss.Predicate(key[:], data.ShareMap[uint32(self.ID())][:],
+	_, _, verified := acss.Predicate(priv.Bytes(), data.ShareMap[uint32(self.ID())][:],
 		data.Commitments[:], k, curve)
 
 	// If verified, send echo to each node

@@ -61,7 +61,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 	log.Info("Keygen service starting...")
 	transport.Init()
 	transport.SetKeygenNode(newKeygenNode)
-	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.cleanup)
+	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.remove)
 	return newKeygenNode, nil
 }
 
@@ -77,8 +77,26 @@ func (node *KeygenNode) cleanup(id common.ADKGID) {
 	node.cleanupSessionStore(id)
 }
 
+func (node *KeygenNode) remove(id common.ADKGID) {
+	for _, n := range node.CurrentNodes.Nodes {
+		node.state.KeygenStore.Delete((&common.RoundDetails{
+			ADKGID: id,
+			Dealer: n.Index,
+			Kind:   "acss",
+		}).ID())
+		keysetID := (&common.RoundDetails{
+			ADKGID: id,
+			Dealer: n.Index,
+			Kind:   "keyset",
+		}).ID()
+		node.state.KeygenStore.Delete(keysetID)
+		node.state.ABAStore.Delete(keysetID)
+	}
+	node.state.SessionStore.Delete(id)
+}
+
 func (node *KeygenNode) Cleanup(id common.ADKGID) {
-	node.tracker.Remove(id)
+	node.cleanup(id)
 }
 
 func (node *KeygenNode) cleanupKeygenStore(id common.ADKGID) {
@@ -114,8 +132,12 @@ func (node *KeygenNode) BFTDecided(id common.ADKGID) {
 		if err != nil {
 			return
 		}
-		node.StoreCompletedShare(keyIndex, *store.Share)
-		node.StoreCommitment(keyIndex, store.Commitments)
+		curve, err := id.GetCurve()
+		if err != nil {
+			return
+		}
+		node.StoreCompletedShare(keyIndex, *store.Share, curve)
+		node.StoreCommitment(keyIndex, store.Commitments, curve)
 		node.cleanup(id)
 	} else {
 		store.BFTDecided = true
@@ -175,7 +197,9 @@ func (node *KeygenNode) ReceiveBFTMessage(msg common.DKGMessage) {
 		return
 	}
 
-	if !node.Transport.CheckIfNIZKPProcessed(index) {
+	c, _ := adkgid.GetCurve()
+
+	if !node.Transport.CheckIfNIZKPProcessed(index, c) {
 		err := node.Transport.SendBroadcast(msg)
 		if err != nil {
 			log.WithError(err).Info("node.ReceiveBFTMessage()")
@@ -205,13 +229,13 @@ func (node *KeygenNode) ReceiveMessage(sender common.KeygenNodeDetails, msg comm
 	}
 }
 
-func (node *KeygenNode) StoreCompletedShare(keyIndex big.Int, si big.Int) {
-	err := node.broker.DBMethods().StoreCompletedPSSShare(keyIndex, si, si)
+func (node *KeygenNode) StoreCompletedShare(keyIndex, si big.Int, c common.CurveName) {
+	err := node.broker.DBMethods().StoreCompletedPSSShare(keyIndex, si, si, c)
 	if err != nil {
 		log.WithError(err).Error("Node:StoreCompletedShare")
 	}
 }
-func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMetadata) {
+func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMetadata, c common.CurveName) {
 	convertedMetadata := make(map[string][]common.Point)
 	for k, v := range metadata.Commitments {
 		key := strconv.Itoa(k)
@@ -220,11 +244,11 @@ func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMe
 		}
 
 		for i := 0; i < len(v); i++ {
-			val := kcommon.CurvePointToPoint(v[i])
+			val := kcommon.CurvePointToPoint(v[i], c)
 			convertedMetadata[key] = append(convertedMetadata[key], val)
 		}
 	}
-	err := node.broker.DBMethods().StoreCommitment(keyIndex, metadata.T, convertedMetadata)
+	err := node.broker.DBMethods().StoreCommitment(keyIndex, metadata.T, convertedMetadata, c)
 	if err != nil {
 		log.WithError(err).Error("Node:StoreCommitment")
 	}

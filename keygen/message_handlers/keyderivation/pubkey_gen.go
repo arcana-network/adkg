@@ -24,7 +24,7 @@ func NewPubKeygenMessage(id common.RoundID, curve common.CurveName, publicKey cu
 		Curve:   curve,
 	}
 
-	m.PublicKey = kcommon.CurvePointToPoint(publicKey)
+	m.PublicKey = kcommon.CurvePointToPoint(publicKey, curve)
 
 	bytes, err := bijson.Marshal(m)
 	if err != nil {

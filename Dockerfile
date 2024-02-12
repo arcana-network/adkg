@@ -1,4 +1,4 @@
-FROM --platform=linux/x86-64 golang:1.19.2-alpine3.16 as node-build
+FROM --platform=linux/x86-64 golang:1.21.3-alpine3.17 as node-build
 RUN apk update && apk add libstdc++ g++ git linux-headers
 
 WORKDIR /src

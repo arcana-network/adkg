@@ -1,9 +1,10 @@
 package config
 
 var (
-	DefaultGatewayURL       = ""
-	DefaultContractAddress  = ""
-	DefaultBlockchainRPCURL = ""
-	DefaultPasswordlessUrl  = ""
-	DefaultOAuthUrl         = ""
+	DefaultGatewayURL        = ""
+	DefaultContractAddress   = ""
+	DefaultBlockchainRPCURL  = ""
+	DefaultPasswordlessUrl   = ""
+	DefaultOAuthUrl          = ""
+	DefaultGlobalKeyCertPool = ""
 )
