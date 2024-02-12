@@ -105,12 +105,9 @@ func TestShareMsg(t *testing.T) {
 
 				// Check 6: the shares and commitments can be verified
 				_, k, _ := node.Params()
-				sender_id, _ := msg.RoundID.Leader()
 				node_sk := node.PrivateKey()
-				sender_pk := nodes[sender_id.Int64()-1].keypair.PublicKey
-				aes_key := acss.SharedKey(node_sk, sender_pk)
 				curve := common.CurveFromName(common.SECP256K1)
-				_, _, verified := acss.Predicate(aes_key[:], msgData.ShareMap[uint32(node.ID())][:],
+				_, _, verified := acss.Predicate(node_sk.Bytes(), msgData.ShareMap[uint32(node.ID())][:],
 					msgData.Commitments[:], k, curve)
 				assert.True(t, verified)
 			}

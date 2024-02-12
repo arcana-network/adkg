@@ -78,7 +78,7 @@ func TestInvalidShare(t *testing.T) {
 	shareMap := make(map[uint32][]byte, n)
 	for _, share := range shares {
 		// Instead of storing the actual shares, we store zeroes
-		shareMap[share.Id] = make([]byte, 52)
+		shareMap[share.Id] = make([]byte, 81)
 	}
 
 	messageData := &messages.MessageData{

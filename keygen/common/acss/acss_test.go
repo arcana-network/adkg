@@ -197,9 +197,8 @@ func TestPredicateVerified(t *testing.T) {
 	curve := curves.K256()
 	// KEYS
 	myKeyPair := GenerateKeyPair(curve)
-	dealerKeyPair := GenerateKeyPair(curve)
-
-	sharedKey := SharedKey(myKeyPair.PrivateKey, dealerKeyPair.PublicKey)
+	// Shares will be encrypted with the public key of the receiver
+	receiverKeyPair := GenerateKeyPair(curve)
 
 	// THE SECRET
 	secret_scalar := GenerateSecret(curve)
@@ -219,10 +218,10 @@ func TestPredicateVerified(t *testing.T) {
 	binary.BigEndian.PutUint32(shareByteArray[:4], share0.Id)
 	// Append the Value bytes
 	copy(shareByteArray[4:], share0.Value)
-	// Encrypt with key combo equal to sharedKey
-	sharesEncrypted, _ := Encrypt(shareByteArray, dealerKeyPair.PublicKey, myKeyPair.PrivateKey)
+	// Encryption is done with the public key (private key is not used)
+	sharesEncrypted, _ := Encrypt(shareByteArray, receiverKeyPair.PublicKey, myKeyPair.PrivateKey)
 
-	resultShare, resultVerifier, b := Predicate(sharedKey[:], sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
+	resultShare, resultVerifier, b := Predicate(receiverKeyPair.PrivateKey.Bytes(), sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
 	resultCompressedCommitments := CompressCommitments(resultVerifier)
 
 	// predicate should return true
@@ -255,10 +254,7 @@ func TestPredicateError(t *testing.T) {
 	curve := curves.K256()
 	// KEYS
 	myKeyPair := GenerateKeyPair(curve)
-	dealerKeyPair := GenerateKeyPair(curve)
-
-	sharedKey := SharedKey(myKeyPair.PrivateKey, dealerKeyPair.PublicKey)
-	wrongKey := SharedKey(dealerKeyPair.PrivateKey, dealerKeyPair.PublicKey)
+	receiverKeyPair := GenerateKeyPair(curve)
 
 	// THE SECRET
 	secret_scalar := GenerateSecret(curve)
@@ -280,18 +276,18 @@ func TestPredicateError(t *testing.T) {
 	// Append the Value bytes
 	copy(shareByteArray[4:], share0.Value)
 	// Encrypt with key combo equal to sharedKey
-	sharesEncrypted, _ := Encrypt(shareByteArray, dealerKeyPair.PublicKey, myKeyPair.PrivateKey)
+	sharesEncrypted, _ := Encrypt(shareByteArray, receiverKeyPair.PublicKey, myKeyPair.PrivateKey)
 
-	// Test 1: wrong decryption key
-	_, _, b1 := Predicate(wrongKey[:], sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
+	// Test 1: wrong decryption key (should be with private key of receiver)
+	_, _, b1 := Predicate( myKeyPair.PrivateKey.Bytes(), sharesEncrypted, commitmentsByteArray, len(verifier.Commitments), curve)
 
 	// predicate should return false
 	if b1 {
 		t.Fatal("Predicate should be false for an incorrect decryption key")
 	}
 
-	// Test 2: mismatch shares and commitments
-	_, _, b2 := Predicate(sharedKey[:], sharesEncrypted, second_batch_commitmentsByteArray, len(verifier.Commitments), curve)
+	// Test 2: mismatch shares and commitments (decryption key is correct here)
+	_, _, b2 := Predicate(receiverKeyPair.PrivateKey.Bytes(), sharesEncrypted, second_batch_commitmentsByteArray, len(verifier.Commitments), curve)
 
 	// predicate should return false
 	if b2 {
