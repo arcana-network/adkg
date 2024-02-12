@@ -18,7 +18,9 @@ type PSSNode struct {
 	newCommitteeNodes NodeNetwork // Set of nodes belonging to the new committee.
 }
 
-func NewPSSNode(broker MessageBroker, nodeDetails KeygenNodeDetails, oldCommittee []KeygenNodeDetails, newCommittee []KeygenNodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int, tNewCommittee int, kNewCommittee int, privateKey curves.Scalar) (*PSSNode, error) {
+func NewPSSNode(broker MessageBroker, nodeDetails KeygenNodeDetails, oldCommittee []KeygenNodeDetails,
+	newCommittee []KeygenNodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int,
+	tNewCommittee int, kNewCommittee int, privateKey curves.Scalar) (*PSSNode, error) {
 	transport := NewNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
 
 	// Creates the committees
