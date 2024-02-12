@@ -268,3 +268,11 @@ func DoesFileExist(fileName string) bool {
 	_, err := os.Stat(fileName)
 	return err == nil
 }
+
+func MapFromNodeList(nodeList []KeygenNodeDetails) (res map[NodeDetailsID]KeygenNodeDetails) {
+	res = make(map[NodeDetailsID]KeygenNodeDetails)
+	for _, node := range nodeList {
+		res[node.ToNodeDetailsID()] = node
+	}
+	return
+}

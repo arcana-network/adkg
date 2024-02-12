@@ -20,14 +20,14 @@ import (
 )
 
 type KeygenNode struct {
-	broker  *common.MessageBroker
-	details common.KeygenNodeDetails
+	broker       *common.MessageBroker
+	details      common.KeygenNodeDetails
 	CurrentNodes common.NodeNetwork
-	Transport         common.NodeTransport
-	state             *common.NodeState
-	privateKey        curves.Scalar
-	publicKey         curves.Point
-	tracker           *KeygenTracker
+	Transport    common.NodeTransport
+	state        *common.NodeState
+	privateKey   curves.Scalar
+	publicKey    curves.Point
+	tracker      *KeygenTracker
 }
 
 // NodeDetails implements common.NodeProcessor.
@@ -43,7 +43,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 		N:     len(nodeList),
 		K:     K,
 		T:     T,
-		Nodes: mapFromNodeList(nodeList),
+		Nodes: common.MapFromNodeList(nodeList),
 	}
 
 	g := curves.K256().NewGeneratorPoint()
@@ -257,14 +257,6 @@ func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMe
 	if err != nil {
 		log.WithError(err).Error("Node:StoreCommitment")
 	}
-}
-
-func mapFromNodeList(nodeList []common.KeygenNodeDetails) (res map[common.NodeDetailsID]common.KeygenNodeDetails) {
-	res = make(map[common.NodeDetailsID]common.KeygenNodeDetails)
-	for _, node := range nodeList {
-		res[node.ToNodeDetailsID()] = node
-	}
-	return
 }
 
 func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNodes []common.KeygenNodeDetails) {
