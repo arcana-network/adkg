@@ -40,7 +40,7 @@ func NewCoinMessage(id common.RoundID, data []byte, curve common.CurveName) (*co
 	return &msg, nil
 }
 
-func (m *CoinMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m *CoinMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	curve := common.CurveFromName(m.Curve)
 	u, err := unpack(curve, m.Data)
 	if err != nil {

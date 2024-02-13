@@ -21,9 +21,9 @@ import (
 
 type KeygenNode struct {
 	broker       *common.MessageBroker
-	details      common.KeygenNodeDetails
+	details      common.NodeDetails
 	CurrentNodes common.NodeNetwork
-	Transport    common.NodeTransport
+	Transport    KeygenTransport
 	state        *common.NodeState
 	privateKey   curves.Scalar
 	publicKey    curves.Point
@@ -31,14 +31,14 @@ type KeygenNode struct {
 }
 
 // NodeDetails implements common.NodeProcessor.
-func (node *KeygenNode) NodeDetails() common.KeygenNodeDetails {
+func (node *KeygenNode) NodeDetails() common.NodeDetails {
 	return node.details
 }
 
-func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDetails,
-	nodeList []common.KeygenNodeDetails, bus eventbus.Bus, T int, K int,
+func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.NodeDetails,
+	nodeList []common.NodeDetails, bus eventbus.Bus, T int, K int,
 	privateKey curves.Scalar) (*KeygenNode, error) {
-	transport := common.NewNodeTransport(bus, GetKeygenProtocolPrefix(1), "keygen-transport")
+	transport := NewKeygenTransport(bus, GetKeygenProtocolPrefix(1))
 	nodeNetwork := common.NodeNetwork{
 		N:     len(nodeList),
 		K:     K,
@@ -65,7 +65,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 
 	log.Info("Keygen service starting...")
 	transport.Init()
-	transport.SetNode(newKeygenNode)
+	transport.SetKeygenNode(newKeygenNode)
 	newKeygenNode.tracker = NewKeygenTracker(newKeygenNode.remove)
 	return newKeygenNode, nil
 }
@@ -153,7 +153,7 @@ func (node *KeygenNode) DetailsID() common.NodeDetailsID {
 	return node.details.ToNodeDetailsID()
 }
 
-func (node *KeygenNode) Details() common.KeygenNodeDetails {
+func (node *KeygenNode) Details() common.NodeDetails {
 	return node.details
 }
 
@@ -169,17 +169,17 @@ func (node *KeygenNode) ID() int {
 	return node.details.Index
 }
 
-func (node *KeygenNode) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
+func (node *KeygenNode) Nodes() map[common.NodeDetailsID]common.NodeDetails {
 	return node.CurrentNodes.Nodes
 }
 
-func (node *KeygenNode) Send(n common.KeygenNodeDetails, msg common.DKGMessage) error {
+func (node *KeygenNode) Send(n common.NodeDetails, msg common.DKGMessage) error {
 	return node.Transport.Send(n, msg)
 }
 
 func (node *KeygenNode) Broadcast(msg common.DKGMessage) {
 	for _, n := range node.CurrentNodes.Nodes {
-		go func(receiver common.KeygenNodeDetails) {
+		go func(receiver common.NodeDetails) {
 			err := node.Transport.Send(receiver, msg)
 			if err != nil {
 				log.WithField("Error", err).Error("Node.Broadcast()")
@@ -227,7 +227,7 @@ func (node *KeygenNode) PublicKey(index int) curves.Point {
 	return nil
 }
 
-func (node *KeygenNode) ReceiveMessage(sender common.KeygenNodeDetails, msg common.DKGMessage) {
+func (node *KeygenNode) ReceiveMessage(sender common.NodeDetails, msg common.DKGMessage) {
 	err := node.Transport.Receive(sender, msg)
 	if err != nil {
 		log.WithError(err).Error("Node:ReceiveMessage")
@@ -259,9 +259,9 @@ func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMe
 	}
 }
 
-func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNodes []common.KeygenNodeDetails) {
+func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNodes []common.NodeDetails) {
 	for _, nodeRef := range nodeRefs {
-		commonNodes = append(commonNodes, common.KeygenNodeDetails{
+		commonNodes = append(commonNodes, common.NodeDetails{
 			Index: int(nodeRef.Index.Int64()),
 			PubKey: common.Point{
 				X: *nodeRef.PublicKey.X,
@@ -272,8 +272,8 @@ func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNode
 	return
 }
 
-func GetKeygenProtocolPrefix(currEpoch int) common.ProtocolPrefix {
-	return common.ProtocolPrefix("keygen" + "-" + strconv.Itoa(currEpoch) + "/")
+func GetKeygenProtocolPrefix(currEpoch int) KeygenProtocolPrefix {
+	return KeygenProtocolPrefix("keygen" + "-" + strconv.Itoa(currEpoch) + "/")
 }
 
 func (node *KeygenNode) State() *common.NodeState {
@@ -289,7 +289,7 @@ func (node *KeygenNode) ProcessBroadcastMessage(keygenMessage common.DKGMessage)
 	return nil
 }
 
-func (node *KeygenNode) processKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *KeygenNode) processKeysetMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case keyset.InitMessageType:
 		log.Debugf("Got %s", keyset.InitMessageType)
@@ -339,7 +339,7 @@ func (node *KeygenNode) processKeysetMessages(sender common.KeygenNodeDetails, k
 	}
 }
 
-func (node *KeygenNode) processABAMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *KeygenNode) processABAMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case aba.InitMessageType:
 		log.Debugf("Got %s", aba.InitMessageType)
@@ -416,7 +416,7 @@ func (node *KeygenNode) processABAMessages(sender common.KeygenNodeDetails, keyg
 	}
 }
 
-func (node *KeygenNode) processKeyDerivationMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *KeygenNode) processKeyDerivationMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case keyderivation.InitMessageType:
 		log.Debugf("Got %s", keyderivation.InitMessageType)
@@ -439,7 +439,7 @@ func (node *KeygenNode) processKeyDerivationMessages(sender common.KeygenNodeDet
 	}
 }
 
-func (node *KeygenNode) processACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *KeygenNode) processACSSMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	log.Debugf("Got %s, round=%s", keygenMessage.Method, keygenMessage.RoundID)
 	switch keygenMessage.Method {
 	case acss.ShareMessageType:
@@ -485,7 +485,7 @@ func (node *KeygenNode) processACSSMessages(sender common.KeygenNodeDetails, key
 	}
 }
 
-func (node *KeygenNode) ProcessMessage(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) error {
+func (node *KeygenNode) ProcessMessage(sender common.NodeDetails, keygenMessage common.DKGMessage) error {
 	log.WithFields(log.Fields{
 		"sender":   sender.Index,
 		"receiver": node.ID(),

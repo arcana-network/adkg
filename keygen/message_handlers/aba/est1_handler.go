@@ -35,7 +35,7 @@ func NewEst1Message(id common.RoundID, v, r int, curve common.CurveName) (*commo
 	return &msg, nil
 }
 
-func (m Est1Message) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m Est1Message) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	v, r := m.V, m.R
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID, common.DefaultABAStore())

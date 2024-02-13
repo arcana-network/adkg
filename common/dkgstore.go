@@ -6,7 +6,7 @@ import (
 )
 
 type NodeNetwork struct {
-	Nodes map[NodeDetailsID]KeygenNodeDetails
+	Nodes map[NodeDetailsID]NodeDetails
 	N     int
 	T     int
 	K     int
@@ -34,7 +34,7 @@ type NodeDetailsID string
 
 const NullNodeDetails = NodeDetailsID("")
 
-func (n *KeygenNodeDetails) ToNodeDetailsID() NodeDetailsID {
+func (n *NodeDetails) ToNodeDetailsID() NodeDetailsID {
 	return NodeDetailsID(strings.Join([]string{
 		strconv.Itoa(n.Index),
 		n.PubKey.X.Text(16),

@@ -38,7 +38,7 @@ func NewCoinInitMessage(id common.RoundID, coinID string, curve common.CurveName
 	return &msg, nil
 }
 
-func (m CoinInitMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m CoinInitMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	curve := common.CurveFromName(m.Curve)
 
 	gTilde := curve.Point.Hash([]byte(m.CoinID))

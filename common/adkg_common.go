@@ -262,17 +262,17 @@ type DkgParticipant interface {
 	// Node Index
 	ID() int
 	// Get self details
-	Details() KeygenNodeDetails
+	Details() NodeDetails
 	// Send message to a node
-	Send(n KeygenNodeDetails, msg DKGMessage) error
+	Send(n NodeDetails, msg DKGMessage) error
 	// Send message to all connected nodes
 	Broadcast(msg DKGMessage)
 	// Receive message to self
-	ReceiveMessage(sender KeygenNodeDetails, msg DKGMessage)
+	ReceiveMessage(sender NodeDetails, msg DKGMessage)
 	// Get public key of a node
 	PublicKey(index int) curves.Point
 	// Get map of connected nodes
-	Nodes() map[NodeDetailsID]KeygenNodeDetails
+	Nodes() map[NodeDetailsID]NodeDetails
 	// Get self private key
 	PrivateKey() curves.Scalar
 	// Get public params for a curve, say g1 and g2

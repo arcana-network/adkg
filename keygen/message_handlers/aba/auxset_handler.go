@@ -35,7 +35,7 @@ func NewAuxsetMessage(id common.RoundID, v, r int, curve common.CurveName) (*com
 	return &msg, nil
 }
 
-func (m AuxsetMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m AuxsetMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID, common.DefaultABAStore())
 	if complete {
 		log.Infof("Keygen already complete: %s", m.RoundID)

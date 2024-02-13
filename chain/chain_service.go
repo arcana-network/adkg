@@ -392,13 +392,13 @@ func pssFlagMonitor(e *ChainService) {
 		}
 
 		if pssFlag {
-				log.Info("Pss flag is set. Trigger PSS")
-				// Trigger PSS via PssService
-				err := e.broker.PssMethods().TriggerPss()
-				if err != nil {
-					log.WithError(err).Error("TriggerPss()")
-				}
-		} 
+			log.Info("Pss flag is set. Trigger PSS")
+			// Trigger PSS via PssService
+			err := e.broker.PssMethods().TriggerPss()
+			if err != nil {
+				log.WithError(err).Error("TriggerPss()")
+			}
+		}
 	}
 }
 
@@ -443,7 +443,7 @@ func (chainService *ChainService) getBuffer() int {
 	return int(b.Int64())
 }
 
-func (e *ChainService) verifyDataWithNodelist(pk common.Point, sig []byte, data []byte) (senderDetails common.KeygenNodeDetails, err error) {
+func (e *ChainService) verifyDataWithNodelist(pk common.Point, sig []byte, data []byte) (senderDetails common.NodeDetails, err error) {
 	// Check if PubKey Exists in Nodelist
 	nodeExists := false
 	var foundNode *common.NodeReference
@@ -467,7 +467,7 @@ func (e *ChainService) verifyDataWithNodelist(pk common.Point, sig []byte, data 
 		err = fmt.Errorf("invalid ecdsa sig for data %v", data)
 		return
 	}
-	return common.KeygenNodeDetails{
+	return common.NodeDetails{
 		Index: int(foundNode.Index.Int64()),
 		PubKey: common.Point{
 			X: *foundNode.PublicKey.X,
@@ -709,7 +709,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		} else {
 			// Retrieve new committee nodes & store in nodeReferences
 		}
-		
+
 		return nodeReferences, nil
 	}
 	return "", nil
@@ -747,7 +747,7 @@ func (e *ChainService) GetEpochInfo(epoch int, skipCache bool) (common.EpochInfo
 	return eInfo, nil
 }
 
-func (chainService *ChainService) verifyDataWithEpoch(pk common.Point, sig []byte, data []byte, epoch int) (senderDetails common.KeygenNodeDetails, err error) {
+func (chainService *ChainService) verifyDataWithEpoch(pk common.Point, sig []byte, data []byte, epoch int) (senderDetails common.NodeDetails, err error) {
 	// Check if PubKey Exists in Nodelist
 	nodeExists := false
 	var foundNode *common.NodeReference
@@ -775,7 +775,7 @@ func (chainService *ChainService) verifyDataWithEpoch(pk common.Point, sig []byt
 		err = fmt.Errorf("invalid ecdsa sig for data %v", data)
 		return
 	}
-	return common.KeygenNodeDetails{
+	return common.NodeDetails{
 		Index: int(foundNode.Index.Int64()),
 		PubKey: common.Point{
 			X: *foundNode.PublicKey.X,

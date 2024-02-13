@@ -54,7 +54,7 @@ func (m ReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m ReadyMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender.Index, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore

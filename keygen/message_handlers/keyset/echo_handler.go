@@ -53,7 +53,7 @@ func (m EchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m EchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore

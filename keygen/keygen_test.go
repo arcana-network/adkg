@@ -225,7 +225,7 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 
 type MockTransport struct {
 	nodes       []*Node
-	nodeDetails map[common.NodeDetailsID]common.KeygenNodeDetails
+	nodeDetails map[common.NodeDetailsID]common.NodeDetails
 	output      chan string
 }
 
@@ -235,7 +235,7 @@ func NewMockTransport(nodes []*Node) *MockTransport {
 
 func (t *MockTransport) Init(nodes []*Node) {
 	t.nodes = nodes
-	nodeDetails := make(map[common.NodeDetailsID]common.KeygenNodeDetails)
+	nodeDetails := make(map[common.NodeDetailsID]common.NodeDetails)
 
 	for _, node := range nodes {
 		d := node.Details()
@@ -245,7 +245,7 @@ func (t *MockTransport) Init(nodes []*Node) {
 }
 
 // Sends message to everyone on transport
-func (t *MockTransport) Broadcast(sender common.KeygenNodeDetails, m common.DKGMessage) {
+func (t *MockTransport) Broadcast(sender common.NodeDetails, m common.DKGMessage) {
 	for _, p := range t.nodes {
 		go func(node common.DkgParticipant) {
 			node.ReceiveMessage(sender, m)
@@ -254,7 +254,7 @@ func (t *MockTransport) Broadcast(sender common.KeygenNodeDetails, m common.DKGM
 }
 
 // Sends message to the participant
-func (t *MockTransport) Send(sender, receiver common.KeygenNodeDetails, msg common.DKGMessage) {
+func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKGMessage) {
 	// time.Sleep(500 * time.Millisecond)
 	for _, n := range t.nodes {
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
@@ -281,7 +281,7 @@ type Node struct {
 	shares       map[int64]*big.Int
 }
 
-func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *Node) ReceiveMessage(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	node.messageCount = node.messageCount + 1
 	switch {
 	case strings.HasPrefix(keygenMessage.Method, "acss"):
@@ -299,7 +299,7 @@ func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage 
 	}
 }
 
-func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *Node) ProcessKeysetMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case keyset.InitMessageType:
 		log.Debugf("Got %s", keyset.InitMessageType)
@@ -349,7 +349,7 @@ func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenM
 	}
 }
 
-func (node *Node) ProcessABAMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *Node) ProcessABAMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case aba.InitMessageType:
 		log.Debugf("Got %s", aba.InitMessageType)
@@ -426,7 +426,7 @@ func (node *Node) ProcessABAMessages(sender common.KeygenNodeDetails, keygenMess
 	}
 }
 
-func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *Node) ProcessKeyDerivationMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case keyderivation.InitMessageType:
 		log.Debugf("Got %s", keyderivation.InitMessageType)
@@ -449,7 +449,7 @@ func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, 
 	}
 }
 
-func (node *Node) ProcessACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *Node) ProcessACSSMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case acss.ShareMessageType:
 		log.Debugf("Got %s", acss.ShareMessageType)
@@ -568,7 +568,7 @@ func (n *Node) Broadcast(m common.DKGMessage) {
 	n.transport.Broadcast(n.Details(), m)
 }
 
-func (n *Node) Send(receiver common.KeygenNodeDetails, msg common.DKGMessage) error {
+func (n *Node) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
 	if n.isFaulty {
 		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.id)
 		return nil
@@ -577,12 +577,12 @@ func (n *Node) Send(receiver common.KeygenNodeDetails, msg common.DKGMessage) er
 	return nil
 }
 
-func (n *Node) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
+func (n *Node) Nodes() map[common.NodeDetailsID]common.NodeDetails {
 	return n.transport.nodeDetails
 }
 
-func (n *Node) Details() common.KeygenNodeDetails {
-	return common.KeygenNodeDetails{
+func (n *Node) Details() common.NodeDetails {
+	return common.NodeDetails{
 		Index:  n.id,
 		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
 	}

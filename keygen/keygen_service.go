@@ -42,7 +42,7 @@ func (service *KeygenService) Start() error {
 		return err
 	}
 
-	selfDetails := common.KeygenNodeDetails{
+	selfDetails := common.NodeDetails{
 		Index:  selfIndex,
 		PubKey: common.Point{X: selfPubKey.X, Y: selfPubKey.Y},
 	}
@@ -104,7 +104,7 @@ func (service *KeygenService) Call(method string, args ...interface{}) (interfac
 		pubKey := service.KeygenNode.details.PubKey
 		index := service.broker.ChainMethods().GetSelfIndex()
 
-		details := common.KeygenNodeDetails{
+		details := common.NodeDetails{
 			PubKey: pubKey,
 			Index:  index,
 		}

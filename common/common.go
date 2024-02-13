@@ -48,6 +48,16 @@ func (p Point) ToHex() HexPoint {
 	}
 }
 
+type NodeDetails struct {
+	Index  int
+	PubKey Point
+}
+
+func (Node NodeDetails) IsEqual(other NodeDetails) bool {
+	return Node.PubKey.ToHex().X == other.PubKey.ToHex().X &&
+		Node.PubKey.ToHex().Y == other.PubKey.ToHex().Y
+}
+
 type p2pMessageVersion string
 
 const NodeVersion = "0.1"
@@ -270,8 +280,8 @@ func DoesFileExist(fileName string) bool {
 	return err == nil
 }
 
-func MapFromNodeList(nodeList []KeygenNodeDetails) (res map[NodeDetailsID]KeygenNodeDetails) {
-	res = make(map[NodeDetailsID]KeygenNodeDetails)
+func MapFromNodeList(nodeList []NodeDetails) (res map[NodeDetailsID]NodeDetails) {
+	res = make(map[NodeDetailsID]NodeDetails)
 	for _, node := range nodeList {
 		res[node.ToNodeDetailsID()] = node
 	}
@@ -289,4 +299,20 @@ type RBCState struct {
 type RBCStateMap struct {
 	sync.Mutex
 	store sync.Map // Key: roundID, Value: RBCState
+}
+
+func Stringify(i interface{}) string {
+	bytArr, ok := i.([]byte)
+	if ok {
+		return string(bytArr)
+	}
+	str, ok := i.(string)
+	if ok {
+		return str
+	}
+	byt, err := bijson.Marshal(i)
+	if err != nil {
+		log.WithError(err).Error("Could not fastjsonmarshal")
+	}
+	return string(byt)
 }

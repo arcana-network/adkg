@@ -37,7 +37,7 @@ func NewProposeMessage(id common.RoundID, d []byte, curve common.CurveName) (*co
 	return &msg, nil
 }
 
-func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m ProposeMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received keyset Propose message from %d on %d", sender.Index, self.ID())
 
 	leader, err := m.RoundID.Leader()
@@ -102,7 +102,7 @@ func OnKeysetVerified(roundID common.RoundID, curve common.CurveName, keyset []b
 	}
 	for _, n := range self.Nodes() {
 		log.Debugf("Sending echo: from=%d, to=%d", self.ID(), n.Index)
-		go func(node common.KeygenNodeDetails) {
+		go func(node common.NodeDetails) {
 			echoMsg, err := NewEchoMessage(roundID, shares[node.Index-1], hash, curve)
 			if err != nil {
 				log.WithField("error", err).Error("NewKeysetEchoMessage")

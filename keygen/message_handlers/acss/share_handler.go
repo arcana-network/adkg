@@ -32,7 +32,7 @@ func NewShareMessage(id common.RoundID, curve common.CurveName) (*common.DKGMess
 	msg := common.CreateMessage(m.RoundID, m.Kind, bytes)
 	return &msg, nil
 }
-func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m ShareMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("sender=%d, self=%d", sender.Index, self.ID())
 	if sender.Index != self.ID() {
 		return

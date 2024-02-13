@@ -34,7 +34,7 @@ func NewInitMessage(id common.RoundID, v, r int, curve common.CurveName) (*commo
 	return &msg, nil
 }
 
-func (m *InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m *InitMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	v, r := m.V, m.R
 
 	if sender.Index != self.ID() {

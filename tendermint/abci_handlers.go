@@ -17,7 +17,7 @@ import (
 
 var ErrKeyNotAvailable = errors.New("Key not available for assignment!")
 
-func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.KeygenNodeDetails, state *State) (bool, error) {
+func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.NodeDetails, state *State) (bool, error) {
 	log.WithFields(log.Fields{
 		"msgType": msgType,
 	}).Info("Got message in validateTx")
@@ -122,7 +122,7 @@ func getVerifierKey(tx AssignmentTx, partitioned bool) []byte {
 	return getUnpartitionedKeyspace(tx.UserID, tx.Curve)
 }
 
-func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, senderDetails common.KeygenNodeDetails) (bool, *[]abcitypes.EventAttribute, error) {
+func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, senderDetails common.NodeDetails) (bool, *[]abcitypes.EventAttribute, error) {
 	var tags []abcitypes.EventAttribute
 
 	currEpoch := abci.broker.ChainMethods().GetCurrentEpoch()

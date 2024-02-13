@@ -37,7 +37,7 @@ func NewOutputMessage(id common.RoundID, data []byte, curve common.CurveName) (*
 	return &msg, nil
 }
 
-func (m OutputMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m OutputMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received output message on %d", self.ID())
 	// Ignore if not received by self
 	if sender.Index != self.ID() {

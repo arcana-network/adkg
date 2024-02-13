@@ -441,7 +441,7 @@ func (abci *ABCI) SaveState() State {
 	return *abci.state
 }
 
-func authenticateBftTx(tx []byte, broker *common.MessageBroker) (parsedTx DefaultBFTTxWrapper, senderDetails common.KeygenNodeDetails, err error) {
+func authenticateBftTx(tx []byte, broker *common.MessageBroker) (parsedTx DefaultBFTTxWrapper, senderDetails common.NodeDetails, err error) {
 	err = bijson.Unmarshal(tx, &parsedTx)
 	if err != nil {
 		log.Errorf("could not unmarshal headers from tx: %v", err)

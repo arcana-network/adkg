@@ -33,7 +33,7 @@ func NewInitMessage(id common.RoundID, curve common.CurveName) (*common.DKGMessa
 	return &msg, nil
 }
 
-func (m InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m InitMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	if sender.Index != self.ID() {
 		return
 	}

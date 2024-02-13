@@ -13,17 +13,23 @@ import (
 
 // PSSNode represents a node participating in the DPSS protocol.
 type PSSNode struct {
-	common.NodeTransport
+	PssNodeTransport PssNodeTransport
 	common.BaseNode
 	state             common.PSSNodeState
 	OldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
 	NewCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
+	PSSNodeDetails    PSSNodeDetails
 }
 
-func NewPSSNode(broker common.MessageBroker, nodeDetails common.KeygenNodeDetails, oldCommittee []common.KeygenNodeDetails,
-	newCommittee []common.KeygenNodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int,
+type PSSNodeDetails struct {
+	OldNodeDetails common.NodeDetails
+	NewNodeDetails common.NodeDetails
+}
+
+func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, oldCommittee []common.NodeDetails,
+	newCommittee []common.NodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int,
 	tNewCommittee int, kNewCommittee int, privateKey curves.Scalar) (*PSSNode, error) {
-	transport := common.NewNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
+	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
 
 	// Creates the committees
 	oldCommitteeNetwork := common.NodeNetwork{
@@ -50,32 +56,31 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.KeygenNodeDetail
 			nodeDetails,
 			privateKey,
 			publicKey,
-			*transport,
 		),
 		OldCommitteeNodes: oldCommitteeNetwork,
 		NewCommitteeNodes: newCommiteeNetwork,
 	}
 
 	transport.Init()
-	transport.SetNode(newPSSNode)
+	transport.SetPSSNode(newPSSNode)
 
 	return newPSSNode, nil
 }
 
-func getPSSProtocolPrefix(epoch int) common.ProtocolPrefix {
-	return common.ProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
+func getPSSProtocolPrefix(epoch int) ProtocolPrefix {
+	return ProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
 }
 
 // IsOldNode determines if the current node belongs to the old committee.
 func (node *PSSNode) IsOldNode() bool {
-	nodeDetails := node.Details()
+	nodeDetails := node.PSSNodeDetails.OldNodeDetails
 	_, found := node.OldCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
 
 // IsOldNode determines if the current node belongs to the new committe.
 func (node *PSSNode) IsNewNode() bool {
-	nodeDetails := node.Details()
+	nodeDetails := node.PSSNodeDetails.NewNodeDetails
 	_, found := node.NewCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
@@ -120,8 +125,8 @@ func (node *PSSNode) Params(fromNewCommittee bool) (n, k, t int) {
 func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.DKGMessage) {
 	nodesToBroadcast := node.Nodes(toNewCommittee)
 	for _, n := range nodesToBroadcast {
-		go func(receiver common.KeygenNodeDetails) {
-			err := node.Transport.Send(receiver, msg)
+		go func(receiver common.NodeDetails) {
+			err := node.PssNodeTransport.Send(receiver, msg)
 			if err != nil {
 				log.WithField("Error", err).Error("Node.Broadcast()")
 			}
@@ -131,7 +136,7 @@ func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.DKGMessage) {
 
 // Nodes returns the set of nodes of the old or new committee according to the flag
 // fromNewCommitte.
-func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.KeygenNodeDetails {
+func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	if fromNewCommittee {
 		return node.NewCommitteeNodes.Nodes
 	} else {
@@ -140,7 +145,7 @@ func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]commo
 }
 
 // TODO: Implement this as long as we implement the DPSS protocol.
-func (node *PSSNode) ProcessMessage(senderDetails common.KeygenNodeDetails, message common.DKGMessage) error {
+func (node *PSSNode) ProcessMessage(senderDetails common.NodeDetails, message common.DKGMessage) error {
 	return nil
 }
 
@@ -149,8 +154,12 @@ func (node *PSSNode) ProcessBroadcastMessage(message common.DKGMessage) error {
 	return nil
 }
 
-func (node *PSSNode) NodeDetails() common.KeygenNodeDetails {
-	return node.Details()
+func (node *PSSNode) Details(fromNewCommittee bool) common.NodeDetails {
+	if fromNewCommittee {
+		return node.PSSNodeDetails.NewNodeDetails
+	} else {
+		return node.PSSNodeDetails.OldNodeDetails
+	}
 }
 
 func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
@@ -158,6 +167,6 @@ func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
 	return common.ADKGID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
 }
 
-func (node *PSSNode) Send(n common.KeygenNodeDetails, msg common.DKGMessage) error {
-	return node.Transport.Send(n, msg)
+func (node *PSSNode) Send(n common.NodeDetails, msg common.DKGMessage) error {
+	return node.PssNodeTransport.Send(n, msg)
 }

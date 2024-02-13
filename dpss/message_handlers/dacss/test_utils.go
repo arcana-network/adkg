@@ -29,8 +29,9 @@ var n1 int = 7
 var k1 int = 3
 var f1 int = k1 - 1
 
-type Node struct {
-	id int
+// This just has to adhere to the PssParticipant interface
+type PssTestNode struct {
+	details common.NodeDetails
 
 	//oldCommitte
 	n int
@@ -41,7 +42,7 @@ type Node struct {
 	k1 int
 
 	transport *MockTransport
-	state     *common.NodeState
+	pssState  *common.PSSNodeState
 	keypair   common.KeyPair
 	isFaulty  bool
 
@@ -57,8 +58,8 @@ type Node struct {
 }
 
 type MockTransport struct {
-	nodes               []*Node
-	nodeDetails         map[common.NodeDetailsID]common.KeygenNodeDetails
+	nodes               []*PssTestNode
+	nodeDetails         map[common.NodeDetailsID]common.NodeDetails
 	output              chan string
 	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
 	sentMessages        []common.DKGMessage
@@ -66,24 +67,29 @@ type MockTransport struct {
 }
 
 // getting single old/new node
-func getSingleNode(isOldCommittee, isNewCommittee bool) (*Node, *MockTransport) {
-	nodes := []*Node{}
+func getSingleNode(isOldCommittee, isNewCommittee bool) (*PssTestNode, *MockTransport) {
+	nodes := []*PssTestNode{}
 	keypair := acssc.GenerateKeyPair(curves.K256())
 	transport := NewMockTransport(nodes)
 
 	node := NewNode(1, n, k, n1, k1, keypair, transport, false, isOldCommittee, isNewCommittee)
-	transport.Init([]*Node{node})
+	transport.Init([]*PssTestNode{node})
 	return node, transport
 }
 
-func NewMockTransport(nodes []*Node) *MockTransport {
+func NewMockTransport(nodes []*PssTestNode) *MockTransport {
 	return &MockTransport{nodes: nodes, output: make(chan string, 100)}
 }
 
-// creates nodes with both isNewCommittee and isOldCommittee as false
-// later can be accordingly grouped
-func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
-	nodes := []*Node{}
+// Create standard nodes which are all connected in a transport
+// Later can be added the details of:
+// -  isFaulty
+// - isNewCommittee
+// - isOldCommittee
+// TODO adjust this function to work for DPSS. Needs to consider the 2 committees,
+// some nodes possibly being in both, and possible faulty nodes in both (different nr)
+func setupStandardNodes(count int, faultyCount int) ([]*PssTestNode, *MockTransport) {
+	nodes := []*PssTestNode{}
 	nodeList := make(map[int]common.KeyPair)
 	for i := 1; i <= count+faultyCount; i++ {
 		keypair := acssc.GenerateKeyPair(curves.K256())
@@ -92,37 +98,33 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 	transport := NewMockTransport(nodes)
 
 	log.Info("Creating nodes...")
-	i := 1
+	// Index of nodes always start at 1
+	index := 1
 
 	// Note `NewNode` is called with k=f+1
 	for j := 0; j < count; j++ {
-		log.Infof("Creating node %d", i)
-		node := NewNode(i, n, k, n1, k1, nodeList[i], transport, false, false, false)
+		log.Infof("Creating node %d", index)
+		keypair := acssc.GenerateKeyPair(curves.K256())
+		// isNewCommittee and isOldCommittee are set later
+		node := NewNode(index, n, k, n1, k1, keypair, transport, false, false, false)
 		nodes = append(nodes, node)
-		i++
-	}
-	for j := 0; j < faultyCount; j++ {
-		log.Infof("Creating faulty node %d", i)
-		node := NewNode(i, n, k, n1, k1, nodeList[i], transport, true, false, false)
-		nodes = append(nodes, node)
-		i++
+		index++
 	}
 
 	transport.Init(nodes)
 	return nodes, transport
 }
 
-func NewNode(id, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTransport, isFaulty, isNewCommittee, isOldCommittee bool) *Node {
-	node := Node{
-		id: id,
-		n:  n,
-		k:  k,
-		n1: n1,
-		k1: k1,
-		state: &common.NodeState{
-			KeygenStore:  &common.SharingStoreMap{},
-			SessionStore: &common.ADKGSessionStore{},
-			ABAStore:     &common.ABAStoreMap{},
+func NewNode(index, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTransport, isFaulty, isNewCommittee, isOldCommittee bool) *PssTestNode {
+	node := PssTestNode{
+		details: common.NodeDetails{Index: index, PubKey: kcommon.CurvePointToPoint(keypair.PublicKey, common.SECP256K1)},
+		n:       n,
+		k:       k,
+		n1:      n1,
+		k1:      k1,
+		pssState: &common.PSSNodeState{
+			Shares:   &common.PSSShareStoreMap{},
+			RbcStore: &common.RBCStateMap{},
 		},
 		transport:      transport,
 		keypair:        keypair,
@@ -134,9 +136,9 @@ func NewNode(id, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTransp
 	return &node
 }
 
-func (t *MockTransport) Init(nodes []*Node) {
+func (t *MockTransport) Init(nodes []*PssTestNode) {
 	t.nodes = nodes
-	nodeDetails := make(map[common.NodeDetailsID]common.KeygenNodeDetails)
+	nodeDetails := make(map[common.NodeDetailsID]common.NodeDetails)
 
 	for _, node := range nodes {
 		d := node.Details()
@@ -145,29 +147,19 @@ func (t *MockTransport) Init(nodes []*Node) {
 	t.nodeDetails = nodeDetails
 }
 
-// TODO: should we use the DkgParticipant
-func (t *MockTransport) Broadcast(sender common.KeygenNodeDetails, m common.DKGMessage) {
-	t.broadcastedMessages = append(t.broadcastedMessages, m) // Save the message
-	for _, p := range t.nodes {
-		go func(node common.DkgParticipant) {
-			node.ReceiveMessage(sender, m)
-		}(p)
-	}
-}
-
-// Method to retrieve broadcasted messages for assertions
-func (t *MockTransport) GetBroadcastedMessages() []common.DKGMessage {
-	return t.broadcastedMessages
+func (t *MockTransport) Broadcast(sender common.NodeDetails, m common.DKGMessage) {
+	// PssNode might not even actually use Broadcast ever; it always sends directly to the correct (set of) nodes
+	// so leaving it empty for now
 }
 
 // Sends message to the participant
-func (t *MockTransport) Send(sender, receiver common.KeygenNodeDetails, msg common.DKGMessage) {
+func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKGMessage) {
 
 	t.sentMessages = append(t.sentMessages, msg) // Save the message
 
 	for _, n := range t.nodes {
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
-		if n.ID() == receiver.Index {
+		if n.details.IsEqual(receiver) {
 			go n.ReceiveMessage(sender, msg)
 			break
 		}
@@ -182,7 +174,7 @@ type KeyMap struct {
 	shares map[int]*big.Int
 }
 
-func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	node.transport.receivedMessages = append(node.transport.receivedMessages, keygenMessage) // Save the message
 	node.messageCount = node.messageCount + 1
 	switch {
@@ -200,7 +192,7 @@ func (node *Node) ReceiveMessage(sender common.KeygenNodeDetails, keygenMessage 
 	}
 }
 
-func (node *Node) CountReceivedMessages(msgType string) int {
+func (node *PssTestNode) CountReceivedMessages(msgType string) int {
 	receivedMessages := node.transport.receivedMessages
 	filteredMessages := make([]common.DKGMessage, 0)
 
@@ -212,7 +204,7 @@ func (node *Node) CountReceivedMessages(msgType string) int {
 	return len(filteredMessages)
 }
 
-func (node *Node) GetReceivedMessages(msgType string) []common.DKGMessage {
+func (node *PssTestNode) GetReceivedMessages(msgType string) []common.DKGMessage {
 	receivedMessages := node.transport.receivedMessages
 	filteredMessages := make([]common.DKGMessage, 0)
 
@@ -374,7 +366,7 @@ func (node *Node) GetReceivedMessages(msgType string) []common.DKGMessage {
 // 	}
 // }
 
-func (node *Node) ProcessDACSSMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
+func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
 	case InitMessageType:
 		log.Debugf("Got %s", InitMessageType)
@@ -409,37 +401,38 @@ func (node *Node) ProcessDACSSMessages(sender common.KeygenNodeDetails, keygenMe
 	}
 }
 
-func (n *Node) ID() int {
+// TODO what is the meaning of this in DPSS context
+func (n *PssTestNode) ID() int {
 	return n.id
 }
 
-func (n *Node) AdjustParamN(new_n int) {
+func (n *PssTestNode) AdjustParamN(new_n int) {
 	n.n = new_n
 }
 
-func (n *Node) Params() (int, int, int) {
+func (n *PssTestNode) Params() (int, int, int) {
 	return n.n, n.k, n.k - 1
 }
 
 var c = curves.K256()
 var randomScalar = c.Scalar.Random(rand.Reader)
 
-func (n *Node) CurveParams(c string) (curves.Point, curves.Point) {
+func (n *PssTestNode) CurveParams(c string) (curves.Point, curves.Point) {
 	return sharing.CurveParams(c)
 }
 
-func (n *Node) State() *common.NodeState {
-	return n.state
+func (n *PssTestNode) State() *common.PSSNodeState {
+	return n.pssState
 }
 
-func (n *Node) Cleanup(id common.ADKGID) {
+func (n *PssTestNode) Cleanup(id common.ADKGID) {
 	n.cleanupKeygenStore(id)
 	n.cleanupABAStore(id)
 	n.cleanupADKGSessionStore(id)
 	// debug.FreeOSMemory()
 }
 
-func (node *Node) cleanupKeygenStore(id common.ADKGID) {
+func (node *PssTestNode) cleanupKeygenStore(id common.ADKGID) {
 	for _, n := range node.Nodes() {
 		node.state.KeygenStore.Complete((&common.RoundDetails{
 			ADKGID: id,
@@ -453,7 +446,7 @@ func (node *Node) cleanupKeygenStore(id common.ADKGID) {
 		}).ID())
 	}
 }
-func (node *Node) cleanupABAStore(id common.ADKGID) {
+func (node *PssTestNode) cleanupABAStore(id common.ADKGID) {
 	for _, n := range node.Nodes() {
 		node.state.ABAStore.Complete((&common.RoundDetails{
 			ADKGID: id,
@@ -462,19 +455,19 @@ func (node *Node) cleanupABAStore(id common.ADKGID) {
 		}).ID())
 	}
 }
-func (node *Node) cleanupADKGSessionStore(id common.ADKGID) {
+func (node *PssTestNode) cleanupADKGSessionStore(id common.ADKGID) {
 	node.state.SessionStore.Complete(id)
 }
 
 // TODO: needs to be for any committee
-func (n *Node) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
+func (n *PssTestNode) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
 	n.shares[true][index.Int64()] = &si
 }
-func (n *Node) StoreCommitment(index big.Int, metadata common.ADKGMetadata, c common.CurveName) {
+func (n *PssTestNode) StoreCommitment(index big.Int, metadata common.ADKGMetadata, c common.CurveName) {
 	// n.shares[index.Int64()] = &si
 }
 
-func (n *Node) Broadcast(m common.DKGMessage) {
+func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.DKGMessage) {
 	if n.isFaulty {
 		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.id)
 		return
@@ -482,7 +475,7 @@ func (n *Node) Broadcast(m common.DKGMessage) {
 	n.transport.Broadcast(n.Details(), m)
 }
 
-func (n *Node) Send(receiver common.KeygenNodeDetails, msg common.DKGMessage) error {
+func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
 	if n.isFaulty {
 		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.id)
 		return nil
@@ -491,18 +484,18 @@ func (n *Node) Send(receiver common.KeygenNodeDetails, msg common.DKGMessage) er
 	return nil
 }
 
-func (n *Node) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
+func (n *PssTestNode) Nodes() map[common.NodeDetailsID]common.NodeDetails {
 	return n.transport.nodeDetails
 }
 
-func (n *Node) Details() common.KeygenNodeDetails {
-	return common.KeygenNodeDetails{
+func (n *PssTestNode) Details() common.NodeDetails {
+	return common.NodeDetails{
 		Index:  n.id,
 		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
 	}
 }
 
-func (n *Node) ReceiveBFTMessage(msg common.DKGMessage) {
+func (n *PssTestNode) ReceiveBFTMessage(msg common.DKGMessage) {
 	if msg.Method == keyderivation.PubKeygenType {
 		var m keyderivation.PubKeygenMessage
 		if err := bijson.Unmarshal(msg.Data, &m); err != nil {
@@ -516,11 +509,11 @@ func (n *Node) ReceiveBFTMessage(msg common.DKGMessage) {
 	}
 }
 
-func (n *Node) PrivateKey() curves.Scalar {
+func (n *PssTestNode) PrivateKey() curves.Scalar {
 	return n.keypair.PrivateKey
 }
 
-func (n *Node) PublicKey(index int) curves.Point {
+func (n *PssTestNode) PublicKey(index int) curves.Point {
 	for _, n := range n.transport.nodes {
 		if n.ID() == index {
 			return n.keypair.PublicKey

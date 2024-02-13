@@ -21,9 +21,9 @@ var ShareMessageType string = "dacss_share"
 // DacssShareMessage has all the information for the initial message in the
 // sharing phase.
 type DacssShareMessage struct {
-	RoundID common.RoundID    // ID of the round.
-	Kind    string 						// Type of the message.
-	Curve   *curves.Curve     // Curve used in the messages.
+	RoundID common.RoundID // ID of the round.
+	Kind    string         // Type of the message.
+	Curve   *curves.Curve  // Curve used in the messages.
 }
 
 // NewDacssShareMessage creates a new share message from the provided ID and
@@ -43,7 +43,9 @@ func NewDacssShareMessage(roundID common.RoundID, curve *curves.Curve) (*common.
 	return &msg, nil
 }
 
-func (msg *DacssShareMessage) Process(sender common.KeygenNodeDetails, self common.PSSParticipant) {
+func (msg *DacssShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	// TODO do we need to check whether sender (NodeDetails) are contained in the PssNodeDetails?
+	// Or do we need to specifically check that the NodeDetails are equal for new/old comittee (and somehow have access to this expectation)
 	if sender.Index != self.ID() {
 		return
 	}
@@ -86,7 +88,7 @@ func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *Da
 	// Create propose message & broadcast.
 	// Question: how to returns the nodes according to the new and old committees?
 	for _, n := range self.Nodes(isNewCommittee) {
-		go func(node common.KeygenNodeDetails) {
+		go func(node common.NodeDetails) {
 			roundID := reCreateRoundID(msg.RoundID, isNewCommittee)
 			rbcRouter := router.NewRbcRouter("dacss")
 			proposeMsg, err := rbcRouter.StartRbc(roundID, msgData, msg.Curve, self.ID(), isNewCommittee)

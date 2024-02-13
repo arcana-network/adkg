@@ -72,7 +72,7 @@ func (m *RbcReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m RbcReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m RbcReadyMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore
@@ -187,7 +187,7 @@ func (m RbcReadyMessage) Process(sender common.KeygenNodeDetails, self common.Dk
 					return
 				}
 				for _, n := range self.Nodes(!m.NewCommittee) {
-					go func(node common.KeygenNodeDetails) {
+					go func(node common.NodeDetails) {
 						readyMsg := dacss.NewDacssCommitMessage(m.RoundID, msg.Commitments, m.Curve, self.ID(), m.NewCommittee)
 						self.Send(node, readyMsg)
 					}(n)

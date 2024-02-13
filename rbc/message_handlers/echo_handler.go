@@ -63,7 +63,7 @@ func (m *RbcEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (msg *RbcEchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *RbcEchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore
@@ -114,7 +114,7 @@ func (msg *RbcEchoMessage) Process(sender common.KeygenNodeDetails, self common.
 		// Send Ready Message
 		c.ReadySent = true
 		for _, n := range self.Nodes(msg.NewCommittee) {
-			go func(node common.KeygenNodeDetails) {
+			go func(node common.NodeDetails) {
 				// This corresponds to Line 12, Algorithm 4, RBC Protocol.
 				readyMsg, err := NewRbcReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee, msg.ProtoOrigin)
 				if err != nil {

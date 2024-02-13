@@ -37,7 +37,7 @@ func NewAcssProposeMessage(id common.RoundID, d []byte, curve common.CurveName) 
 	return &msg, nil
 }
 
-func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m ProposeMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Propose: Round=%sReceived Propose", m.RoundID)
 
 	curve := common.CurveFromName(m.Curve)
@@ -88,7 +88,7 @@ func (m ProposeMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 		}
 
 		for _, n := range self.Nodes() {
-			go func(node common.KeygenNodeDetails) {
+			go func(node common.NodeDetails) {
 				msg, err := NewAcssEchoMessage(m.RoundID, shares[node.Index-1], hash, m.Curve)
 				if err != nil {
 					log.WithError(err).Info()

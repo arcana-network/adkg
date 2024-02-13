@@ -44,7 +44,7 @@ func NewRbcProposeMessage(roundID common.RoundID, msgData messages.MessageData, 
 	return &msg, nil
 }
 
-func (msg *RbcProposeMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (msg *RbcProposeMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Propose message from %d on %d", sender.Index, self.ID())
 	log.Debugf("Propose: Node=%d, Value=%v", self.ID(), msg.Data)
 
@@ -116,7 +116,7 @@ func (msg *RbcProposeMessage) Process(sender common.KeygenNodeDetails, self comm
 
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.ID(), n.Index)
-			go func(node common.KeygenNodeDetails) {
+			go func(node common.NodeDetails) {
 
 				//This instruction corresponds to Line 10, Algorithm 4 from
 				//"Asynchronous data disemination and applications."

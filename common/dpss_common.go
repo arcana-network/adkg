@@ -12,16 +12,16 @@ type PSSParticipant interface {
 	PublicKey(idx int, fromNewCommittee bool) curves.Point
 	Params(fromNewCommittee bool) (n int, k int, t int)
 	Broadcast(toNewCommittee bool, msg DKGMessage)
-	Send(n KeygenNodeDetails, msg DKGMessage) error
-	Details() KeygenNodeDetails
+	Send(n NodeDetails, msg DKGMessage) error
+	Details(fromNewCommittee bool) NodeDetails
 	PrivateKey() curves.Scalar
-	ReceiveMessage(sender KeygenNodeDetails, msg DKGMessage)
-	Nodes(fromNewCommittee bool) map[NodeDetailsID]KeygenNodeDetails
+	ReceiveMessage(sender NodeDetails, msg DKGMessage)
+	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
 }
 
 type PSSNodeState struct {
-	shares   PSSShareStoreMap
-	rbcStore RBCStateMap
+	Shares   *PSSShareStoreMap
+	RbcStore *RBCStateMap
 }
 
 type PSSShareStore struct {

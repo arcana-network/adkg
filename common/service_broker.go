@@ -31,12 +31,6 @@ type MessageBroker struct {
 	caller string
 }
 
-// TODO can we rename this to NodeDetails? Or solve this in some other way?
-type KeygenNodeDetails struct {
-	Index  int
-	PubKey Point
-}
-
 type VerifierData struct {
 	Ok                   bool
 	Verifier, VerifierID string
@@ -67,7 +61,7 @@ type EpochInfo struct {
 	NextEpoch big.Int
 }
 
-func (n *KeygenNodeDetails) FromNodeDetailsID(nodeDetailsID NodeDetailsID) {
+func (n *NodeDetails) FromNodeDetailsID(nodeDetailsID NodeDetailsID) {
 	s := string(nodeDetailsID)
 	substrings := strings.Split(s, Delimiter1)
 
@@ -580,9 +574,9 @@ func (cm *ChainMethods) GetSelfPrivateKey() (privKey big.Int) {
 	}
 	return
 }
-func (cm *ChainMethods) VerifyDataWithNodelist(pk Point, sig []byte, input []byte) (senderDetails KeygenNodeDetails, err error) {
+func (cm *ChainMethods) VerifyDataWithNodelist(pk Point, sig []byte, input []byte) (senderDetails NodeDetails, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "verify_data_with_nodelist", pk, sig, input)
-	var data KeygenNodeDetails
+	var data NodeDetails
 	err = CastOrUnmarshal(methodResponse.Data, &data)
 	if err != nil {
 		return senderDetails, err
@@ -628,9 +622,9 @@ func (cm *ChainMethods) GetNodeList(epoch int) (nodeRefs []NodeReference) {
 	return
 }
 
-func (cm *ChainMethods) VerifyDataWithEpoch(pk Point, sig []byte, input []byte, epoch int) (senderDetails KeygenNodeDetails, err error) {
+func (cm *ChainMethods) VerifyDataWithEpoch(pk Point, sig []byte, input []byte, epoch int) (senderDetails NodeDetails, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "verify_data_with_epoch", pk, sig, input, epoch)
-	var data KeygenNodeDetails
+	var data NodeDetails
 	err = CastOrUnmarshal(methodResponse.Data, &data)
 	if err != nil {
 		return senderDetails, err

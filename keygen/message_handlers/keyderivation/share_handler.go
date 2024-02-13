@@ -39,7 +39,7 @@ func NewShareMessage(id common.RoundID, curve common.CurveName, share, r, s []by
 	return &msg, nil
 }
 
-func (m ShareMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m ShareMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
 
 	n, k, _ := self.Params()
 	curve := common.CurveFromName(m.Curve)

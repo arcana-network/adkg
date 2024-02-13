@@ -34,7 +34,7 @@ func NewAux1Message(id common.RoundID, v, r int, curve common.CurveName) (*commo
 	return &msg, nil
 }
 
-func (m Aux1Message) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
+func (m Aux1Message) Process(sender common.NodeDetails, self common.DkgParticipant) {
 	v, r := m.V, m.R
 
 	n, _, f := self.Params()
