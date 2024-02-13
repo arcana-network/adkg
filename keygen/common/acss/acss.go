@@ -2,15 +2,15 @@ package acss
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 
+	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -19,52 +19,80 @@ import (
 	"github.com/vivint/infectious"
 )
 
+func EncodeEncrypted(ciphertext string, metadata *tronCrypto.EciesMetadata) ([]byte, error) {
+	cipher, err := hex.DecodeString(ciphertext)
+	if err != nil {
+		return nil, err
+	}
+	iv, err := hex.DecodeString(metadata.Iv)
+	if err != nil {
+		return nil, err
+	}
+	mac, err := hex.DecodeString(metadata.Mac)
+	if err != nil {
+		return nil, err
+	}
+
+	pk, err := hex.DecodeString(metadata.EphemPublicKey)
+	if err != nil {
+		return nil, err
+	}
+	cpk, err := tronCrypto.NewPublicKeyFromBytes(pk)
+	if err != nil {
+		return nil, err
+	}
+	b := make([]byte, 0)
+	b = append(b, iv...)              // 16 bytes
+	b = append(b, cpk.Bytes(true)...) // 33 bytes
+	b = append(b, mac...)             // 32 bytes
+	b = append(b, cipher...)          // variable bytes
+
+	return b, nil
+}
+
+func DecodeEncrypted(b []byte) (string, *tronCrypto.EciesMetadata, error) {
+	metadata := tronCrypto.EciesMetadata{
+		Mode: tronCrypto.ENCRYPTION_MODE_1,
+	}
+
+	iv := b[:16]     // 0-15 bytes
+	pk := b[16:49]   // 16-48 bytes
+	mac := b[49:81]  // 49-80 bytes
+	cipher := b[81:] // 81- bytes
+
+	pubKey, err := tronCrypto.NewPublicKeyFromBytes(pk)
+	if err != nil {
+		return "", nil, err
+	}
+
+	upk := hex.EncodeToString(pubKey.Bytes(false))
+
+	metadata.EphemPublicKey = upk
+	metadata.Iv = hex.EncodeToString(iv)
+	metadata.Mac = hex.EncodeToString(mac)
+
+	return hex.EncodeToString(cipher), &metadata, nil
+}
+
 func Encrypt(share []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
-	key := public.Mul(priv)
-	keyHash := sha256.Sum256(key.ToAffineCompressed())
-	cipher, err := encryptAES(keyHash[:], share) // 52 bytes
+	pkHex := hex.EncodeToString(public.ToAffineUncompressed())
+	cipher, meta, err := tronCrypto.Encrypt(pkHex, share)
 	if err != nil {
-		return nil, fmt.Errorf("encrypt: %w", err)
+		return nil, err
 	}
-	return cipher, nil
+	return EncodeEncrypted(cipher, meta)
 }
 
-func encryptAES(key []byte, plaintext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
+func Decrypt(privateHex string, cipher []byte) ([]byte, error) {
+	c, meta, err := DecodeEncrypted(cipher)
 	if err != nil {
-		log.Infof("Key error: err=%v", err)
-		return nil, fmt.Errorf("encrypt_aes: %w", err)
+		return nil, err
 	}
-
-	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
-	iv := ciphertext[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, fmt.Errorf("encrypt_aes: %w", err)
-	}
-
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(ciphertext[aes.BlockSize:], plaintext)
-
-	return ciphertext, nil
-}
-
-func decryptAES(key []byte, ciphertext []byte) ([]byte, error) {
-	input := make([]byte, len(ciphertext))
-	copy(input, ciphertext)
-	block, err := aes.NewCipher(key)
+	plaintext, err := tronCrypto.Decrypt(privateHex, c, meta)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt_aes: %w", err)
+		return nil, err
 	}
-
-	if len(input) < aes.BlockSize {
-		return nil, errors.New("ciphertext too short")
-	}
-	iv := input[:aes.BlockSize]
-	input = input[aes.BlockSize:]
-	stream := cipher.NewCFBDecrypter(block, iv)
-
-	stream.XORKeyStream(input, input)
-	return input, nil
+	return []byte(plaintext), nil
 }
 
 func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
@@ -79,7 +107,11 @@ func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
 func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point, error) {
 	commitment := make([]curves.Point, 0)
 	for i := 0; i < k; i++ {
-		cI, err := curve.Point.FromAffineCompressed(c[i*33 : (i*33)+33])
+		length := 33
+		if curve.Name == "ed25519" {
+			length = 32
+		}
+		cI, err := curve.Point.FromAffineCompressed(c[i*length : (i*length)+length])
 		if err == nil {
 			commitment = append(commitment, cI)
 		} else {
@@ -165,8 +197,7 @@ func SharedKey(priv curves.Scalar, dealerPublicKey curves.Point) [32]byte {
 
 // Predicate verifies if the share fits the polynomial commitments
 func Predicate(key []byte, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
-
-	shareBytes, err := decryptAES(key, cipher)
+	shareBytes, err := Decrypt(hex.EncodeToString(key), cipher)
 	if err != nil {
 		log.Errorf("Error while decrypting share: err=%s", err)
 		return nil, nil, false

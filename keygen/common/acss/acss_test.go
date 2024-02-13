@@ -21,61 +21,61 @@ func randSeq(n int) string {
 	return string(b)
 }
 
-func TestEncryptAES(t *testing.T) {
-	type args struct {
-		key       []byte
-		plaintext []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{"invalid keysize", args{[]byte(randSeq(5)), []byte("abc")}, true},
-		{"correct keysize", args{[]byte("XVlBzgbaiCMRAjWw"), []byte("abc")}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := encryptAES(tt.args.key, tt.args.plaintext)
+// func TestEncryptAES(t *testing.T) {
+// 	type args struct {
+// 		key       []byte
+// 		plaintext []byte
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		args    args
+// 		wantErr bool
+// 	}{
+// 		{"invalid keysize", args{[]byte(randSeq(5)), []byte("abc")}, true},
+// 		{"correct keysize", args{[]byte("XVlBzgbaiCMRAjWw"), []byte("abc")}, false},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			_, err := encryptAES(tt.args.key, tt.args.plaintext)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("encryptAES() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-		})
-	}
-}
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("encryptAES() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+// 		})
+// 	}
+// }
 
-func TestEncryptAndDecryptAES(t *testing.T) {
-	tests := []struct {
-		name      string
-		key       string
-		plaintext string
-	}{
-		{"16-key-size", randSeq(16), randSeq(20)},
-		{"24-key-size", randSeq(24), randSeq(30)},
-		{"32-key-size", randSeq(32), randSeq(40)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Logf("len=%d", len(tt.key))
-			cipher, err := encryptAES([]byte(tt.key), []byte(tt.plaintext))
-			if err != nil {
-				t.Errorf("encryptAES() error = %v", err)
-				return
-			}
+// func TestEncryptAndDecryptAES(t *testing.T) {
+// 	tests := []struct {
+// 		name      string
+// 		key       string
+// 		plaintext string
+// 	}{
+// 		{"16-key-size", randSeq(16), randSeq(20)},
+// 		{"24-key-size", randSeq(24), randSeq(30)},
+// 		{"32-key-size", randSeq(32), randSeq(40)},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			t.Logf("len=%d", len(tt.key))
+// 			cipher, err := encryptAES([]byte(tt.key), []byte(tt.plaintext))
+// 			if err != nil {
+// 				t.Errorf("encryptAES() error = %v", err)
+// 				return
+// 			}
 
-			plain, err := decryptAES([]byte(tt.key), cipher)
-			if err != nil {
-				t.Errorf("decryptAES() error = %v", err)
-				return
-			}
-			if string(plain) != tt.plaintext {
-				t.Errorf("encryptAES() = %v, want %v", string(plain), tt.plaintext)
-			}
-		})
-	}
-}
+// 			plain, err := decryptAES([]byte(tt.key), cipher)
+// 			if err != nil {
+// 				t.Errorf("decryptAES() error = %v", err)
+// 				return
+// 			}
+// 			if string(plain) != tt.plaintext {
+// 				t.Errorf("encryptAES() = %v, want %v", string(plain), tt.plaintext)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestEncodeAndDecode(t *testing.T) {
 	type args struct {

@@ -41,6 +41,7 @@ type AssignmentTx struct {
 	Provider string
 	UserID   string
 	AppID    string
+	Curve    common.CurveName
 }
 
 // mapping of name of struct to id

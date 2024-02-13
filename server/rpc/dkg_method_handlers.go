@@ -16,6 +16,7 @@ import (
 	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/secp256k1"
 	"github.com/arcana-network/dkgnode/telemetry"
+	"github.com/arcana-network/dkgnode/tendermint"
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -60,6 +61,7 @@ type (
 		Provider string `json:"provider"`
 		UserID   string `json:"user_id"`
 		AppID    string `json:"app_id"`
+		Curve    string `json:"curve"`
 	}
 	KeyLookupResult struct {
 		common.KeyAssignmentPublic
@@ -77,6 +79,7 @@ type (
 		NodeSignatures []NodeSignature `json:"node_signatures"`
 		UserID         string          `json:"user_id"`
 		AppID          string          `json:"app_id"`
+		Curve          string          `json:"curve"`
 	}
 	NodeSignature struct {
 		Signature   string `json:"signature"`
@@ -116,6 +119,7 @@ type (
 		Provider string `json:"provider"`
 		UserID   string `json:"user_id"`
 		AppID    string `json:"app_id"`
+		Curve    string `json:"curve"`
 	}
 	HealthParams struct {
 	}
@@ -160,6 +164,7 @@ type AssignmentTx struct {
 	Provider string
 	UserID   string
 	AppID    string
+	Curve    common.CurveName
 }
 
 func (c *CommitmentRequestResultData) ToString() string {
@@ -224,34 +229,59 @@ func (c *CommitmentRequestResultData) FromString(data string) (bool, error) {
 }
 
 func getVerifierClientID(broker *common.MessageBroker, appID, verifier string) (string, error) {
-	cachedParams := broker.CacheMethods().RetrieveClientIDFromVerifier(appID, verifier)
-	log.WithField("cachedClientID", cachedParams).Info("getVerifierClientID")
-	if cachedParams == nil {
-		params, err := broker.ChainMethods().GetClientIDViaVerifier(appID, verifier)
-		log.WithField("clientID", params).Info("GetClientIDViaVerifier")
-
-		if err != nil {
-			return "", err
-		}
-		if params == nil {
-			return "", errors.New("could not get clientID from specified appID")
-		}
-		broker.CacheMethods().StoreVerifierToClientID(appID, verifier, params)
-		return params.ClientID, nil
+	params, err := broker.ChainMethods().GetClientIDViaVerifier(appID, verifier)
+	if err != nil {
+		return "", err
 	}
-	return cachedParams.ClientID, nil
+	return params.ClientID, nil
 }
 
 func (h KeyAssignHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
 	var p KeyAssignParams
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
+	broker := common.NewServiceBroker(h.bus, "key_assign_handler")
+	ctx, cancel := context.WithTimeout(c, time.Duration(requestTimer)*time.Second)
+	defer cancel()
 
-	err := assignKey(c, h.bus, p.Provider, p.UserID, p.AppID)
+	if p.Curve == "" {
+		p.Curve = string(common.SECP256K1)
+	}
+
+	if p.UserID == "" {
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "VerifierID is empty"}
+	}
+
+	if p.AppID == "" {
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "AppID is empty"}
+	}
+
+	clientID, err := getVerifierClientID(broker, p.AppID, p.Provider)
+	if err != nil || clientID == "" {
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "Invalid AppID"}
+	}
+
+	keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(p.Provider, p.UserID, p.AppID, common.CurveName(p.Curve))
+	if err == nil {
+		if len(keyIndexes) > 0 {
+			return nil, &jsonrpc.Error{Code: -32602, Message: "Input Error", Data: "Key is already assigned"}
+		}
+	}
+
+	msg := AssignmentTx{
+		UserID:   p.UserID,
+		Provider: p.Provider,
+		AppID:    p.AppID,
+		Curve:    common.CurveName(p.Curve),
+	}
+	hash, err := broker.TendermintMethods().Broadcast(msg)
 	if err != nil {
-		return nil, err
+		return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "Unable to broadcast: " + err.Error()}
+	}
+	rpcErr := waitForTransaction(hash, ctx, broker)
+	if rpcErr != nil {
+		return nil, rpcErr
 	}
 
 	telemetry.IncrementKeyAssigned()
@@ -264,49 +294,6 @@ func (h HealthHandler) ServeJSONRPC(_ context.Context, _ *fastjson.RawMessage) (
 }
 
 var requestTimer = 45
-
-func assignKey(c context.Context, eventBus eventbus.Bus, provider string, userID string, appID string) *jsonrpc.Error {
-	broker := common.NewServiceBroker(eventBus, "key_assign_handler")
-	requestContext, requestContextCancel := context.WithTimeout(c, time.Duration(requestTimer)*time.Second)
-	defer requestContextCancel()
-	if userID == "" {
-		return &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "VerifierID is empty"}
-	}
-
-	if appID == "" {
-		return &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "AppID is empty"}
-	}
-
-	clientID, err := getVerifierClientID(broker, appID, provider)
-	if err != nil || clientID == "" {
-		return &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "Invalid AppID"}
-	}
-
-	log.WithFields(log.Fields{
-		"provider": provider,
-		"userID":   userID,
-		"appID":    appID,
-	}).Info("BroadcastingAssignmentTx")
-
-	keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(provider, userID, appID)
-	if err == nil {
-		if len(keyIndexes) > 0 {
-			return &jsonrpc.Error{Code: -32602, Message: "Input Error", Data: "Key is already assigned"}
-		}
-	}
-
-	msg := AssignmentTx{UserID: userID, Provider: provider, AppID: appID}
-	hash, err := broker.TendermintMethods().Broadcast(msg)
-	if err != nil {
-		return &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "Unable to broadcast: " + err.Error()}
-	}
-	log.WithField("hash", hash.String()).Info("BFT")
-	rpcErr := waitForTransaction(hash, requestContext, broker)
-	if rpcErr != nil {
-		return rpcErr
-	}
-	return nil
-}
 
 func getTxStatus(broker *common.MessageBroker, hash []byte) *jsonrpc.Error {
 	valid, err := broker.TendermintMethods().TxStatus(hash)
@@ -379,26 +366,32 @@ func checkTransactionResult(e []byte, query *tmquery.Query) error {
 }
 
 func (h PublicKeyLookupHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
 	broker := common.NewServiceBroker(h.eventBus, "public_lookup_handler")
 	var p VerifierLookupParams
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
+	if p.Curve == "" {
+		p.Curve = string(common.SECP256K1)
+	}
+
 	if p.UserID == "" {
-		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "VerifierID is empty"}
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "UserID is empty"}
+	}
+	if p.AppID == "" {
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "AppID is empty"}
+	}
+	if p.Provider == "" {
+		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "Provider is empty"}
 	}
 
 	clientID, err := getVerifierClientID(broker, p.AppID, p.Provider)
-	log.WithFields(log.Fields{
-		"clientID": clientID,
-		"err":      err,
-	}).Info("In VerifierLookupHandler")
 	if err != nil || clientID == "" {
 		return nil, &jsonrpc.Error{Code: -32602, Message: "Input error", Data: "Invalid AppID"}
 	}
 
-	keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(p.Provider, p.UserID, p.AppID)
+	keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(p.Provider,
+		p.UserID, p.AppID, common.CurveName(p.Curve))
 	if err != nil {
 		return nil, &jsonrpc.Error{Code: -32602, Message: "Input Error", Data: "Verifier + VerifierID has not yet been assigned"}
 	}
@@ -406,20 +399,23 @@ func (h PublicKeyLookupHandler) ServeJSONRPC(c context.Context, params *fastjson
 	// prepare and send response
 	result := VerifierLookupResult{}
 	for _, index := range keyIndexes {
-		publicKeyAss, err := broker.ABCIMethods().RetrieveKeyMapping(index)
+		publicKeyAss, err := broker.ABCIMethods().RetrieveKeyMapping(index, common.CurveName(p.Curve))
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32603, Message: fmt.Sprintf("Could not find address to key index error: %v", err)}
 		}
 		pk := publicKeyAss.PublicKey
-		//form address eth
-		addr := crypto.PointToEthAddress(pk)
-		log.WithField("X", pk.X.Text(16)).Info("Lookup")
-		log.WithField("Y", pk.Y.Text(16)).Info("Lookup")
+		var addr string
+		if p.Curve == string(common.SECP256K1) {
+			//form address eth
+			addr = crypto.PointToEthAddress(pk).String()
+		} else {
+			addr = ""
+		}
 		result.Keys = append(result.Keys, VerifierLookupItem{
 			KeyIndex: index.Text(16),
 			PubKeyX:  pk.X.Text(16),
 			PubKeyY:  pk.Y.Text(16),
-			Address:  addr.String(),
+			Address:  addr,
 		})
 	}
 
@@ -501,6 +497,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 
 	nodeList := broker.ChainMethods().AwaitCompleteNodeList(epoch)
 
+	curve := common.SECP256K1
 	// For Each VerifierItem we check its validity
 	for _, rawItem := range p.Item {
 		var parsedVerifierParams ShareRequestItem
@@ -508,6 +505,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while parsing sharerequestitem"}
 		}
+		curve = common.CurveName(parsedVerifierParams.Curve)
 		log.WithField("parsedVerifierParams", (parsedVerifierParams)).Debug("ShareRequestHandler:Unmarshal()")
 		jsonMap := make(map[string]interface{})
 		err = fastjson.Unmarshal(rawItem, &jsonMap)
@@ -519,9 +517,33 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while marshalling" + err.Error()}
 		}
-		verified, userID, err := broker.VerifierMethods().Verify((*bijson.RawMessage)(&redactedRawItem))
+		partitioned, err := tendermint.GetAppKeyPartition(broker, parsedVerifierParams.AppID)
 		if err != nil {
-			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params" + err.Error()}
+			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while getting a partition" + err.Error()}
+		}
+
+		var verified bool
+		var userID string
+
+		if !partitioned {
+			serialized, err := fastjson.Marshal(common.GenericVerifierData{
+				Provider: "global_key_proxy",
+				UserID:   parsedVerifierParams.UserID,
+				AppID:    parsedVerifierParams.AppID,
+				Token:    parsedVerifierParams.IDToken,
+			})
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying via the proxy:" + err.Error()}
+			}
+			verified, userID, err = broker.VerifierMethods().Verify((*bijson.RawMessage)(&serialized))
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params: " + err.Error()}
+			}
+		} else {
+			verified, userID, err = broker.VerifierMethods().Verify((*bijson.RawMessage)(&redactedRawItem))
+			if err != nil {
+				return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Error occurred while verifying params: " + err.Error()}
+			}
 		}
 
 		if !verified {
@@ -606,7 +628,8 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 			return nil, &jsonrpc.Error{Code: -32602, Message: "Internal error", Data: "Token commitment and token are not compatible"}
 		}
 
-		keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(commonVerifierIdentifier, userID, parsedVerifierParams.AppID)
+		keyIndexes, err := broker.ABCIMethods().GetIndexesFromVerifierID(commonVerifierIdentifier,
+			userID, parsedVerifierParams.AppID, common.CurveName(parsedVerifierParams.Curve))
 		if err != nil {
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: fmt.Sprintf("share request could not retrieve keyIndexes: %v", err)}
 		}
@@ -636,7 +659,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 	})
 	if len(allKeyIndexesSorted) > 0 {
 		index := allKeyIndexesSorted[0]
-		pubKeyAccessStructure, err := broker.ABCIMethods().RetrieveKeyMapping(index)
+		pubKeyAccessStructure, err := broker.ABCIMethods().RetrieveKeyMapping(index, curve)
 		log.WithFields(log.Fields{
 			"publicX": pubKeyAccessStructure.PublicKey.X,
 			"publicY": pubKeyAccessStructure.PublicKey.Y,
@@ -646,7 +669,7 @@ func (h KeyShareRequestHandler) ServeJSONRPC(c context.Context, params *fastjson
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: fmt.Sprintf("could not retrieve access structure: %v", err)}
 		}
 
-		si, _, err := broker.DBMethods().RetrieveCompletedShare(index)
+		si, _, err := broker.DBMethods().RetrieveCompletedShare(index, curve)
 		if err != nil {
 			telemetry.IncrementShareReqFail()
 			return nil, &jsonrpc.Error{Code: -32603, Message: "Internal error", Data: "could not retrieve completed share"}

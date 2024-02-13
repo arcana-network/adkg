@@ -1,6 +1,7 @@
 package tendermint
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -28,7 +29,7 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 			return false, err
 		}
 
-		if !state.KeyAvailable() {
+		if !state.KeyAvailable(parsedTx.Curve) {
 			log.WithError(ErrKeyNotAvailable).Error("CheckTx:Assignment")
 			return false, ErrKeyNotAvailable
 		}
@@ -68,7 +69,7 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 				return false, errors.New("Key already processed")
 			}
 
-			key := string(adkgid) + ":" + common.PointToEthAddress(m.PublicKey).Hex()
+			key := string(adkgid) + hex.EncodeToString(common.Keccak256(m.PublicKey.X.Bytes()))
 
 			// Otherwise try to get decision
 			decision, ok := abci.state.KeygenDecisions[key]
@@ -94,18 +95,13 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.Keyge
 	return false, errors.New("tx type not recognized")
 }
 
-func (app *ABCI) resetKeyAssigns() {
-	app.refreshFailedKeyAssigns()
-	app.state.LastUnassignedIndex = app.state.LastCreatedIndex
-}
-
-func (app *ABCI) assignKey(pk common.KeyAssignmentPublic) {
-	app.state.LastUnassignedIndex = uint(pk.Index.Int64()) + 1
+func (app *ABCI) assignKey(pk common.KeyAssignmentPublic, curve common.CurveName) {
+	if curve == common.SECP256K1 {
+		app.state.LastUnassignedIndex = uint(pk.Index.Int64()) + 1
+	} else {
+		app.state.C25519State.LastUnassignedIndex = uint(pk.Index.Int64()) + 1
+	}
 	app.state.NewKeyAssignments = append(app.state.NewKeyAssignments, pk)
-}
-
-func (app *ABCI) refreshFailedKeyAssigns() {
-	app.state.ConsecutiveFailedPubKeyAssigns = 0
 }
 
 func createKeyAssignment(tx AssignmentTx, i big.Int, pk common.Point) common.KeyAssignmentPublic {
@@ -121,16 +117,12 @@ func createKeyAssignment(tx AssignmentTx, i big.Int, pk common.Point) common.Key
 
 func getVerifierKey(tx AssignmentTx, partitioned bool) []byte {
 	if partitioned {
-		return getPartitionedKeyspace(tx.AppID, tx.UserID)
+		return getPartitionedKeyspace(tx.AppID, tx.UserID, tx.Curve)
 	}
-	return getUnpartitionedKeyspace(tx.UserID)
+	return getUnpartitionedKeyspace(tx.UserID, tx.Curve)
 }
 
 func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, senderDetails common.KeygenNodeDetails) (bool, *[]abcitypes.EventAttribute, error) {
-	log.WithFields(log.Fields{
-		"msgType":       msgType,
-		"senderDetails": senderDetails,
-	}).Debug("Got message in ValidateAndUpdateAndTagBFTTx")
 	var tags []abcitypes.EventAttribute
 
 	currEpoch := abci.broker.ChainMethods().GetCurrentEpoch()
@@ -139,62 +131,46 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		return false, &tags, fmt.Errorf("could not get current epoch with err: %v", err)
 	}
 	threshold := int(currEpochInfo.K.Int64())
+
 	switch msgType {
 	case byte(1): // Assignment tx
 
 		log.Debug("Received assignment tx on tendermint")
-		var parsedTx AssignmentTx
-		if err := bijson.Unmarshal(bftTx, &parsedTx); err != nil {
+		var tx AssignmentTx
+		if err := bijson.Unmarshal(bftTx, &tx); err != nil {
 			log.WithError(err).Error("AssignmentBFTTx failed")
 			return false, &tags, err
 		}
 
-		if !abci.state.KeyAvailable() {
+		if !abci.state.KeyAvailable(tx.Curve) {
 			abci.state.ConsecutiveFailedPubKeyAssigns++
 			return false, &tags, errors.New("key not available!")
 		}
 
-		var dkgID string
-		var keyIndexes []big.Int
-		var pk common.Point
-		assignedKeyIndex := *big.NewInt(int64(abci.state.LastUnassignedIndex))
-		for {
-			pk, keyIndexes = abci.getKeyAssignment(assignedKeyIndex, parsedTx)
-			dkgID = string(common.GenerateADKGID(assignedKeyIndex))
-			if assignedKeyIndex.Cmp(new(big.Int).SetInt64(int64(abci.state.LastCreatedIndex))) > -1 {
-				return false, &tags, errors.New("could not assign key, key not found")
-			}
-			if pk.X.Cmp(big.NewInt(0)) == 0 || pk.Y.Cmp(big.NewInt(0)) == 0 {
-				assignedKeyIndex = *new(big.Int).Add(&assignedKeyIndex, new(big.Int).SetInt64(1))
-			} else {
-				break
-			}
+		dkgID, assignIndex, err := findUnassignedKey(abci, tx.Curve)
+		if err != nil {
+			return false, &tags, fmt.Errorf("could not find key: %v ", err)
 		}
+
 		abci.state.ConsecutiveFailedPubKeyAssigns = 0
-		log.WithFields(log.Fields{
-			"selected-key":     abci.state.KeygenPubKeys[dkgID],
-			"total-key-in-map": len(abci.state.KeygenPubKeys),
-		}).Debug("Assign Tx")
 
-		abci.refreshFailedKeyAssigns()
+		keyIndexes := abci.getKeyAssignment(*assignIndex, tx)
+		pk := abci.state.KeygenPubKeys[dkgID].Point
 
-		keyAssignment := createKeyAssignment(parsedTx, assignedKeyIndex, pk)
+		keyAssignment := createKeyAssignment(tx, *assignIndex, pk)
 
-		err := abci.storeKeyMapping(assignedKeyIndex, keyAssignment)
+		err = abci.storeKeyMapping(*assignIndex, tx.Curve, keyAssignment)
 		if err != nil {
 			return false, &tags, fmt.Errorf("could not storeKeyMapping: %v ", err)
 		}
 
 		// Get aggregate login options here
-		partitioned, err := getAppKeyPartition(abci.broker, parsedTx.AppID)
+		partitioned, err := GetAppKeyPartition(abci.broker, tx.AppID)
 		if err != nil {
-			return false, &tags, fmt.Errorf("AppID %v not found", parsedTx.AppID)
+			return false, &tags, fmt.Errorf("AppID %v not found", tx.AppID)
 		}
-		verifierKey := getVerifierKey(parsedTx, partitioned)
+		verifierKey := getVerifierKey(tx, partitioned)
 
-		log.WithFields(log.Fields{
-			"verifierKey": string(verifierKey),
-		}).Debug("KeyAssignment")
 		err = abci.storeVerifierToKeyIndex(verifierKey, keyIndexes)
 
 		if err != nil {
@@ -202,7 +178,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 		}
 
 		// increment counters
-		abci.assignKey(keyAssignment)
+		abci.assignKey(keyAssignment, tx.Curve)
 		// clean up pubkeys generated and stored on-chain from keygen
 		delete(abci.state.KeygenPubKeys, dkgID)
 		// add final tags
@@ -252,7 +228,7 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 				return false, &tags, errors.New("Key already processed")
 			}
 
-			key := string(adkgid) + ":" + common.PointToEthAddress(m.PublicKey).Hex()
+			key := string(adkgid) + hex.EncodeToString(common.Keccak256(m.PublicKey.X.Bytes()))
 
 			// Otherwise try to get decision
 			decision, ok := abci.state.KeygenDecisions[key]
@@ -287,8 +263,9 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 
 			log.Infof("abci.decisions: current=%d, threshold=%d", len(abci.state.KeygenDecisions[key].Nodes), threshold)
 			if len(abci.state.KeygenDecisions[key].Nodes) == threshold {
+				curve, _ := adkgid.GetCurve()
 				log.Infof("Generated PK: index=%d, publickey=%s%s", keyIndex.Int64(), m.PublicKey.X.Text(16), m.PublicKey.Y.Text(16))
-				err = abci.broker.DBMethods().StorePublicKeyToIndex(m.PublicKey, keyIndex)
+				err = abci.broker.DBMethods().StorePublicKeyToIndex(m.PublicKey, keyIndex, curve)
 				if err != nil {
 					log.Error("Could not store completed keygen pubkey")
 					return false, &tags, err
@@ -304,8 +281,14 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 
 				index := keyIndex.Int64()
 
-				if uint(index) > abci.state.LastCreatedIndex {
-					abci.state.LastCreatedIndex = uint(index)
+				if curve == common.SECP256K1 {
+					if uint(index) > abci.state.LastCreatedIndex {
+						abci.state.LastCreatedIndex = uint(index)
+					}
+				} else if curve == common.ED25519 {
+					if uint(index) > abci.state.C25519State.LastCreatedIndex {
+						abci.state.C25519State.LastCreatedIndex = uint(index)
+					}
 				}
 
 				_ = abci.broker.KeygenMethods().Cleanup(adkgid)
@@ -324,9 +307,36 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 	return false, &tags, errors.New("Invalid tx type")
 }
 
-func (abci *ABCI) getKeyAssignment(assignedKeyIndex big.Int, parsedTx AssignmentTx) (common.Point, []big.Int) {
-	// Get aggregate login options here
-	partitioned, _ := getAppKeyPartition(abci.broker, parsedTx.AppID)
+func findUnassignedKey(abci *ABCI, curve common.CurveName) (string, *big.Int, error) {
+	var dkgID string
+	var pk common.Point
+
+	lastUnassignedIndex := abci.state.LastUnassignedIndex
+	lastCreatedIndex := abci.state.LastCreatedIndex
+
+	if curve == common.ED25519 {
+		lastUnassignedIndex = abci.state.C25519State.LastUnassignedIndex
+		lastCreatedIndex = abci.state.C25519State.LastCreatedIndex
+	}
+
+	assignedKeyIndex := *big.NewInt(int64(lastUnassignedIndex))
+	for {
+		dkgID = string(common.NewADKGID(assignedKeyIndex, curve))
+		pk = abci.state.KeygenPubKeys[dkgID].Point
+		if assignedKeyIndex.Cmp(new(big.Int).SetInt64(int64(lastCreatedIndex))) > -1 {
+			return dkgID, nil, errors.New("could not assign key, key not found")
+		}
+		if pk.X.Cmp(big.NewInt(0)) == 0 || pk.Y.Cmp(big.NewInt(0)) == 0 {
+			assignedKeyIndex = *new(big.Int).Add(&assignedKeyIndex, new(big.Int).SetInt64(1))
+		} else {
+			break
+		}
+	}
+
+	return dkgID, &assignedKeyIndex, nil
+}
+func (abci *ABCI) getKeyAssignment(assignedKeyIndex big.Int, parsedTx AssignmentTx) []big.Int {
+	partitioned, _ := GetAppKeyPartition(abci.broker, parsedTx.AppID)
 	verifierKey := getVerifierKey(parsedTx, partitioned)
 
 	keyIndexes, err := abci.retrieveVerifierToKeyIndex(verifierKey)
@@ -339,7 +349,5 @@ func (abci *ABCI) getKeyAssignment(assignedKeyIndex big.Int, parsedTx Assignment
 	sort.Slice(keyIndexes, func(a, b int) bool {
 		return keyIndexes[a].Cmp(&keyIndexes[b]) == -1
 	})
-	id := string(common.GenerateADKGID(assignedKeyIndex))
-	pk := abci.state.KeygenPubKeys[id].Point
-	return pk, keyIndexes
+	return keyIndexes
 }

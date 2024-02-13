@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
@@ -44,7 +45,7 @@ func TestBitKeeper(t *testing.T) {
 }
 func TestCurvePointToPoint(t *testing.T) {
 	eP := EPoint{}
-	pp := CurvePointToPoint(eP)
+	pp := CurvePointToPoint(eP, common.SECP256K1)
 	if hex.EncodeToString(pp.X.Bytes()) != "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798" ||
 		hex.EncodeToString(pp.Y.Bytes()) != "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8" {
 		t.Fatal("Should be able to convert to point")

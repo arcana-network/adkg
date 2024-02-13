@@ -203,13 +203,6 @@ func VerifierParams(appID, provider string) (vp *common.VerifierParams, err erro
 		return nil, errors.New("invalid provider")
 	}
 
-	if provider == "passwordless" || provider == "steam" {
-		return &common.VerifierParams{
-			ClientID: appID,
-			Domain:   "",
-		}, nil
-	}
-
 	u, err := GatewayUrl("/api/v1/get-app-config/", "id="+appID)
 	if err != nil {
 		return nil, err
