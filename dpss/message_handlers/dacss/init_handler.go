@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 )
@@ -42,7 +43,7 @@ func (msg *InitMessage) Process(sender common.KeygenNodeDetails, self common.Dkg
 
 	log.Debugf("InitMessageHandler: Received Init message from self(%d), starting DPSS\n\n", sender.Index)
 
-	dpssID := common.GenerateDPSSID(*new(big.Int).SetInt64(int64(msg.RIndex)), *new(big.Int).SetInt64(int64(msg.BatchSize)))
+	dpssID := dpss.GenerateDPSSID(*new(big.Int).SetInt64(int64(msg.RIndex)), *new(big.Int).SetInt64(int64(msg.BatchSize)))
 	round := common.RoundDetails{
 		ADKGID: dpssID,
 		Dealer: self.ID(),
