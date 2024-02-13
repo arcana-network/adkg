@@ -32,11 +32,11 @@ type BaseNode struct {
 	details    KeygenNodeDetails // Details of the node, namely, its index and public key.
 	privateKey curves.Scalar     // The private key of the node.
 	publicKey  curves.Point      // The public key of the node.
-	Transport  NodeTransport     // Transport layer used by the node to send and receive messages.
+	Transport  *NodeTransport    // Transport layer used by the node to send and receive messages.
 }
 
 func NewBaseNode(broker *MessageBroker, details KeygenNodeDetails, privateKey curves.Scalar,
-	publicKey curves.Point, transport NodeTransport) BaseNode {
+	publicKey curves.Point, transport *NodeTransport) BaseNode {
 	newBaseNode := BaseNode{
 		broker:     broker,
 		details:    details,
@@ -68,4 +68,8 @@ func (node *BaseNode) ReceiveMessage(sender KeygenNodeDetails, msg DKGMessage) {
 	if err != nil {
 		log.WithError(err).Error("Node:ReceiveMessage")
 	}
+}
+
+func (node *BaseNode) Broker() *MessageBroker {
+	return node.broker
 }
