@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"os"
+	"sync"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
@@ -275,4 +276,17 @@ func MapFromNodeList(nodeList []KeygenNodeDetails) (res map[NodeDetailsID]Keygen
 		res[node.ToNodeDetailsID()] = node
 	}
 	return
+}
+
+// Represents the state of the node in the RBC protocol
+type RBCState struct {
+	Phase           phase        // Phase of within the protocol.
+	ReceivedEcho    map[int]bool // Echos received.
+	ReceivedReady   map[int]bool // Ready received.
+	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
+}
+
+type RBCStateMap struct {
+	sync.Mutex
+	store sync.Map // Key: roundID, Value: RBCState
 }

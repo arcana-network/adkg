@@ -37,12 +37,12 @@ func TestECDSAVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	point := common.Point{
+	point := Point{
 		X: *privateKeyECDSA.X,
 		Y: *privateKeyECDSA.Y,
 	}
 	msg := "foobar"
-	signatureBinary, err := ethcrypto.Sign(common.Keccak256([]byte(msg)), privateKeyECDSA)
+	signatureBinary, err := ethcrypto.Sign(Keccak256([]byte(msg)), privateKeyECDSA)
 	if err != nil {
 		t.Fatal(err)
 	}

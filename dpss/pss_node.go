@@ -15,8 +15,9 @@ import (
 type PSSNode struct {
 	common.NodeTransport
 	common.BaseNode
-	oldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
-	newCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
+	state             common.PSSNodeState
+	OldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
+	NewCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
 }
 
 func NewPSSNode(broker common.MessageBroker, nodeDetails common.KeygenNodeDetails, oldCommittee []common.KeygenNodeDetails,
@@ -51,8 +52,8 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.KeygenNodeDetail
 			publicKey,
 			*transport,
 		),
-		oldCommitteeNodes: oldCommitteeNetwork,
-		newCommitteeNodes: newCommiteeNetwork,
+		OldCommitteeNodes: oldCommitteeNetwork,
+		NewCommitteeNodes: newCommiteeNetwork,
 	}
 
 	transport.Init()
@@ -68,14 +69,14 @@ func getPSSProtocolPrefix(epoch int) common.ProtocolPrefix {
 // IsOldNode determines if the current node belongs to the old committee.
 func (node *PSSNode) IsOldNode() bool {
 	nodeDetails := node.Details()
-	_, found := node.oldCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
+	_, found := node.OldCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
 
 // IsOldNode determines if the current node belongs to the new committe.
 func (node *PSSNode) IsNewNode() bool {
 	nodeDetails := node.Details()
-	_, found := node.newCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
+	_, found := node.NewCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
 
@@ -103,13 +104,13 @@ func (node *PSSNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
 //   - t: the reconstruction threshold in that committee.
 func (node *PSSNode) Params(fromNewCommittee bool) (n, k, t int) {
 	if fromNewCommittee {
-		n = node.newCommitteeNodes.N
-		k = node.newCommitteeNodes.K
-		t = node.newCommitteeNodes.T
+		n = node.NewCommitteeNodes.N
+		k = node.NewCommitteeNodes.K
+		t = node.NewCommitteeNodes.T
 	} else {
-		n = node.oldCommitteeNodes.N
-		k = node.newCommitteeNodes.K
-		t = node.newCommitteeNodes.T
+		n = node.OldCommitteeNodes.N
+		k = node.OldCommitteeNodes.K
+		t = node.OldCommitteeNodes.T
 	}
 	return
 }
@@ -120,8 +121,7 @@ func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.DKGMessage) {
 	nodesToBroadcast := node.Nodes(toNewCommittee)
 	for _, n := range nodesToBroadcast {
 		go func(receiver common.KeygenNodeDetails) {
-			nodeTransport := node.Transport()
-			err := nodeTransport.Send(receiver, msg)
+			err := node.Transport.Send(receiver, msg)
 			if err != nil {
 				log.WithField("Error", err).Error("Node.Broadcast()")
 			}
@@ -133,9 +133,9 @@ func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.DKGMessage) {
 // fromNewCommitte.
 func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.KeygenNodeDetails {
 	if fromNewCommittee {
-		return node.newCommitteeNodes.Nodes
+		return node.NewCommitteeNodes.Nodes
 	} else {
-		return node.oldCommitteeNodes.Nodes
+		return node.OldCommitteeNodes.Nodes
 	}
 }
 
@@ -156,4 +156,8 @@ func (node *PSSNode) NodeDetails() common.KeygenNodeDetails {
 func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
 	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
 	return common.ADKGID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
+}
+
+func (node *PSSNode) Send(n common.KeygenNodeDetails, msg common.DKGMessage) error {
+	return node.Transport.Send(n, msg)
 }

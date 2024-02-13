@@ -13,8 +13,6 @@ type Node interface {
 	ID() int
 	// Returns the private key of the node.
 	PrivateKey() curves.Scalar
-	// Returns the public key of the node.
-	OwnPublicKey() curves.Point
 	// Returns all the details of the node which are its index and public key.
 	Details() KeygenNodeDetails
 	// Returns the params of the curve that is bein used by the node in the
@@ -34,7 +32,7 @@ type BaseNode struct {
 	details    KeygenNodeDetails // Details of the node, namely, its index and public key.
 	privateKey curves.Scalar     // The private key of the node.
 	publicKey  curves.Point      // The public key of the node.
-	transport  NodeTransport     // Transport layer used by the node to send and receive messages.
+	Transport  NodeTransport     // Transport layer used by the node to send and receive messages.
 }
 
 func NewBaseNode(broker *MessageBroker, details KeygenNodeDetails, privateKey curves.Scalar,
@@ -44,26 +42,9 @@ func NewBaseNode(broker *MessageBroker, details KeygenNodeDetails, privateKey cu
 		details:    details,
 		privateKey: privateKey,
 		publicKey:  publicKey,
-		transport:  transport,
+		Transport:  transport,
 	}
 	return newBaseNode
-}
-
-func (node *BaseNode) Broker() *MessageBroker {
-	return node.broker
-}
-
-func (node *BaseNode) OwnPublicKey() curves.Point {
-	return node.publicKey
-}
-
-func (node *BaseNode) Transport() NodeTransport {
-	return node.transport
-}
-
-func (node *BaseNode) Send(n KeygenNodeDetails, msg DKGMessage) error {
-	nodeTransport := node.Transport()
-	return nodeTransport.Send(n, msg)
 }
 
 func (n *BaseNode) Details() KeygenNodeDetails {
@@ -83,7 +64,7 @@ func (node *BaseNode) ID() int {
 }
 
 func (node *BaseNode) ReceiveMessage(sender KeygenNodeDetails, msg DKGMessage) {
-	err := node.transport.Receive(sender, msg)
+	err := node.Transport.Receive(sender, msg)
 	if err != nil {
 		log.WithError(err).Error("Node:ReceiveMessage")
 	}

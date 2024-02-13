@@ -169,39 +169,6 @@ func (store *ADKGSessionStore) Delete(r ADKGID) {
 	store.Map.Delete(r)
 }
 
-type SharingStoreMap struct {
-	Map sync.Map
-}
-
-func (m *SharingStoreMap) Get(r RoundID) (keygen *SharingStore, found bool) {
-	inter, found := m.Map.Load(r)
-	keygen, _ = inter.(*SharingStore)
-	return
-}
-
-func (store *SharingStoreMap) GetOrSetIfNotComplete(r RoundID, input *SharingStore) (keygen *SharingStore, complete bool) {
-	inter, found := store.GetOrSet(r, input)
-	if found {
-		if inter == nil {
-			return inter, true
-		}
-	}
-	return inter, false
-}
-
-func (store *SharingStoreMap) GetOrSet(r RoundID, input *SharingStore) (keygen *SharingStore, found bool) {
-	inter, found := store.Map.LoadOrStore(r, input)
-	keygen, _ = inter.(*SharingStore)
-	return
-}
-func (store *SharingStoreMap) Complete(r RoundID) {
-	store.Map.Store(r, nil)
-}
-
-func (store *SharingStoreMap) Delete(r RoundID) {
-	store.Map.Delete(r)
-}
-
 func GetCStore(keygen *SharingStore, s string) *CStore {
 	c, found := keygen.CStore[s]
 	if !found {
@@ -251,15 +218,6 @@ type PubKeyShare struct {
 	R     []byte
 	S     []byte
 	Share []byte
-}
-
-// Represents the state of the node in the RBC protocol
-type RBCState struct {
-	Phase           phase        // Phase of within the protocol.
-	ReceivedEcho    map[int]bool // Echos received.
-	ReceivedReady   map[int]bool // Ready received.
-	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
-	OutputReceived  bool         // Tells if the output message was received at the end of the RBC protocol.
 }
 
 func Keccak256(data ...[]byte) []byte {
@@ -562,4 +520,37 @@ func (s *ABAState) SetValues(kind string, r, v, node int) {
 	default:
 		panic(fmt.Sprintf("Invalid values set to store.Set(%s)", kind))
 	}
+}
+
+type SharingStoreMap struct {
+	Map sync.Map
+}
+
+func (m *SharingStoreMap) Get(r RoundID) (keygen *SharingStore, found bool) {
+	inter, found := m.Map.Load(r)
+	keygen, _ = inter.(*SharingStore)
+	return
+}
+
+func (store *SharingStoreMap) GetOrSetIfNotComplete(r RoundID, input *SharingStore) (keygen *SharingStore, complete bool) {
+	inter, found := store.GetOrSet(r, input)
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *SharingStoreMap) GetOrSet(r RoundID, input *SharingStore) (keygen *SharingStore, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*SharingStore)
+	return
+}
+func (store *SharingStoreMap) Complete(r RoundID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *SharingStoreMap) Delete(r RoundID) {
+	store.Map.Delete(r)
 }
