@@ -33,21 +33,14 @@ var f1 int = k1 - 1
 type PssTestNode struct {
 	details common.NodeDetails
 
-	//oldCommitte
 	n int
 	k int
-
-	//newCommittee
-	n1 int
-	k1 int
 
 	transport *MockTransport
 	state     *common.PSSNodeState
 	keypair   common.KeyPair
 	isFaulty  bool
 
-	//the nodes can be in both old and new committee
-	isOldCommittee bool
 	isNewCommittee bool
 
 	messageCount int
@@ -58,7 +51,8 @@ type PssTestNode struct {
 }
 
 type MockTransport struct {
-	nodes               []*PssTestNode
+	nodesOld            []*PssTestNode
+	nodesNew            []*PssTestNode
 	nodeDetails         map[common.NodeDetailsID]common.NodeDetails
 	output              chan string
 	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
@@ -67,61 +61,89 @@ type MockTransport struct {
 }
 
 // getting single old/new node
-func getSingleNode(isOldCommittee, isNewCommittee bool) (*PssTestNode, *MockTransport) {
-	nodes := []*PssTestNode{}
+func getSingleNode(isNewCommittee bool) (*PssTestNode, *MockTransport) {
+	nodesOld := []*PssTestNode{}
+	nodesNew := []*PssTestNode{}
 	keypair := acssc.GenerateKeyPair(curves.K256())
-	transport := NewMockTransport(nodes)
+	transport := NewMockTransport(nodesOld, nodesNew)
 
-	node := NewNode(1, n, k, n1, k1, keypair, transport, false, isOldCommittee, isNewCommittee)
-	transport.Init([]*PssTestNode{node})
+	node := NewNode(1, n, k, keypair, transport, false, isNewCommittee)
+
+	if isNewCommittee {
+		transport.Init(nodesOld, []*PssTestNode{node})
+	} else {
+		transport.Init([]*PssTestNode{node}, nodesNew)
+	}
+
 	return node, transport
 }
 
-func NewMockTransport(nodes []*PssTestNode) *MockTransport {
-	return &MockTransport{nodes: nodes, output: make(chan string, 100)}
+func NewMockTransport(nodesOld, nodesNew []*PssTestNode) *MockTransport {
+	return &MockTransport{nodesNew: nodesNew, nodesOld: nodesOld, output: make(chan string, 100)}
 }
 
-// Create standard nodes which are all connected in a transport
-// Later can be added the details of:
-// -  isFaulty
-// - isNewCommittee
-// - isOldCommittee
-// TODO adjust this function to work for DPSS. Needs to consider the 2 committees,
-// some nodes possibly being in both, and possible faulty nodes in both (different nr)
-func setupStandardNodes(count int, faultyCount int) ([]*PssTestNode, *MockTransport) {
-	nodes := []*PssTestNode{}
+// Create standard old and nodes along with faulty which are all connected in a transport
+func setupStandardNodes(countOld, countNew int, faultyCountOld, faultyCountNew int) ([]*PssTestNode, []*PssTestNode, *MockTransport) {
+	nodesOld := []*PssTestNode{}
+	nodesNew := []*PssTestNode{}
+
 	nodeList := make(map[int]common.KeyPair)
-	for i := 1; i <= count+faultyCount; i++ {
+
+	for i := 1; i <= countOld+countNew+faultyCountOld+faultyCountNew; i++ {
 		keypair := acssc.GenerateKeyPair(curves.K256())
 		nodeList[i] = keypair
 	}
-	transport := NewMockTransport(nodes)
+	transport := NewMockTransport(nodesOld, nodesNew)
 
 	log.Info("Creating nodes...")
 	// Index of nodes always start at 1
 	index := 1
 
-	// Note `NewNode` is called with k=f+1
-	for j := 0; j < count; j++ {
+	// Note `NewNodeOld` is called with k=f+1
+	for j := 0; j < countOld; j++ {
 		log.Infof("Creating node %d", index)
 		keypair := acssc.GenerateKeyPair(curves.K256())
 		// isNewCommittee and isOldCommittee are set later
-		node := NewNode(index, n, k, n1, k1, keypair, transport, false, false, false)
-		nodes = append(nodes, node)
+		node := NewNode(index, n, k, keypair, transport, false, false)
+		nodesOld = append(nodesOld, node)
 		index++
 	}
 
-	transport.Init(nodes)
-	return nodes, transport
+	for j := 0; j < faultyCountOld; j++ {
+		log.Infof("Creating faulty node %d", index)
+		keypair := acssc.GenerateKeyPair(curves.K256())
+		node := NewNode(index, n, k, keypair, transport, true, false)
+		nodesOld = append(nodesOld, node)
+		index++
+	}
+
+	// `NewNodeNew`
+	for j := 0; j < countNew; j++ {
+		log.Infof("Creating node %d", index)
+		keypair := acssc.GenerateKeyPair(curves.K256())
+
+		node := NewNode(index, n1, k1, keypair, transport, false, true)
+		nodesNew = append(nodesNew, node)
+		index++
+	}
+
+	for j := 0; j < faultyCountNew; j++ {
+		log.Infof("Creating faulty node %d", index)
+		keypair := acssc.GenerateKeyPair(curves.K256())
+		node := NewNode(index, n1, f1, keypair, transport, true, true)
+		nodesNew = append(nodesNew, node)
+		index++
+	}
+
+	transport.Init(nodesOld, nodesNew)
+	return nodesOld, nodesNew, transport
 }
 
-func NewNode(index, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTransport, isFaulty, isNewCommittee, isOldCommittee bool) *PssTestNode {
+func NewNode(index, n, k int, keypair common.KeyPair, transport *MockTransport, isFaulty, isNewCommittee bool) *PssTestNode {
 	node := PssTestNode{
 		details: common.NodeDetails{Index: index, PubKey: kcommon.CurvePointToPoint(keypair.PublicKey, common.SECP256K1)},
 		n:       n,
 		k:       k,
-		n1:      n1,
-		k1:      k1,
 		state: &common.PSSNodeState{
 			Shares:   &common.PSSShareStoreMap{},
 			RbcStore: &common.RBCStateMap{},
@@ -129,27 +151,48 @@ func NewNode(index, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTra
 		transport:      transport,
 		keypair:        keypair,
 		isFaulty:       isFaulty,
-		isOldCommittee: isOldCommittee,
 		isNewCommittee: isNewCommittee,
 		shares:         make(map[bool]map[int64]*big.Int),
 	}
 	return &node
 }
 
-func (t *MockTransport) Init(nodes []*PssTestNode) {
-	t.nodes = nodes
+func (t *MockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
+
+	t.nodesNew = nodesOld
+	t.nodesOld = nodesNew
+
 	nodeDetails := make(map[common.NodeDetailsID]common.NodeDetails)
 
-	for _, node := range nodes {
-		d := node.Details()
-		nodeDetails[(&d).ToNodeDetailsID()] = node.Details()
+	for _, node := range nodesOld {
+		d := node.Details(false)
+		nodeDetails[(&d).ToNodeDetailsID()] = node.Details(false)
 	}
+
+	for _, node := range nodesNew {
+		d := node.Details(true)
+		nodeDetails[(&d).ToNodeDetailsID()] = node.Details(true)
+	}
+
 	t.nodeDetails = nodeDetails
 }
 
-func (t *MockTransport) Broadcast(sender common.NodeDetails, m common.DKGMessage) {
-	// PssNode might not even actually use Broadcast ever; it always sends directly to the correct (set of) nodes
-	// so leaving it empty for now
+func (t *MockTransport) Broadcast(sender common.NodeDetails, toNewCommittee bool, m common.DKGMessage) {
+
+	if toNewCommittee {
+		for _, p := range t.nodesNew {
+			go func(node common.PSSParticipant) {
+				node.ReceiveMessage(sender, m)
+			}(p)
+		}
+	} else {
+		for _, p := range t.nodesOld {
+			go func(node common.PSSParticipant) {
+				node.ReceiveMessage(sender, m)
+			}(p)
+		}
+	}
+
 }
 
 // Sends message to the participant
@@ -157,7 +200,15 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKG
 
 	t.sentMessages = append(t.sentMessages, msg) // Save the message
 
-	for _, n := range t.nodes {
+	for _, n := range t.nodesOld {
+		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
+		if n.details.IsEqual(receiver) {
+			go n.ReceiveMessage(sender, msg)
+			break
+		}
+	}
+
+	for _, n := range t.nodesNew {
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
 		if n.details.IsEqual(receiver) {
 			go n.ReceiveMessage(sender, msg)
@@ -180,12 +231,6 @@ func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, keygenMessage
 	switch {
 	case strings.HasPrefix(keygenMessage.Method, "dacss"):
 		node.ProcessDACSSMessages(sender, keygenMessage)
-	// case strings.HasPrefix(keygenMessage.Method, "keyset"):
-	// 	node.ProcessKeysetMessages(sender, keygenMessage)
-	// case strings.HasPrefix(keygenMessage.Method, "aba"):
-	// 	node.ProcessABAMessages(sender, keygenMessage)
-	// case strings.HasPrefix(keygenMessage.Method, "key_derivation"):
-	// 	node.ProcessKeyDerivationMessages(sender, keygenMessage)
 
 	default:
 		log.Infof("No handler found. MsgType=%s", keygenMessage.Method)
@@ -215,156 +260,6 @@ func (node *PssTestNode) GetReceivedMessages(msgType string) []common.DKGMessage
 	}
 	return filteredMessages
 }
-
-// func (node *Node) ProcessKeysetMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-// 	switch keygenMessage.Method {
-// 	case keyset.InitMessageType:
-// 		log.Debugf("Got %s", keyset.InitMessageType)
-// 		var msg keyset.InitMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case keyset.ProposeMessageType:
-// 		log.Debugf("Got %s", keyset.ProposeMessageType)
-// 		var msg keyset.ProposeMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case keyset.EchoMessageType:
-// 		log.Debugf("Got %s", keyset.EchoMessageType)
-// 		var msg keyset.EchoMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case keyset.ReadyMessageType:
-// 		log.Debugf("Got %s", keyset.ReadyMessageType)
-// 		var msg keyset.ReadyMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case keyset.OutputMessageType:
-// 		log.Debugf("Got %s", keyset.OutputMessageType)
-// 		var msg keyset.OutputMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	}
-// }
-
-// func (node *Node) ProcessABAMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-// 	switch keygenMessage.Method {
-// 	case aba.InitMessageType:
-// 		log.Debugf("Got %s", aba.InitMessageType)
-// 		var msg aba.InitMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.Est1MessageType:
-// 		log.Debugf("Got %s", aba.Est1MessageType)
-// 		var msg aba.Est1Message
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.Aux1MessageType:
-// 		log.Debugf("Got %s", aba.Aux1MessageType)
-// 		var msg aba.Aux1Message
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.AuxsetMessageType:
-// 		log.Debugf("Got %s", aba.AuxsetMessageType)
-// 		var msg aba.AuxsetMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.Est2MessageType:
-// 		log.Debugf("Got %s", aba.Est2MessageType)
-// 		var msg aba.Est2Message
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.Aux2MessageType:
-// 		log.Debugf("Got %s", aba.Aux2MessageType)
-// 		var msg aba.Aux2Message
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.CoinInitMessageType:
-// 		log.Debugf("Got %s", aba.CoinInitMessageType)
-// 		var msg aba.CoinInitMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case aba.CoinMessageType:
-// 		log.Debugf("Got %s", aba.CoinMessageType)
-// 		var msg aba.CoinMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	}
-// }
-
-// func (node *Node) ProcessKeyDerivationMessages(sender common.KeygenNodeDetails, keygenMessage common.DKGMessage) {
-// 	switch keygenMessage.Method {
-// 	case keyderivation.InitMessageType:
-// 		log.Debugf("Got %s", keyderivation.InitMessageType)
-// 		var msg keyderivation.InitMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	case keyderivation.ShareMessageType:
-// 		log.Debugf("Got %s", keyderivation.ShareMessageType)
-// 		var msg keyderivation.ShareMessage
-// 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
-// 		if err != nil {
-// 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
-// 			return
-// 		}
-// 		msg.Process(sender, node)
-// 	}
-// }
 
 func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
 	switch keygenMessage.Method {
@@ -401,13 +296,13 @@ func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenM
 	}
 }
 
-// TODO what is the meaning of this in DPSS context
+// The index of the node
 func (n *PssTestNode) ID() int {
-	return n.id
+	return n.details.Index
 }
 
 func (n *PssTestNode) IsOldNode() bool {
-	return n.isOldCommittee
+	return !n.isNewCommittee
 }
 
 func (n *PssTestNode) IsNewNode() bool {
@@ -419,7 +314,8 @@ func (n *PssTestNode) AdjustParamN(new_n int) {
 }
 
 func (n *PssTestNode) Params(fromNewCommittee bool) (int, int, int) {
-	// FIXME
+	// since the node is created based on new and old
+	// therefore, we can directly extract the params
 	return n.n, n.k, n.k - 1
 }
 
@@ -434,9 +330,8 @@ func (n *PssTestNode) State() *common.PSSNodeState {
 	return n.state
 }
 
-// TODO: needs to be for any committee
-func (n *PssTestNode) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
-	n.shares[true][index.Int64()] = &si
+func (n *PssTestNode) StoreCompletedShare(index big.Int, si big.Int, fromNewCommittee bool, c common.CurveName) {
+	n.shares[fromNewCommittee][index.Int64()] = &si
 }
 func (n *PssTestNode) StoreCommitment(index big.Int, metadata common.ADKGMetadata, c common.CurveName) {
 	// n.shares[index.Int64()] = &si
@@ -444,35 +339,31 @@ func (n *PssTestNode) StoreCommitment(index big.Int, metadata common.ADKGMetadat
 
 func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.DKGMessage) {
 	if n.isFaulty {
-		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.id)
+		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.details.Index)
 		return
 	}
-	// TODO check impl
-	n.transport.Broadcast(n.Details(toNewCommittee), m)
+	n.transport.Broadcast(n.Details(toNewCommittee), toNewCommittee, m)
 }
 
 func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
-	// TODO implement
 
-	// if n.isFaulty {
-	// 	log.Debugf("Got Send %s at faulty node %d", msg.Method, n.id)
-	// 	return nil
-	// }
-	// n.transport.Send(n.Details(), receiver, msg)
+	if n.isFaulty {
+		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.details.Index)
+		return nil
+	}
+	//NOTE: Details() does not use the boolean parameter in the function
+	n.transport.Send(n.Details(true), receiver, msg)
 	return nil
 }
 
 func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
-	// FIXME
+
 	return n.transport.nodeDetails
 }
 
-func (n *PssTestNode) Details(bool) common.NodeDetails {
-	// FIXME
-	return common.NodeDetails{
-		Index:  1,
-		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
-	}
+func (n *PssTestNode) Details(isNewCommittee bool) common.NodeDetails {
+
+	return n.details
 }
 
 func (n *PssTestNode) ReceiveBFTMessage(msg common.DKGMessage) {
@@ -494,12 +385,21 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 }
 
 func (n *PssTestNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
-	// FIXME
-	for _, n := range n.transport.nodes {
-		if n.ID() == index {
-			return n.keypair.PublicKey
+
+	if fromNewCommittee {
+		for _, n := range n.transport.nodesNew {
+			if n.ID() == idx {
+				return n.keypair.PublicKey
+			}
+		}
+	} else {
+		for _, n := range n.transport.nodesOld {
+			if n.ID() == idx {
+				return n.keypair.PublicKey
+			}
 		}
 	}
+
 	c := curves.K256()
 	return c.Point.Identity()
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-var InitMessageType string = "init_dpss"
+var InitMessageType string = "dacss_init"
 
 type InitMessage struct {
 	RIndex    int
