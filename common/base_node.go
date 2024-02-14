@@ -63,6 +63,10 @@ func (node *BaseNode) ID() int {
 	return node.details.Index
 }
 
+func (node *BaseNode) Broker() *MessageBroker {
+	return node.broker
+}
+
 // func (node *BaseNode) ReceiveMessage(sender NodeDetails, msg DKGMessage) {
 // 	err := node.Transport.Receive(sender, msg)
 // 	if err != nil {

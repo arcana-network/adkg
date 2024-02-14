@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/eventbus"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/aba"
@@ -20,19 +19,16 @@ import (
 )
 
 type KeygenNode struct {
-	broker       *common.MessageBroker
-	details      common.NodeDetails
+	common.BaseNode
 	CurrentNodes common.NodeNetwork
 	Transport    KeygenTransport
 	state        *common.NodeState
-	privateKey   curves.Scalar
-	publicKey    curves.Point
 	tracker      *KeygenTracker
 }
 
 // NodeDetails implements common.NodeProcessor.
 func (node *KeygenNode) NodeDetails() common.NodeDetails {
-	return node.details
+	return node.Details()
 }
 
 func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.NodeDetails,
@@ -50,8 +46,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.NodeDetails,
 	publicKey := g.Mul(privateKey)
 
 	newKeygenNode := &KeygenNode{
-		broker:       broker,
-		details:      nodeDetails,
+		BaseNode:     common.NewBaseNode(broker, nodeDetails, privateKey, publicKey),
 		Transport:    *transport,
 		CurrentNodes: nodeNetwork,
 		state: &common.NodeState{
@@ -150,23 +145,8 @@ func (node *KeygenNode) BFTDecided(id common.ADKGID) {
 }
 
 func (node *KeygenNode) DetailsID() common.NodeDetailsID {
-	return node.details.ToNodeDetailsID()
-}
-
-func (node *KeygenNode) Details() common.NodeDetails {
-	return node.details
-}
-
-func (node *KeygenNode) PrivateKey() curves.Scalar {
-	return node.privateKey
-}
-
-func (node *KeygenNode) CurveParams(curveName string) (curves.Point, curves.Point) {
-	return sharing.CurveParams(curveName)
-}
-
-func (node *KeygenNode) ID() int {
-	return node.details.Index
+	nodeDetails := node.Details()
+	return nodeDetails.ToNodeDetailsID()
 }
 
 func (node *KeygenNode) Nodes() map[common.NodeDetailsID]common.NodeDetails {
@@ -235,7 +215,7 @@ func (node *KeygenNode) ReceiveMessage(sender common.NodeDetails, msg common.DKG
 }
 
 func (node *KeygenNode) StoreCompletedShare(keyIndex, si big.Int, c common.CurveName) {
-	err := node.broker.DBMethods().StoreCompletedPSSShare(keyIndex, si, si, c)
+	err := node.Broker().DBMethods().StoreCompletedPSSShare(keyIndex, si, si, c)
 	if err != nil {
 		log.WithError(err).Error("Node:StoreCompletedShare")
 	}
@@ -253,7 +233,7 @@ func (node *KeygenNode) StoreCommitment(keyIndex big.Int, metadata common.ADKGMe
 			convertedMetadata[key] = append(convertedMetadata[key], val)
 		}
 	}
-	err := node.broker.DBMethods().StoreCommitment(keyIndex, metadata.T, convertedMetadata, c)
+	err := node.Broker().DBMethods().StoreCommitment(keyIndex, metadata.T, convertedMetadata, c)
 	if err != nil {
 		log.WithError(err).Error("Node:StoreCommitment")
 	}
