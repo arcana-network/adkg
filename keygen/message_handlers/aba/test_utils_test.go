@@ -305,10 +305,10 @@ func (node *Node) cleanupADKGSessionStore(id common.ADKGID) {
 	node.state.SessionStore.Complete(id)
 }
 
-func (n *Node) StoreCompletedShare(index big.Int, si big.Int) {
+func (n *Node) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
 	n.shares[index.Int64()] = &si
 }
-func (n *Node) StoreCommitment(index big.Int, metadata common.ADKGMetadata) {
+func (n *Node) StoreCommitment(index big.Int, metadata common.ADKGMetadata, c common.CurveName) {
 	// n.shares[index.Int64()] = &si
 }
 
@@ -336,7 +336,7 @@ func (n *Node) Nodes() map[common.NodeDetailsID]common.KeygenNodeDetails {
 func (n *Node) Details() common.KeygenNodeDetails {
 	return common.KeygenNodeDetails{
 		Index:  n.id,
-		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey),
+		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
 	}
 }
 
