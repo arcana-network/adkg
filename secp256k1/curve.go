@@ -4,14 +4,9 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	secp256k1 "github.com/btcsuite/btcd/btcec"
-
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"golang.org/x/crypto/sha3"
 )
-
-type KoblitzCurve struct {
-	*secp256k1.KoblitzCurve
-}
 
 type Point struct {
 	X big.Int
@@ -19,7 +14,7 @@ type Point struct {
 }
 
 var (
-	Curve          = &KoblitzCurve{secp256k1.S256()}
+	Curve          = secp256k1.S256()
 	FieldOrder     = HexToBigInt("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f")
 	GeneratorOrder = HexToBigInt("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141")
 	// scalar to the power of this is like square root, eg. y^sqRoot = y^0.5 (if it exists)

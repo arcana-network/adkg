@@ -3,12 +3,11 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
-	"log"
-	"math/big"
-
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/torusresearch/bijson"
+	"log"
+	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/secp256k1"
