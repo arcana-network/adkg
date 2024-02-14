@@ -98,7 +98,7 @@ func (tp *KeygenTransport) Send(nodeDetails common.NodeDetails, keygenMessage co
 		"method": common.Stringify(keygenMessage.Method),
 	}).Debug("KeygenTransport:Send()")
 
-	pubKey := tp.KeygenNode.details.PubKey
+	pubKey := tp.KeygenNode.Details().PubKey
 	if nodeDetails.PubKey.X.Cmp(&pubKey.X) == 0 && nodeDetails.PubKey.Y.Cmp(&pubKey.Y) == 0 {
 		return tp.Receive(nodeDetails, keygenMessage)
 	}

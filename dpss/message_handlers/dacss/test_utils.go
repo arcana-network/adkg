@@ -42,7 +42,7 @@ type PssTestNode struct {
 	k1 int
 
 	transport *MockTransport
-	pssState  *common.PSSNodeState
+	state     *common.PSSNodeState
 	keypair   common.KeyPair
 	isFaulty  bool
 
@@ -122,7 +122,7 @@ func NewNode(index, n, k, n1, k1 int, keypair common.KeyPair, transport *MockTra
 		k:       k,
 		n1:      n1,
 		k1:      k1,
-		pssState: &common.PSSNodeState{
+		state: &common.PSSNodeState{
 			Shares:   &common.PSSShareStoreMap{},
 			RbcStore: &common.RBCStateMap{},
 		},
@@ -406,11 +406,20 @@ func (n *PssTestNode) ID() int {
 	return n.id
 }
 
+func (n *PssTestNode) IsOldNode() bool {
+	return n.isOldCommittee
+}
+
+func (n *PssTestNode) IsNewNode() bool {
+	return n.isNewCommittee
+}
+
 func (n *PssTestNode) AdjustParamN(new_n int) {
 	n.n = new_n
 }
 
-func (n *PssTestNode) Params() (int, int, int) {
+func (n *PssTestNode) Params(fromNewCommittee bool) (int, int, int) {
+	// FIXME
 	return n.n, n.k, n.k - 1
 }
 
@@ -422,41 +431,7 @@ func (n *PssTestNode) CurveParams(c string) (curves.Point, curves.Point) {
 }
 
 func (n *PssTestNode) State() *common.PSSNodeState {
-	return n.pssState
-}
-
-func (n *PssTestNode) Cleanup(id common.ADKGID) {
-	n.cleanupKeygenStore(id)
-	n.cleanupABAStore(id)
-	n.cleanupADKGSessionStore(id)
-	// debug.FreeOSMemory()
-}
-
-func (node *PssTestNode) cleanupKeygenStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
-		node.state.KeygenStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "acss",
-		}).ID())
-		node.state.KeygenStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "keyset",
-		}).ID())
-	}
-}
-func (node *PssTestNode) cleanupABAStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
-		node.state.ABAStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "keyset",
-		}).ID())
-	}
-}
-func (node *PssTestNode) cleanupADKGSessionStore(id common.ADKGID) {
-	node.state.SessionStore.Complete(id)
+	return n.state
 }
 
 // TODO: needs to be for any committee
@@ -472,25 +447,30 @@ func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.DKGMessage) {
 		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.id)
 		return
 	}
-	n.transport.Broadcast(n.Details(), m)
+	// TODO check impl
+	n.transport.Broadcast(n.Details(toNewCommittee), m)
 }
 
 func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
-	if n.isFaulty {
-		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.id)
-		return nil
-	}
-	n.transport.Send(n.Details(), receiver, msg)
+	// TODO implement
+
+	// if n.isFaulty {
+	// 	log.Debugf("Got Send %s at faulty node %d", msg.Method, n.id)
+	// 	return nil
+	// }
+	// n.transport.Send(n.Details(), receiver, msg)
 	return nil
 }
 
-func (n *PssTestNode) Nodes() map[common.NodeDetailsID]common.NodeDetails {
+func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
+	// FIXME
 	return n.transport.nodeDetails
 }
 
-func (n *PssTestNode) Details() common.NodeDetails {
+func (n *PssTestNode) Details(bool) common.NodeDetails {
+	// FIXME
 	return common.NodeDetails{
-		Index:  n.id,
+		Index:  1,
 		PubKey: kcommon.CurvePointToPoint(n.keypair.PublicKey, common.SECP256K1),
 	}
 }
@@ -513,7 +493,8 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 	return n.keypair.PrivateKey
 }
 
-func (n *PssTestNode) PublicKey(index int) curves.Point {
+func (n *PssTestNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
+	// FIXME
 	for _, n := range n.transport.nodes {
 		if n.ID() == index {
 			return n.keypair.PublicKey

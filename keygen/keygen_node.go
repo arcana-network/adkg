@@ -54,8 +54,6 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.NodeDetails,
 			SessionStore: &common.ADKGSessionStore{},
 			ABAStore:     &common.ABAStoreMap{},
 		},
-		privateKey: privateKey,
-		publicKey:  publicKey,
 	}
 
 	log.Info("Keygen service starting...")
