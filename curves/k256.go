@@ -103,7 +103,7 @@ func (s *ScalarK256) Sqrt() (Scalar, error) {
 
 func (s *ScalarK256) Cube() Scalar {
 	tmp := fp.NewElement(0)
-	tmp.Mul(&s.value, &s.value)
+	tmp.Square(&s.value)
 	tmp.Mul(&tmp, &s.value)
 	return &ScalarK256{
 		tmp,
