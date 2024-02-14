@@ -101,7 +101,7 @@ func (service *KeygenService) Call(method string, args ...interface{}) (interfac
 			}
 		}
 
-		pubKey := service.KeygenNode.details.PubKey
+		pubKey := service.KeygenNode.Details().PubKey
 		index := service.broker.ChainMethods().GetSelfIndex()
 
 		details := common.NodeDetails{
