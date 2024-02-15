@@ -178,8 +178,7 @@ func Test_pkcs7Unpad(t *testing.T) {
 }
 
 func TestSharedKey(t *testing.T) {
-
-	curve := curves.K256()
+	curve := curves.CurveK256()
 	k256 := curve.Point.Generator().(*curves.PointK256)
 	dealerPoint := k256.Generator()
 	var scalar = new(curves.ScalarK256).New(8)
@@ -190,7 +189,7 @@ func TestSharedKey(t *testing.T) {
 }
 
 func TestPredicate(t *testing.T) {
-	curve := curves.K256()
+	curve := curves.CurveK256()
 	k256 := curve.Point.Generator().(*curves.PointK256)
 	dealerPoint := k256.Generator()
 	var scalar = new(curves.ScalarK256).New(8)
@@ -201,7 +200,7 @@ func TestPredicate(t *testing.T) {
 }
 
 func TestSplit(t *testing.T) {
-	curve := curves.K256()
+	curve := curves.CurveK256()
 	var scalar = new(curves.ScalarK256).New(8)
 
 	split, shares, err := Split(scalar, 1, 1, curve, cryptorand.Reader)

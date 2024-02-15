@@ -41,7 +41,7 @@ func NewKeygenNode(broker *common.MessageBroker, nodeDetails common.KeygenNodeDe
 		Nodes: mapFromNodeList(nodeList),
 	}
 
-	g := curves.K256().NewGeneratorPoint()
+	g := curves.CurveK256().NewGeneratorPoint()
 	publicKey := g.Mul(privateKey)
 
 	newKeygenNode := &KeygenNode{
@@ -156,7 +156,7 @@ func (node *KeygenNode) PrivateKey() curves.Scalar {
 	return node.privateKey
 }
 
-func (node *KeygenNode) CurveParams(curveName string) (curves.Point, curves.Point) {
+func (node *KeygenNode) CurveParams(curveName curves.CurveID) (curves.Point, curves.Point) {
 	return sharing.CurveParams(curveName)
 }
 
@@ -210,7 +210,7 @@ func (node *KeygenNode) ReceiveBFTMessage(msg common.DKGMessage) {
 func (node *KeygenNode) PublicKey(index int) curves.Point {
 	for _, n := range node.Nodes() {
 		if n.Index == index {
-			pk, err := curves.K256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
+			pk, err := curves.CurveK256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
 			if err != nil {
 				// log.WithError(err).Error("Node:ReceiveMessage")
 				return nil

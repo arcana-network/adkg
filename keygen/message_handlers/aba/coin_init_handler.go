@@ -129,7 +129,7 @@ func generateProof(
 
 	s := curve.NewScalar().Random(rand.Reader)
 
-	g, _ := self.CurveParams(curve.Name)
+	g, _ := self.CurveParams(curve.ID)
 
 	h := g.Mul(s)
 	hTilde := gTilde.Mul(s)

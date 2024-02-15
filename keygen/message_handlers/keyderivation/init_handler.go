@@ -81,7 +81,7 @@ func (m InitMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 		zI = zI.Add(shareScalar) //x
 	}
 
-	g, h := self.CurveParams(curve.Name)
+	g, h := self.CurveParams(curve.ID)
 
 	gZi := g.Mul(zI) // y1
 	hZi := h.Mul(zI) // y2

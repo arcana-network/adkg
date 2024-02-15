@@ -279,7 +279,7 @@ func unpack(curve *curves.Curve, msg []byte) (*Unpack, error) {
 }
 
 func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common.DkgParticipant) bool {
-	g, _ := self.CurveParams(curve.Name)
+	g, _ := self.CurveParams(curve.ID)
 
 	cBar := aba.Hash(g, u.H, gTilde, u.HTilde, gI, u.GiTilde, curve)
 

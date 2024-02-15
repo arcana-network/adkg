@@ -179,7 +179,7 @@ func VerifyShare(s common.PubKeyShare,
 	curve *curves.Curve, gZj curves.Point, self common.DkgParticipant) (curves.Point, bool) {
 
 	length := 33
-	if curve.Name == "ed25519" {
+	if curve.ID == curves.CurveIDED25519 {
 		length = 32
 	}
 	sBar, err := curve.Scalar.SetBytes(s.S)
@@ -199,7 +199,7 @@ func VerifyShare(s common.PubKeyShare,
 		return nil, false
 	}
 
-	g, h := self.CurveParams(curve.Name)
+	g, h := self.CurveParams(curve.ID)
 
 	//c=Hash(g,g_zi,h,h_zi,A,B)
 	cBar := aba.Hash(g, gZj, h, hZj, aBar, bBar, curve)

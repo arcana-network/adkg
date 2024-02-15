@@ -8,13 +8,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/arcana-network/dkgnode/crypto/polynomial"
 	"io"
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/curves"
-	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 )
@@ -176,8 +176,8 @@ func getPolyAndShares(
 	secret curves.Scalar,
 	threshold, limit uint32,
 	curve *curves.Curve,
-	reader io.Reader) ([]sharing.ShamirShare, *kryptsharing.Polynomial) {
-	poly := new(kryptsharing.Polynomial).Init(secret, threshold, reader)
+	reader io.Reader) ([]sharing.ShamirShare, *polynomial.Polynomial) {
+	poly := new(polynomial.Polynomial).Init(secret, threshold, reader)
 	shares := make([]sharing.ShamirShare, limit)
 	for i := range shares {
 		x := curve.Scalar.New(i + 1)

@@ -308,7 +308,7 @@ type DkgParticipant interface {
 	// Get self private key
 	PrivateKey() curves.Scalar
 	// Get public params for a curve, say g1 and g2
-	CurveParams(name string) (curves.Point, curves.Point)
+	CurveParams(name curves.CurveID) (curves.Point, curves.Point)
 	// Receiving BFT message to broadcast
 	ReceiveBFTMessage(DKGMessage)
 	// Cleanup session store

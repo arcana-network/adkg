@@ -508,10 +508,10 @@ func (n *Node) Params() (int, int, int) {
 	return n.n, n.k, n.k - 1
 }
 
-var c = curves.K256()
+var c = curves.CurveK256()
 var randomScalar = c.Scalar.Random(rand.Reader)
 
-func (n *Node) CurveParams(c string) (curves.Point, curves.Point) {
+func (n *Node) CurveParams(c curves.CurveID) (curves.Point, curves.Point) {
 	return sharing.CurveParams(c)
 }
 

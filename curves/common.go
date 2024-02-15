@@ -95,6 +95,7 @@ type Scalar interface {
 
 type Point interface {
 	CurveID() CurveID
+	Hash(bytes []byte) Point
 	Identity() Point
 	Generator() Point
 	IsIdentity() bool

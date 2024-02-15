@@ -16,8 +16,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/arcana-network/dkgnode/crypto/polynomial"
 	"github.com/arcana-network/dkgnode/curves"
-	"github.com/coinbase/kryptology/pkg/sharing"
 )
 
 type ShamirShare struct {
@@ -74,8 +74,8 @@ func (s Shamir) Split(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, e
 	return shares, nil
 }
 
-func (s Shamir) getPolyAndShares(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, *sharing.Polynomial) {
-	poly := new(sharing.Polynomial).Init(secret, s.threshold, reader)
+func (s Shamir) getPolyAndShares(secret curves.Scalar, reader io.Reader) ([]*ShamirShare, *polynomial.Polynomial) {
+	poly := new(polynomial.Polynomial).Init(secret, s.threshold, reader)
 	shares := make([]*ShamirShare, s.limit)
 	for i := range shares {
 		x := s.curve.Scalar.New(i + 1)

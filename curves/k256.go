@@ -235,6 +235,14 @@ func (s *ScalarK256) Clone() Scalar {
 	}
 }
 
+func (p *PointK256) Hash(bytes []byte) Point {
+	value, err := secp256k12.HashToG1(bytes, []byte("secp256k1_XMD:SHA-256_SSWU_RO_"))
+	if err != nil {
+		panic(err)
+	}
+	return &PointK256{value}
+}
+
 func (p *PointK256) Identity() Point {
 	return &PointK256{
 		value: secp256k12.G1Affine{
