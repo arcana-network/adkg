@@ -31,7 +31,9 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0
 	github.com/arcana-network/groot v0.0.0-20220407023724-c02d70fc35f9
+	github.com/bwesterb/go-ristretto v1.2.3
 	github.com/consensys/gnark-crypto v0.12.1
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/goccy/go-json v0.10.2
@@ -43,14 +45,12 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.1.2 // indirect
-	github.com/bwesterb/go-ristretto v1.2.3 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
