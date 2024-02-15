@@ -109,6 +109,6 @@ type CurveID uint16
 
 const (
 	CurveUndefined = iota
-	CurveCV25519
+	CurveED25519
 	CurveSECP256K1
 )

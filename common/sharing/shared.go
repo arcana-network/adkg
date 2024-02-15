@@ -18,7 +18,7 @@ func getFixedScalar(c *curves.Curve) (curves.Scalar, error) {
 		}
 		s2, err := c.Scalar.SetBigInt(b2)
 		return s2, err
-	} else if c.ID == curves.CurveCV25519 {
+	} else if c.ID == curves.CurveED25519 {
 		b2, ok := new(big.Int).SetString(ed25519Scalar, 16)
 		if !ok {
 			return nil, fmt.Errorf("invalid hex for scalar for curve %d", c.ID)
@@ -35,7 +35,7 @@ func CurveParams(curveID curves.CurveID) (curves.Point, curves.Point) {
 
 	if curveID == curves.CurveSECP256K1 {
 		c = curves.CurveK256()
-	} /* else if curveID == crypto.CurveCV25519 {
+	} /* else if curveID == crypto.CurveED25519 {
 		c = curves.ED25519()
 	}*/
 
