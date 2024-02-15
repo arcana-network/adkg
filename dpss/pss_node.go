@@ -18,14 +18,10 @@ type PSSNode struct {
 	state             common.PSSNodeState
 	OldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
 	NewCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
-	PSSNodeDetails    PSSNodeDetails
+	details           common.NodeDetails
 }
 
-type PSSNodeDetails struct {
-	OldNodeDetails common.NodeDetails
-	NewNodeDetails common.NodeDetails
-}
-
+// Creates a new PSSNode
 func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, oldCommittee []common.NodeDetails,
 	newCommittee []common.NodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int,
 	tNewCommittee int, kNewCommittee int, privateKey curves.Scalar) (*PSSNode, error) {
@@ -67,21 +63,15 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, old
 	return newPSSNode, nil
 }
 
+// Returns the PSS protocol prefix in the form dpss-<epoch>
 func getPSSProtocolPrefix(epoch int) ProtocolPrefix {
 	return ProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
 }
 
 // IsOldNode determines if the current node belongs to the old committee.
 func (node *PSSNode) IsOldNode() bool {
-	nodeDetails := node.PSSNodeDetails.OldNodeDetails
+	nodeDetails := node.details
 	_, found := node.OldCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
-	return found
-}
-
-// IsOldNode determines if the current node belongs to the new committe.
-func (node *PSSNode) IsNewNode() bool {
-	nodeDetails := node.PSSNodeDetails.NewNodeDetails
-	_, found := node.NewCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
 
@@ -107,15 +97,15 @@ func (node *PSSNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
 //   - n: number of nodes in the committee.
 //   - k: number of corrupt nodes in the committee.
 //   - t: the reconstruction threshold in that committee.
-func (node *PSSNode) Params(fromNewCommittee bool) (n, k, t int) {
-	if fromNewCommittee {
-		n = node.NewCommitteeNodes.N
-		k = node.NewCommitteeNodes.K
-		t = node.NewCommitteeNodes.T
-	} else {
+func (node *PSSNode) Params() (n, k, t int) {
+	if node.IsOldNode() {
 		n = node.OldCommitteeNodes.N
 		k = node.OldCommitteeNodes.K
 		t = node.OldCommitteeNodes.T
+	} else {
+		n = node.NewCommitteeNodes.N
+		k = node.NewCommitteeNodes.K
+		t = node.NewCommitteeNodes.T
 	}
 	return
 }
@@ -154,12 +144,9 @@ func (node *PSSNode) ProcessBroadcastMessage(message common.DKGMessage) error {
 	return nil
 }
 
-func (node *PSSNode) Details(fromNewCommittee bool) common.NodeDetails {
-	if fromNewCommittee {
-		return node.PSSNodeDetails.NewNodeDetails
-	} else {
-		return node.PSSNodeDetails.OldNodeDetails
-	}
+// Details returns the details of the node, namely, its index and public key.
+func (node *PSSNode) Details() common.NodeDetails {
+	return node.details
 }
 
 func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
@@ -167,6 +154,7 @@ func GenerateDPSSID(rindex, noOfRandoms big.Int) common.ADKGID {
 	return common.ADKGID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
 }
 
+// Send sends a message to the node that has certain public key and index.
 func (node *PSSNode) Send(n common.NodeDetails, msg common.DKGMessage) error {
 	return node.PssNodeTransport.Send(n, msg)
 }

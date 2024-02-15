@@ -145,8 +145,8 @@ func NewNode(index, n, k int, keypair common.KeyPair, transport *MockTransport, 
 		n:       n,
 		k:       k,
 		state: &common.PSSNodeState{
-			Shares:   &common.PSSShareStoreMap{},
-			RbcStore: &common.RBCStateMap{},
+			ShareStore: &common.PSSShareStoreMap{},
+			RbcStore:   &common.RBCStateMap{},
 		},
 		transport:      transport,
 		keypair:        keypair,
@@ -165,13 +165,13 @@ func (t *MockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
 	nodeDetails := make(map[common.NodeDetailsID]common.NodeDetails)
 
 	for _, node := range nodesOld {
-		d := node.Details(false)
-		nodeDetails[(&d).ToNodeDetailsID()] = node.Details(false)
+		d := node.Details()
+		nodeDetails[(&d).ToNodeDetailsID()] = node.Details()
 	}
 
 	for _, node := range nodesNew {
-		d := node.Details(true)
-		nodeDetails[(&d).ToNodeDetailsID()] = node.Details(true)
+		d := node.Details()
+		nodeDetails[(&d).ToNodeDetailsID()] = node.Details()
 	}
 
 	t.nodeDetails = nodeDetails
@@ -313,7 +313,7 @@ func (n *PssTestNode) AdjustParamN(new_n int) {
 	n.n = new_n
 }
 
-func (n *PssTestNode) Params(fromNewCommittee bool) (int, int, int) {
+func (n *PssTestNode) Params() (int, int, int) {
 	// since the node is created based on new and old
 	// therefore, we can directly extract the params
 	return n.n, n.k, n.k - 1
@@ -342,7 +342,7 @@ func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.DKGMessage) {
 		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.details.Index)
 		return
 	}
-	n.transport.Broadcast(n.Details(toNewCommittee), toNewCommittee, m)
+	n.transport.Broadcast(n.Details(), toNewCommittee, m)
 }
 
 func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
@@ -351,8 +351,7 @@ func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) e
 		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.details.Index)
 		return nil
 	}
-	//NOTE: Details() does not use the boolean parameter in the function
-	n.transport.Send(n.Details(true), receiver, msg)
+	n.transport.Send(n.Details(), receiver, msg)
 	return nil
 }
 
@@ -361,7 +360,7 @@ func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]comm
 	return n.transport.nodeDetails
 }
 
-func (n *PssTestNode) Details(isNewCommittee bool) common.NodeDetails {
+func (n *PssTestNode) Details() common.NodeDetails {
 
 	return n.details
 }

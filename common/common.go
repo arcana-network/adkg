@@ -296,11 +296,6 @@ type RBCState struct {
 	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
 }
 
-type RBCStateMap struct {
-	sync.Mutex
-	store sync.Map // Key: roundID, Value: RBCState
-}
-
 func Stringify(i interface{}) string {
 	bytArr, ok := i.([]byte)
 	if ok {
@@ -315,4 +310,39 @@ func Stringify(i interface{}) string {
 		log.WithError(err).Error("Could not fastjsonmarshal")
 	}
 	return string(byt)
+}
+
+type RBCStateMap struct {
+	sync.Mutex
+	Map sync.Map // Key: roundID, Value: RBCState
+}
+
+func (m *RBCStateMap) Get(r RoundID) (keygen *ABAState, found bool) {
+	inter, found := m.Map.Load(r)
+	keygen, _ = inter.(*ABAState)
+	return
+}
+
+func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *ABAState) (keygen *ABAState, complete bool) {
+	inter, found := store.GetOrSet(r, input)
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *RBCStateMap) GetOrSet(r RoundID, input *ABAState) (keygen *ABAState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*ABAState)
+	return
+}
+
+func (store *RBCStateMap) Complete(r RoundID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *RBCStateMap) Delete(r RoundID) {
+	store.Map.Delete(r)
 }

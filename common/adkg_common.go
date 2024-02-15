@@ -22,6 +22,7 @@ type ADKGID string
 func GenerateADKGID(index big.Int) ADKGID {
 	return ADKGID(strings.Join([]string{"ADKG", index.Text(16)}, Delimiter3))
 }
+
 func NewADKGID(index big.Int, curve CurveName) ADKGID {
 	baseStr := "ADKG"
 	if curve == ED25519 {
