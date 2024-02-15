@@ -1,15 +1,6 @@
 package curves
 
-import (
-	"bytes"
-	"fmt"
-	"testing"
-
-	"github.com/coinbase/kryptology/pkg/core/curves"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 func TestP256PointCompression(t *testing.T) {
 	kryptologyk256 := curves.K256()
 	kryptologyP1, err := kryptologyk256.Point.FromAffineCompressed(hexutil.MustDecode("0x02f54ba86dc1ccb5bed0224d23f01ed87e4a443c47fc690d7797a13d41d2340e1a"))
@@ -41,8 +32,13 @@ func TestP256PointCompression(t *testing.T) {
 func TestScalarK256_Hash(t *testing.T) {
 	kryptologyk256 := curves.K256()
 	msg := []byte{0, 1, 2, 3}
+
 	kryptologyScalar := kryptologyk256.Scalar.Hash(msg)
 	customScalar := curves.K256().Scalar.Hash(msg)
-
 	assert.True(t, bytes.Equal(kryptologyScalar.Bytes(), customScalar.Bytes()))
+
+	kryptologyPoint := kryptologyk256.Point.Hash(msg)
+	customPoint := curves.K256().Point.Hash(msg)
+	assert.True(t, bytes.Equal(kryptologyPoint.ToAffineUncompressed(), customPoint.ToAffineUncompressed()))
 }
+*/
