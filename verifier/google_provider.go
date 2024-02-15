@@ -72,10 +72,15 @@ func (g *GoogleVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	}
 
 	var body GoogleAuthResponse
-	if _, err := req.R().
+	res, err := req.R().
 		SetSuccessResult(&body).
-		Get(g.Endpoint + p.IDToken); err != nil {
+		Get(g.Endpoint + p.IDToken)
+	if err != nil {
 		return false, "", err
+	}
+
+	if res.IsErrorState() {
+		return false, "", errors.New("google auth api returned error")
 	}
 
 	if err := verifyGoogleResponse(body, p.UserID, g.Timeout, params.ClientID); err != nil {
@@ -98,10 +103,10 @@ func verifyGoogleResponse(body GoogleAuthResponse, verifierID string, timeout ti
 	if timeSigned.Add(timeout).Before(time.Now()) {
 		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
 	}
-	if strings.Compare(verifierID, body.Email) != 0 {
+	if verifierID != body.Email {
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
-	if strings.Compare(clientID, body.Azp) != 0 {
+	if clientID != body.Azp {
 		return fmt.Errorf("clientID mismatch: Expected:%s Got:%s", clientID, body.Azp)
 	}
 	return nil

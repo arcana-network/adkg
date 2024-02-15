@@ -180,10 +180,7 @@ func getTwitterAuth(body *TwitterAuthResponse, v *TwitterVerifier, idToken strin
 	u, _ := url.Parse(v.UserInfoUrl)
 	u.RawQuery = url.Values(sig.Params).Encode()
 
-	res, err := req.R().
-		SetHeader("Authorization", sig.Header).
-		SetSuccessResult(body).
-		Get(u.String())
+	res, err := req.R().SetHeader("Authorization", sig.Header).SetSuccessResult(body).Get(u.String())
 	if err != nil {
 		return err
 	}

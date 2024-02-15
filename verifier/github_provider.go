@@ -3,9 +3,7 @@ package verifier
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/imroc/req/v3"
@@ -13,20 +11,14 @@ import (
 )
 
 func NewGithubProvider() *GithubVerifier {
-	return &GithubVerifier{
-		Timeout: 60 * time.Second,
-	}
+	return &GithubVerifier{}
 }
 
 type GithubAuthResponse struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
-type GithubVerifier struct {
-	Timeout time.Duration
-}
+type GithubVerifier struct{}
 
 type GithubVerifierParams struct {
 	IDToken string `json:"id_token"`
@@ -64,13 +56,11 @@ func (t *GithubVerifier) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	}
 
 	if res.IsErrorState() {
-		return false, "", errors.New("github_auth_error")
+		return false, "", errors.New("github auth api returned error")
 	}
 
-	idStr := strconv.FormatInt(int64(body.ID), 10)
-
-	if idStr != p.UserID && body.Email != p.UserID {
-		return false, "", fmt.Errorf("user_id_mismatch")
+	if body.Email != p.UserID {
+		return false, "", fmt.Errorf("user id mismatch: only email is allowed")
 	}
 
 	return true, p.UserID, nil

@@ -3,6 +3,7 @@ package verifier
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -33,16 +34,6 @@ type ProviderMap struct {
 }
 
 var serviceMapper *common.MessageBroker
-
-func (tgv *ProviderMap) ListProviders() []string {
-	list := make([]string, len(tgv.Providers))
-	count := 0
-	for k := range tgv.Providers {
-		list[count] = k
-		count++
-	}
-	return list
-}
 
 func (tgv *ProviderMap) Verify(rawMessage *bijson.RawMessage, serviceMapper *common.MessageBroker) (bool, string, error) {
 	var msg common.GenericVerifierData
@@ -83,7 +74,9 @@ func (tgv *ProviderMap) Lookup(provider string) (Provider, error) {
 		return nil, errors.New("providers mapping not initialized")
 	}
 	if tgv.Providers[provider] == nil {
-		// return tgv.Providers["custom"], nil
+		if strings.HasPrefix(provider, "csp-") {
+			return tgv.Providers["custom"], nil
+		}
 		return nil, errors.New("provider:" + provider + " not found")
 	}
 	return tgv.Providers[provider], nil
@@ -128,7 +121,8 @@ func (v *VerifierService) Start() error {
 		NewSteamProvider(),
 		firebaseProvider,
 		NewGlobalKeyVerifier(v),
-		// NewCustomProvider(),
+		NewCustomProvider(),
+		NewXProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil
@@ -164,10 +158,6 @@ func (v *VerifierService) Call(method string, args ...interface{}) (interface{},
 			return nil, err
 		}
 		return verifier.CleanToken(token), nil
-	case "list_verifiers":
-		verifiers := v.providerMap.ListProviders()
-		return verifiers, nil
 	}
 	return nil, fmt.Errorf("verifier service method %v not found", method)
-
 }

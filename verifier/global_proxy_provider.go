@@ -34,7 +34,6 @@ type GlobalKeyVerifier struct {
 
 func NewGlobalKeyVerifier(vs *VerifierService) *GlobalKeyVerifier {
 	certPool := x509.NewCertPool()
-	// TODO: Fetch this via API, should have an expiry also
 	if !certPool.AppendCertsFromPEM([]byte(config.GlobalConfig.GlobalKeyCertPool)) {
 		panic(errors.New("invalid certificate pool data"))
 	}
@@ -84,7 +83,7 @@ func (gkv *GlobalKeyVerifier) Verify(rawPayload *bijson.RawMessage, _ *common.Ve
 	if p.AppID != parsed.ApplicationID {
 		return false, "", errors.New("application ID did not match")
 	}
-	serialized, err := bijson.Marshal(common.GenericVerifierData{
+	serialized, _ := bijson.Marshal(common.GenericVerifierData{
 		UserID:   p.UserID,
 		Token:    parsed.IDToken,
 		Provider: parsed.Verifier,

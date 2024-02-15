@@ -70,10 +70,13 @@ func (g *PasswordlessVerifier) Verify(rawPayload *bijson.RawMessage, params *com
 
 	var body PasswordlessAuthResponse
 
-	if _, err := req.R().
-		SetSuccessResult(&body).
-		Get(g.Endpoint + p.IDToken); err != nil {
+	res, err := req.R().SetSuccessResult(&body).Get(g.Endpoint + p.IDToken)
+	if err != nil {
 		return false, "", err
+	}
+
+	if res.IsErrorState() {
+		return false, "", errors.New("passwordless auth api returned error")
 	}
 
 	if err := verifyPasswordlessResponse(body, p.UserID, g.Timeout, params.ClientID); err != nil {
@@ -89,10 +92,10 @@ func verifyPasswordlessResponse(body PasswordlessAuthResponse, verifierID string
 	if timeSigned.Add(timeout).Before(time.Now()) {
 		return errors.New("timesigned is more than 60 seconds ago " + timeSigned.String())
 	}
-	if strings.Compare(verifierID, body.Email) != 0 {
+	if verifierID != body.Email {
 		return errors.New("email not equal to body.email " + verifierID + " " + body.Email)
 	}
-	if strings.Compare(clientID, body.Azp) != 0 {
+	if clientID != body.Azp {
 		return fmt.Errorf("clientID Mismatch: Expected=%s, Got=%s", clientID, body.Azp)
 	}
 	return nil
