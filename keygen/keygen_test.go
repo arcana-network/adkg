@@ -35,25 +35,25 @@ func TestRandom(t *testing.T) {
 		5: two,
 		6: three,
 	}
-	coeff, _ := abacommon.LagrangeCoeffs(identities, curves.K256())
+	coeff, _ := abacommon.LagrangeCoeffs(identities, curves.CurveK256())
 
-	z := curves.K256().NewScalar().Zero()
+	z := curves.CurveK256().NewScalar().Zero()
 	for i := range coeff {
-		si, _ := curves.K256().NewScalar().SetBigInt(shares[i])
+		si, _ := curves.CurveK256().NewScalar().SetBigInt(shares[i])
 		z = z.Add(si.Mul(coeff[i]))
 	}
 
-	publicKey := curves.K256().ScalarBaseMult(z)
+	publicKey := curves.CurveK256().ScalarBaseMult(z)
 
-	// coeff, _ := abacommon.LagrangeCoeffs(identities, curves.K256())
+	// coeff, _ := abacommon.LagrangeCoeffs(identities, curves.CurveK256())
 
-	// z := curves.K256().NewScalar().Zero()
+	// z := curves.CurveK256().NewScalar().Zero()
 	// for i := range coeff {
-	// 	si, _ := curves.K256().NewScalar().SetBigInt(shares[i])
+	// 	si, _ := curves.CurveK256().NewScalar().SetBigInt(shares[i])
 	// 	z = z.Add(si.Mul(coeff[i]))
 	// }
 
-	// publicKey := curves.K256().ScalarBaseMult(z).ToAffineUncompressed()
+	// publicKey := curves.CurveK256().ScalarBaseMult(z).ToAffineUncompressed()
 
 	t.Logf("derivedPublicKey: %x", publicKey.ToAffineUncompressed())
 }
@@ -61,7 +61,7 @@ func TestKeygen(t *testing.T) {
 	timeout := time.After(30 * time.Second)
 	done := make(chan bool)
 
-	curve := curves.ED25519()
+	curve := curves.CurveED25519()
 
 	log.SetLevel(log.InfoLevel)
 	// runtime.GOMAXPROCS(10)
@@ -198,7 +198,7 @@ func setupNodes(count int, faultyCount int) ([]*Node, *MockTransport) {
 	nodes := []*Node{}
 	nodeList := make(map[int]common.KeyPair)
 	for i := 1; i <= count+faultyCount; i++ {
-		keypair := acssc.GenerateKeyPair(curves.K256())
+		keypair := acssc.GenerateKeyPair(curves.CurveK256())
 		nodeList[i] = keypair
 	}
 	transport := NewMockTransport(nodes)
@@ -612,7 +612,7 @@ func (n *Node) PublicKey(index int) curves.Point {
 			return n.keypair.PublicKey
 		}
 	}
-	c := curves.K256()
+	c := curves.CurveK256()
 	return c.Point.Identity()
 }
 

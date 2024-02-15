@@ -1,8 +1,9 @@
 package polynomial
 
 import (
-	"github.com/arcana-network/dkgnode/curves"
 	"io"
+
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 type Polynomial struct {

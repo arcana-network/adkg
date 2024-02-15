@@ -8,12 +8,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/arcana-network/dkgnode/crypto/polynomial"
 	"io"
 
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/crypto/polynomial"
 	"github.com/arcana-network/dkgnode/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
