@@ -3,10 +3,10 @@ package curves
 import (
 	"bytes"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"testing"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,4 +36,13 @@ func TestP256PointCompression(t *testing.T) {
 	assert.True(t, bytes.Equal(customP3.ToAffineUncompressed(), kryptologyP1.ToAffineUncompressed()))
 	fmt.Printf("CustomP3 Compressed Serialized:\t\t%x\nOriginal Point Serialized:\t\t\t%x\n", customP3.ToAffineCompressed(), kryptologyP1.ToAffineCompressed())
 	assert.True(t, bytes.Equal(customP3.ToAffineCompressed(), kryptologyP1.ToAffineCompressed()))
+}
+
+func TestScalarK256_Hash(t *testing.T) {
+	kryptologyk256 := curves.K256()
+	msg := []byte{0, 1, 2, 3}
+	kryptologyScalar := kryptologyk256.Scalar.Hash(msg)
+	customScalar := curves.K256().Scalar.Hash(msg)
+
+	assert.True(t, bytes.Equal(kryptologyScalar.Bytes(), customScalar.Bytes()))
 }

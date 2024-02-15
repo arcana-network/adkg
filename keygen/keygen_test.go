@@ -10,6 +10,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/curves"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	abacommon "github.com/arcana-network/dkgnode/keygen/common/aba"
 	acssc "github.com/arcana-network/dkgnode/keygen/common/acss"
@@ -17,7 +18,6 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/acss"
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyset"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )

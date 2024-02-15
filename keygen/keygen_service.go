@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/arcana-network/dkgnode/curves"
 	"github.com/arcana-network/dkgnode/eventbus"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 
 	log "github.com/sirupsen/logrus"
 
@@ -48,7 +48,7 @@ func (service *KeygenService) Start() error {
 	}
 
 	k := service.broker.ChainMethods().GetSelfPrivateKey()
-	priv, err := curves.K256().NewScalar().SetBigInt(&k)
+	priv, err := curves.CurveK256().NewScalar().SetBigInt(&k)
 	if err != nil {
 		return err
 	}

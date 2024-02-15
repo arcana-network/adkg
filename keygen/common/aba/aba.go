@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 func Hash(g, h, gTilde, hTilde, gI, gITilde curves.Point, curve *curves.Curve) curves.Scalar {

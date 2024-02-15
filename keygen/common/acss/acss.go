@@ -13,7 +13,7 @@ import (
 	tronCrypto "github.com/TRON-US/go-eccrypto"
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
@@ -108,7 +108,7 @@ func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point
 	commitment := make([]curves.Point, 0)
 	for i := 0; i < k; i++ {
 		length := 33
-		if curve.Name == "ed25519" {
+		if curve.ID == curves.CurveIDED25519 {
 			length = 32
 		}
 		cI, err := curve.Point.FromAffineCompressed(c[i*length : (i*length)+length])
@@ -166,7 +166,7 @@ func Split(secret curves.Scalar, threshold, limit uint32, curve *curves.Curve, r
 	verifier := new(sharing.FeldmanVerifier)
 	verifier.Commitments = make([]curves.Point, threshold)
 	for i := range verifier.Commitments {
-		base, _ := sharing.CurveParams(curve.Name)
+		base, _ := sharing.CurveParams(curve.ID)
 		verifier.Commitments[i] = base.Mul(poly.Coefficients[i])
 	}
 	return verifier, shares, nil

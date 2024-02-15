@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 type FeldmanVerifier struct {
@@ -18,7 +18,7 @@ type FeldmanVerifier struct {
 }
 
 func (v FeldmanVerifier) Verify(share *ShamirShare) error {
-	curve := curves.GetCurveByName(v.Commitments[0].CurveName())
+	curve := curves.GetCurveByID(v.Commitments[0].CurveID())
 	err := share.Validate(curve)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (v FeldmanVerifier) Verify(share *ShamirShare) error {
 		rhs = rhs.Add(v.Commitments[j].Mul(i))
 	}
 	sc, _ := curve.Scalar.SetBytes(share.Value)
-	base, _ := CurveParams(curve.Name)
+	base, _ := CurveParams(curve.ID)
 
 	lhs := base.Mul(sc)
 
@@ -76,7 +76,7 @@ func (f Feldman) Split(secret curves.Scalar, reader io.Reader) (*FeldmanVerifier
 	shares, poly := shamir.getPolyAndShares(secret, reader)
 	verifier := new(FeldmanVerifier)
 	verifier.Commitments = make([]curves.Point, f.Threshold)
-	base, _ := CurveParams(f.Curve.Name)
+	base, _ := CurveParams(f.Curve.ID)
 	for i := range verifier.Commitments {
 		verifier.Commitments[i] = base.Mul(poly.Coefficients[i])
 	}

@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	"github.com/vivint/infectious"
 )
 

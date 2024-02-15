@@ -3,6 +3,7 @@ package curves
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 
 	secp256k12 "github.com/consensys/gnark-crypto/ecc/secp256k1"
@@ -13,7 +14,7 @@ func CurveK256() *Curve {
 	tmp := Curve{
 		Scalar: &ScalarK256{},
 		Point:  &PointK256{},
-		ID:     CurveSECP256K1,
+		ID:     CurveIDSECP256K1,
 	}
 	return &tmp
 }
@@ -24,6 +25,24 @@ type ScalarK256 struct {
 
 type PointK256 struct {
 	value secp256k12.G1Affine
+}
+
+func (s *ScalarK256) Random(reader io.Reader) Scalar {
+	if reader == nil {
+		return nil
+	}
+	var seed [64]byte
+	_, _ = reader.Read(seed[:])
+	return s.Hash(seed[:])
+}
+
+func (s *ScalarK256) Hash(bytes []byte) Scalar {
+	domain := []byte("secp256k1_XMD:SHA-256_SSWU_RO_")
+	ptl, err := fp.Hash(bytes, domain, 1)
+	if err != nil {
+		panic(err)
+	}
+	return &ScalarK256{value: ptl[0]}
 }
 
 func (s *ScalarK256) Zero() Scalar {
@@ -415,7 +434,7 @@ func (p *PointK256) FromAffineUncompressed(bytes []byte) (Point, error) {
 }
 
 func (p *PointK256) CurveID() CurveID {
-	return CurveSECP256K1
+	return CurveIDSECP256K1
 }
 
 /*

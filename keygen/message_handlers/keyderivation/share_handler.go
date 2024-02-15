@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/curves"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 
 	log "github.com/sirupsen/logrus"
 )

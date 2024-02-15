@@ -1,6 +1,9 @@
 package curves
 
-import "math/big"
+import (
+	"io"
+	"math/big"
+)
 
 // Curve represents a named elliptic curve with a scalar field and point group
 type Curve struct {
@@ -28,6 +31,12 @@ func (c Curve) NewScalar() Scalar {
 // Scalar represents an element of the scalar field \mathbb{F}_q
 // of the elliptic curve construction.
 type Scalar interface {
+	// Random returns a random scalar using the provided reader
+	// to retrieve bytes
+	Random(reader io.Reader) Scalar
+	// Hash the specific bytes in a manner to yield a
+	// uniformly distributed scalar
+	Hash(bytes []byte) Scalar
 	// Zero returns the additive identity element
 	Zero() Scalar
 	// One returns the github.com/cloudflare/circl
@@ -108,7 +117,18 @@ type Point interface {
 type CurveID uint16
 
 const (
-	CurveUndefined = iota
-	CurveED25519
-	CurveSECP256K1
+	CurveIDUndefined = iota
+	CurveIDED25519
+	CurveIDSECP256K1
 )
+
+func GetCurveByID(c CurveID) *Curve {
+	switch c {
+	case CurveIDED25519:
+		return CurveED25519()
+	case CurveIDSECP256K1:
+		return CurveK256()
+	default:
+		panic("unhandled default case")
+	}
+}

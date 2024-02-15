@@ -4,7 +4,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	"github.com/torusresearch/bijson"
 )
 

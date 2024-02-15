@@ -11,14 +11,14 @@ func getFixedScalar(c *curves.Curve) (curves.Scalar, error) {
 	k256Scalar := "6c47fa13c92d8b47d1579f112657c22ddd0c3a6ed1fb56c8fc80a086477bf89c"
 	ed25519Scalar := "19d7725aab29dab57a2124400cb2ca69c9830f691104d1471b8cb0759cd17d1"
 
-	if c.ID == curves.CurveSECP256K1 {
+	if c.ID == curves.CurveIDSECP256K1 {
 		b2, ok := new(big.Int).SetString(k256Scalar, 16)
 		if !ok {
 			return nil, fmt.Errorf("invalid hex for scalar for curve %d", c.ID)
 		}
 		s2, err := c.Scalar.SetBigInt(b2)
 		return s2, err
-	} else if c.ID == curves.CurveED25519 {
+	} else if c.ID == curves.CurveIDED25519 {
 		b2, ok := new(big.Int).SetString(ed25519Scalar, 16)
 		if !ok {
 			return nil, fmt.Errorf("invalid hex for scalar for curve %d", c.ID)
@@ -33,11 +33,11 @@ func getFixedScalar(c *curves.Curve) (curves.Scalar, error) {
 func CurveParams(curveID curves.CurveID) (curves.Point, curves.Point) {
 	var c *curves.Curve
 
-	if curveID == curves.CurveSECP256K1 {
+	if curveID == curves.CurveIDSECP256K1 {
 		c = curves.CurveK256()
-	} /* else if curveID == crypto.CurveED25519 {
-		c = curves.ED25519()
-	}*/
+	} else if curveID == curves.CurveIDED25519 {
+		c = curves.CurveED25519()
+	}
 
 	scalar, err := getFixedScalar(c)
 	if err != nil {

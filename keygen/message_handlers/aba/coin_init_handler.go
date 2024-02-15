@@ -10,7 +10,7 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 var CoinInitMessageType string = "aba_coin_init"

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 func TestBitKeeper(t *testing.T) {

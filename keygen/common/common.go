@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 func GetSetBits(n, val int) []int {

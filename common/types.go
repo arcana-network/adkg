@@ -2,8 +2,7 @@ package common
 
 import (
 	"errors"
-
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 type CurveName string
@@ -14,11 +13,11 @@ var ED25519 CurveName = "ed25519"
 func CurveFromName(c CurveName) *curves.Curve {
 	switch c {
 	case SECP256K1:
-		return curves.K256()
+		return curves.CurveK256()
 	case ED25519:
-		return curves.ED25519()
+		return curves.CurveED25519()
 	default:
-		return curves.K256()
+		return curves.CurveK256()
 	}
 }
 

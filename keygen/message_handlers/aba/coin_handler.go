@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arcana-network/dkgnode/common"

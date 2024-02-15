@@ -3,7 +3,7 @@ package common
 import (
 	"crypto/sha256"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 )
 
 func HashByte(msg []byte) []byte {

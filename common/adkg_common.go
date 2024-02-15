@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 	"golang.org/x/crypto/sha3"

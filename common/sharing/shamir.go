@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/arcana-network/dkgnode/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
 )
 
