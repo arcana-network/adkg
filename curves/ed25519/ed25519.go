@@ -16,6 +16,15 @@ import (
 	ed "github.com/bwesterb/go-ristretto/edwards25519"
 )
 
+func CurveED25519() *curves.Curve {
+	tmp := curves.Curve{
+		Scalar: &ScalarEd25519{},
+		Point:  &PointEd25519{},
+		ID:     curves.CurveED25519,
+	}
+	return &tmp
+}
+
 type ScalarEd25519 struct {
 	value *edwards25519.Scalar
 }
