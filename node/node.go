@@ -18,6 +18,7 @@ import (
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/arcana-network/dkgnode/keygen"
 	"github.com/arcana-network/dkgnode/keystore"
+	"github.com/arcana-network/dkgnode/manager"
 	"github.com/arcana-network/dkgnode/p2p"
 	"github.com/arcana-network/dkgnode/server"
 	"github.com/arcana-network/dkgnode/tendermint"
@@ -46,7 +47,9 @@ func Start(conf *config.Config) {
 		server.New(bus),
 		verifier.New(bus),
 		keystore.New(bus),
+		manager.New(bus),
 	}
+	//go fakeManagerService()
 
 	for _, s := range services {
 		err := serviceRegistry.RegisterService(s)
@@ -81,3 +84,12 @@ func stopOnInterrupt(serviceRegistry *common.ServiceRegistry) {
 		log.Fatalf("Error while stopping all services: err=%s", err)
 	}
 }
+
+// func fakeManagerService() {
+// 	scanner := bufio.NewScanner(os.Stdin)
+// 	for scanner.Scan() {
+// 		fmt.Printf("child received: %s \n", scanner.Text())
+
+// 		fmt.Printf("child Return: %s \n", "Hello from child")
+// 	}
+// }

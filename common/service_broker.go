@@ -1372,3 +1372,17 @@ func (cam *CacheMethods) GetTokenCommitKey(verifier string, tokenCommitment stri
 	}
 	return
 }
+
+type ManagerMethods struct {
+	caller  string
+	bus     eventbus.Bus
+	service string
+}
+
+func (mm *ManagerMethods) SendToManager() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_to_manager")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
