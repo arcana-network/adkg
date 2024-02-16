@@ -125,7 +125,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 		go self.Broadcast(*readyMsg)
 	}
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
+	if len(keygen.ReadyStore) >= f+1 && !c.ReadySent && c.EC >= f+1 {
 		// Broadcast ready message
 		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
 		if err != nil {

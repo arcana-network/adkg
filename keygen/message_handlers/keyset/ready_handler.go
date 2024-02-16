@@ -98,9 +98,9 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	// increment the ready messages received
 	c.RC = c.RC + 1
 	n, _, f := self.Params()
-	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, f+1, self.ID())
+	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, len(keygen.ReadyStore), f+1, self.ID())
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
+	if len(keygen.ReadyStore) >= f+1 && !c.ReadySent && c.EC >= f+1 {
 		// Broadcast ready message
 		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
 		if err != nil {
