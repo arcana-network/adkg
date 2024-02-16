@@ -44,7 +44,7 @@ func NewRbcEchoMessage(id common.RoundID, s infectious.Share, hash []byte, curve
 		return nil, err
 	}
 
-	msg := common.CreateMessage(m.RoundID, m.Kind, bytes)
+	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
 	return &msg, nil
 }
 
@@ -107,13 +107,13 @@ func (msg *RbcEchoMessage) Process(sender common.NodeDetails, self common.DkgPar
 	c.EC = c.EC + 1
 
 	// Broadcast ready message if echo count > 2f + 1
-	_, _, f := self.Params(msg.NewCommittee)
+	_, _, f := self.Params()
 
 	log.Debugf("echo_count=%d, required=%d", c.EC, 2*f+1)
 	if c.EC >= (2*f + 1) {
 		// Send Ready Message
 		c.ReadySent = true
-		for _, n := range self.Nodes(msg.NewCommittee) {
+		for _, n := range self.Nodes() {
 			go func(node common.NodeDetails) {
 				// This corresponds to Line 12, Algorithm 4, RBC Protocol.
 				readyMsg, err := NewRbcReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee, msg.ProtoOrigin)

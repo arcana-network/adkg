@@ -9,7 +9,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
-	"github.com/arcana-network/dkgnode/rbc/router"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 )
@@ -44,9 +43,10 @@ func NewDacssShareMessage(roundID common.RoundID, curve *curves.Curve) (*common.
 }
 
 func (msg *DacssShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+
 	// TODO do we need to check whether sender (NodeDetails) are contained in the PssNodeDetails?
 	// Or do we need to specifically check that the NodeDetails are equal for new/old comittee (and somehow have access to this expectation)
-	if sender.Index != self.ID() {
+	if sender.Index != self.Details().Index {
 		return
 	}
 
@@ -61,7 +61,7 @@ func (msg *DacssShareMessage) Process(sender common.NodeDetails, self common.PSS
 }
 
 func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *DacssShareMessage, secret curves.Scalar, privateKey curves.Scalar) {
-	n, k, _ := self.Params(isNewCommittee)
+	n, k, _ := self.Params()
 
 	// Generates shares and commitments
 	commitments, shares, _ := acss.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), msg.Curve)
@@ -90,13 +90,25 @@ func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *Da
 	for _, n := range self.Nodes(isNewCommittee) {
 		go func(node common.NodeDetails) {
 			roundID := reCreateRoundID(msg.RoundID, isNewCommittee)
-			rbcRouter := router.NewRbcRouter("dacss")
-			proposeMsg, err := rbcRouter.StartRbc(roundID, msgData, msg.Curve, self.ID(), isNewCommittee)
+
+			//TODO: ProposeHandler
+			proposeMsg, err := NewAcssProposeMessage(roundID, msgData, msg.Curve, self.Details().Index, isNewCommittee)
 
 			if err != nil {
-				log.WithField("error", err).Error("NewDacssProposeMessage")
+				log.WithField("error", err).Error("NewAcssProposeMessage")
 				return
 			}
+			// TODO: as of now ABA is combined with dacss.
+			// later can be separated
+
+			// rbcRouter := router.NewRbcRouter("dacss")
+			// proposeMsg, err := rbcRouter.StartRbc(roundID, msgData, msg.Curve, self.ID())
+
+			// if err != nil {
+			// 	log.WithField("error", err).Error("NewDacssProposeMessage")
+			// 	return
+			// }
+
 			self.Send(node, *proposeMsg)
 		}(n)
 	}

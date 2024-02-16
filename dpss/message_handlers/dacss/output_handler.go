@@ -1,6 +1,8 @@
 package dacss
 
 import (
+	"encoding/json"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
@@ -17,7 +19,7 @@ type AcssOutputMessage struct {
 	handlerType  string
 }
 
-func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, sender int, handlerType string, newCommittee bool) common.DKGMessage {
+func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, sender int, handlerType string, newCommittee bool) (*common.DKGMessage, error) {
 	m := AcssOutputMessage{
 		roundID:      id,
 		sender:       sender,
@@ -28,5 +30,11 @@ func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, s
 		handlerType:  handlerType,
 	}
 
-	return m
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := common.CreateMessage(m.roundID, string(m.kind), bytes)
+	return &msg, nil
 }
