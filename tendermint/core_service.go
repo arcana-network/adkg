@@ -209,12 +209,14 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 	defaultConfig.BaseConfig.DBBackend = "goleveldb"
 	defaultConfig.FastSyncMode = false
 	// defaultConfig.RPC.ListenAddress = fmt.Sprintf("tcp://%s:26657", config.GlobalConfig.IPAddress)
-	defaultConfig.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	// defaultConfig.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	defaultConfig.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%s", config.GlobalConfig.TMRPCPort)
 	defaultConfig.RPC.MaxSubscriptionClients = 5
 	defaultConfig.RPC.MaxSubscriptionsPerClient = 200
 
 	// defaultConfig.P2P.ListenAddress = fmt.Sprintf("tcp://%s:26656", config.GlobalConfig.IPAddress)
-	defaultConfig.P2P.ListenAddress = "tcp://0.0.0.0:26656"
+	// defaultConfig.P2P.ListenAddress = "tcp://0.0.0.0:26656"
+	defaultConfig.P2P.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%s", config.GlobalConfig.TMP2PPort)
 	defaultConfig.P2P.MaxNumInboundPeers = 300
 	defaultConfig.P2P.PersistentPeers = peers
 	defaultConfig.P2P.MaxNumOutboundPeers = 300
@@ -248,7 +250,7 @@ func abciMonitor(t *TendermintService) {
 	interval := time.NewTicker(5 * time.Second)
 	defer interval.Stop()
 	for range interval.C {
-		bftClient, err := http.New(fmt.Sprintf("tcp://%s:26657", "127.0.0.1"), "/websocket")
+		bftClient, err := http.New(fmt.Sprintf("tcp://%s:%s", "127.0.0.1", config.GlobalConfig.TMRPCPort), "/websocket")
 		if err != nil {
 			log.WithField("error during starting rpc abci", err).Error("ABCI")
 		} else {

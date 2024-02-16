@@ -25,6 +25,9 @@ type Config struct {
 	EthConnection      string `json:"blockchainRPCURL"`
 	ContractAddress    string `json:"dkgContractAddress"`
 	HttpServerPort     string `json:"port"`
+	P2PPort            string `json:"p2pPort"`
+	TMP2PPort          string `json:"tmP2PPort"`
+	TMRPCPort          string `json:"tmRPCPort"`
 	Domain             string `json:"domain"`
 	GatewayURL         string `json:"gatewayUrl"`
 	PasswordlessUrl    string `json:"passwordlessUrl"`
@@ -55,6 +58,7 @@ func ConfigFromFile(configPath string) (*Config, error) {
 	return config, nil
 }
 
+// TODO use port in config
 func UseIPAdressInListenAddress(config *Config) {
 	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
 	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
@@ -78,6 +82,7 @@ func ReadConfigJson(configPath string) (*Config, error) {
 	return config, nil
 }
 
+// TODO use port in default_values.go
 func GetDefaultConfig() *Config {
 	config := &Config{
 		TMP2PListenAddress: "tcp://0.0.0.0:26656",
@@ -89,6 +94,9 @@ func GetDefaultConfig() *Config {
 		PasswordlessUrl:    DefaultPasswordlessUrl,
 		OAuthUrl:           DefaultOAuthUrl,
 		GlobalKeyCertPool:  DefaultGlobalKeyCertPool,
+		P2PPort:            DefaultP2PPort,
+		TMP2PPort:          DefaultTmP2PPort,
+		TMRPCPort:          DefaultTmRPCPort,
 	}
 	return config
 }
