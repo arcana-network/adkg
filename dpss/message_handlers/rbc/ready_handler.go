@@ -72,7 +72,7 @@ func (m *RbcReadyMessage) Fingerprint() string {
 	return hash
 }
 
-func (m RbcReadyMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
+func (m RbcReadyMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore
@@ -118,7 +118,7 @@ func (m RbcReadyMessage) Process(sender common.NodeDetails, self common.DkgParti
 
 	// Increment the echo messages received
 	c.RC = c.RC + 1
-	n, k, f := self.Params(m.NewCommittee)
+	n, k, f := self.Params()
 
 	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, k, self.ID())
 
