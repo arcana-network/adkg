@@ -16,6 +16,8 @@ type PSSParticipant interface {
 
 	// For PSS state
 	PSSParticipantState
+	// Returns the ID of the participant
+	ID() int
 	// Defines if the current node belongs to the old or new committee.
 	IsOldNode() bool
 	// Obtains the public key from a node in the old or new committee. The
@@ -45,10 +47,11 @@ type PSSParticipantState interface {
 }
 
 // PSSNodeState represents the internal state of a node that participates in
-// possibly multiple DPSS protocol.
+// possibly multiple DPSS protocol. There is an storage for the different
+// sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	ShareStore *PSSShareStoreMap // Storage for the shares.
-	RbcStore   *RBCStateMap      // Storage for the RBC variables.
+	ShareStore *PSSShareStoreMap // Storage for the shares in the ACSS Protocol.
+	RbcStore   *RBCStateMap      // Storage for the RBC protocol.
 }
 
 // Stores the shares tha the node receives during the DPSS protocol.

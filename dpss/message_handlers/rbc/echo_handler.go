@@ -63,7 +63,7 @@ func (m *RbcEchoMessage) Fingerprint() string {
 	return hash
 }
 
-func (msg *RbcEchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
+func (msg *RbcEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
 	// Get state from node
 	state := self.State().KeygenStore
