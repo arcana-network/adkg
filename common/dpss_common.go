@@ -13,6 +13,9 @@ import (
 // PSSParticipant is the interface that covers all the participants inside the
 // DPSS protocol
 type PSSParticipant interface {
+
+	// For PSS state
+	PSSParticipantState
 	// Defines if the current node belongs to the old or new committee.
 	IsOldNode() bool
 	// Obtains the public key from a node in the old or new committee. The
@@ -35,6 +38,10 @@ type PSSParticipant interface {
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
+}
+
+type PSSParticipantState interface {
+	State() *PSSNodeState
 }
 
 // PSSNodeState represents the internal state of a node that participates in

@@ -91,8 +91,7 @@ func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *Da
 		go func(node common.NodeDetails) {
 			roundID := reCreateRoundID(msg.RoundID, isNewCommittee)
 
-			//TODO: ProposeHandler
-			proposeMsg, err := NewAcssProposeMessage(roundID, msgData, msg.Curve, self.Details().Index, isNewCommittee)
+			proposeMsg, err := NewDacssProposeMessage(roundID, msgData, msg.Curve, self.Details().Index, isNewCommittee)
 
 			if err != nil {
 				log.WithField("error", err).Error("NewAcssProposeMessage")
