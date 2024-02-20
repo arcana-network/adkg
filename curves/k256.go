@@ -66,16 +66,18 @@ func (s *ScalarK256) IsOne() bool {
 }
 
 func (s *ScalarK256) IsOdd() bool {
-	return s.value.Bytes()[0]&1 == 1
+	return s.value.Bytes()[31]&1 == 1
 }
 
 func (s *ScalarK256) IsEven() bool {
-	return s.value.Bytes()[0]&1 == 0
+	return s.value.Bytes()[31]&1 == 0
 }
 
 func (s *ScalarK256) New(value int) Scalar {
+	tmp := fp.NewElement(uint64(value))
+	tmp.SetInt64(int64(value))
 	return &ScalarK256{
-		value: fp.NewElement(uint64(value)),
+		value: tmp,
 	}
 }
 
@@ -115,6 +117,15 @@ func (s *ScalarK256) Invert() (Scalar, error) {
 func (s *ScalarK256) Sqrt() (Scalar, error) {
 	tmp := fp.NewElement(0)
 	tmp.Sqrt(&s.value)
+
+	// is this even necessary?
+	{
+		z := s.BigInt()
+		if z.Cmp(big.NewInt(2)) != 0 {
+			tmp.Neg(&tmp)
+		}
+	}
+
 	return &ScalarK256{
 		tmp,
 	}, nil
@@ -233,6 +244,12 @@ func (s *ScalarK256) Clone() Scalar {
 	return &ScalarK256{
 		value: tmp,
 	}
+}
+
+func (p *PointK256) Random(reader io.Reader) Point {
+	var seed [64]byte
+	_, _ = reader.Read(seed[:])
+	return p.Hash(seed[:])
 }
 
 func (p *PointK256) Hash(bytes []byte) Point {

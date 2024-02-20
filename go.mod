@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/TRON-US/go-eccrypto v0.0.1
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/btcsuite/btcd v0.22.1 // indirect
+	github.com/btcsuite/btcd v0.22.1
 	github.com/ethereum/go-ethereum v1.10.17
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0
@@ -41,6 +41,7 @@ require (
 	github.com/imroc/req/v3 v3.42.2
 	github.com/smallstep/pkcs7 v0.0.0-20231107075624-be1870d87d13
 	github.com/spf13/cobra v1.6.0
+	github.com/stretchr/testify v1.8.4
 )
 
 require (
@@ -56,6 +57,7 @@ require (
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/creachadair/taskgroup v0.3.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c // indirect
@@ -118,6 +120,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.1.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.3.3 // indirect
 	github.com/quic-go/quic-go v0.38.1 // indirect
@@ -137,6 +140,7 @@ require (
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
