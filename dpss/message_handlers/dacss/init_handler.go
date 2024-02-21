@@ -10,11 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var InitMessageType string = "dacss_init"
+var InitMessageType string = "hbACSS_init"
 
 type InitMessage struct {
 	RIndex    int
-	BatchSize int
+	BatchSize int // number of secrets to be shared in the hbACSS
 	Kind      string
 	Curve     *curves.Curve
 }
@@ -49,12 +49,12 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	round := common.PSSRoundDetails{
 		PSSID:  dpssID,
 		Dealer: self.Details().Index,
-		Kind:   "dacss",
+		Kind:   msg.Kind,
 	}
-	acssShareMsg, err := NewDacssShareMessage(round.ID(), msg.Curve)
+	hbacssShareMsg, err := NewHbACSSacssShareMessage(msg.BatchSize, round.ID(), msg.Curve)
 	if err != nil {
 		log.WithField("error", err).Error("NewDacssShareMessage")
 		return
 	}
-	go self.ReceiveMessage(self.Details(), *acssShareMsg)
+	go self.ReceiveMessage(self.Details(), *hbacssShareMsg)
 }

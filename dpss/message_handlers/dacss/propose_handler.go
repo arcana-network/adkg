@@ -12,9 +12,9 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssProposeMessageType common.MessageType = "dacss_propose"
+var HbAacssProposeMessageType common.MessageType = "HbAacss_propose"
 
-type DacssProposeMessage struct {
+type HbAacssProposeMessage struct {
 	RoundID      common.RoundID
 	NewCommittee bool
 	Kind         common.MessageType
@@ -22,11 +22,11 @@ type DacssProposeMessage struct {
 	Data         messages.MessageData
 }
 
-func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool) (*common.DKGMessage, error) {
-	m := DacssProposeMessage{
+func NewHbAacssProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool) (*common.DKGMessage, error) {
+	m := HbAacssProposeMessage{
 		RoundID:      roundID,
 		NewCommittee: isNewCommittee,
-		Kind:         DacssProposeMessageType,
+		Kind:         HbAacssProposeMessageType,
 		Curve:        msgCurve,
 		Data:         msgData,
 	}
@@ -39,7 +39,7 @@ func NewDacssProposeMessage(roundID common.RoundID, msgData messages.MessageData
 	return &msg, nil
 }
 
-func (msg *DacssProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg *HbAacssProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
 	log.Debugf("Propose: Node=%d, Value=%v", self.Details().Index, msg.Data)

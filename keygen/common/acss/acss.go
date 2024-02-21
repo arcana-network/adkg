@@ -122,6 +122,28 @@ func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point
 	return commitment, nil
 }
 
+// for hbACSS batch commitments
+// TODO: Testing not done
+func BatchDecompressCommitments(k, B int, c []byte, curve *curves.Curve) ([][]curves.Point, error) {
+
+	if len(c)%B != 0 {
+		return nil, fmt.Errorf("not valid Batch compression")
+	}
+
+	Batchcommitment := make([][]curves.Point, 0)
+	size := len(c) / B
+	for i := 0; i < B; i++ {
+		points, err := DecompressCommitments(k, c[i*size:(i*size)+size], curve)
+
+		if err != nil {
+			return nil, err
+		}
+		Batchcommitment = append(Batchcommitment, points)
+	}
+
+	return Batchcommitment, nil
+}
+
 func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*sharing.FeldmanVerifier, error) {
 
 	commitment, err := DecompressCommitments(k, c, curve)

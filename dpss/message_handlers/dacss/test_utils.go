@@ -285,7 +285,7 @@ func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenM
 		// msg.Process(sender, node)
 	case ShareMessageType:
 		log.Debugf("Got %s", ShareMessageType)
-		var msg DacssShareMessage
+		var msg HbAcssShareMessage
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
 		if err != nil {
 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)

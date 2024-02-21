@@ -96,7 +96,6 @@ func (msg *DacssEchoMessage) Process(sender common.NodeDetails, self common.DkgP
 	if receivedEcho && found {
 		log.Debugf("Already received echo for %s from %d", msg.RoundID, sender.Index)
 		return
-	}
 
 	// Get keygen store by serializing the share and hash of the message.
 	cid := msg.Fingerprint()
