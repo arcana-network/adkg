@@ -27,7 +27,7 @@ type DualCommitteeACSSShareMessage struct {
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve) (*common.DKGMessage, error) {
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve) (*common.PSSMessage, error) {
 	m := &DualCommitteeACSSShareMessage{
 		RoundID: roundID,
 		Kind:    ShareMessageType,
@@ -40,7 +40,7 @@ func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDe
 		return nil, err
 	}
 
-	msg := common.CreateMessage(m.RoundID, m.Kind, bytes)
+	msg := common.CreatePSSMessage(m.RoundID, m.Kind, bytes)
 	return &msg, nil
 }
 
@@ -104,6 +104,13 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 	// ReliableBroadcast(C)
 	go self.Broadcast(true, *proposeMsg)
 
+}
+
+// ExecuteACSS starts the execution of the ACSS protocol with a given committee
+// defined by the withOldCommitte flag.
+func ExecuteACSS(withOldCommittee bool, secret curves.Scalar, dealer common.PSSParticipant, curve *curves.Curve) {
+	nodes := dealer.Nodes(withOldCommittee)
+	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 }
 
 // func makeMessageAndSend(isNewCommittee bool, self common.PSSParticipant, msg *HbAcssShareMessage, secret curves.Scalar, privateKey curves.Scalar) {

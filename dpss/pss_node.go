@@ -112,7 +112,7 @@ func (node *PSSNode) Params() (n, k, t int) {
 
 // Broadcast broadcasts a message to the given committee determined by the flag
 // toNewCommittee.
-func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.DKGMessage) {
+func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 	nodesToBroadcast := node.Nodes(toNewCommittee)
 	for _, n := range nodesToBroadcast {
 		go func(receiver common.NodeDetails) {
@@ -135,12 +135,12 @@ func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]commo
 }
 
 // TODO: Implement this as long as we implement the DPSS protocol.
-func (node *PSSNode) ProcessMessage(senderDetails common.NodeDetails, message common.DKGMessage) error {
+func (node *PSSNode) ProcessMessage(senderDetails common.NodeDetails, message common.PSSMessage) error {
 	return nil
 }
 
 // TODO: Implement this as long as we implement the DPSS protocol.
-func (node *PSSNode) ProcessBroadcastMessage(message common.DKGMessage) error {
+func (node *PSSNode) ProcessBroadcastMessage(message common.PSSMessage) error {
 	return nil
 }
 
@@ -155,6 +155,6 @@ func GenerateDPSSRoundID(rindex, noOfRandoms big.Int) common.PSSRoundID {
 }
 
 // Send sends a message to the node that has certain public key and index.
-func (node *PSSNode) Send(n common.NodeDetails, msg common.DKGMessage) error {
+func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	return node.PssNodeTransport.Send(n, msg)
 }

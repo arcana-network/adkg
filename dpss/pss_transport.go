@@ -41,14 +41,11 @@ func (tp *PssNodeTransport) streamHandler(streamMessage common.StreamMessage) {
 }
 
 // TODO check whether this impl is correct
-func (tp *PssNodeTransport) Receive(senderDetails common.NodeDetails, keygenMessage common.DKGMessage) error {
-	log.WithFields(log.Fields{
-		"method": common.Stringify(keygenMessage.Method),
-	}).Debug("keygen_transport")
-	return tp.PSSNode.ProcessMessage(senderDetails, keygenMessage)
+func (tp *PssNodeTransport) Receive(senderDetails common.NodeDetails, msg common.PSSMessage) error {
+	return tp.PSSNode.ProcessMessage(senderDetails, msg)
 }
 
-func (tp *PssNodeTransport) Send(nodeDetails common.NodeDetails, keygenMessage common.DKGMessage) error {
+func (tp *PssNodeTransport) Send(nodeDetails common.NodeDetails, msg common.PSSMessage) error {
 	// TODO implement correctly for DPSS
 	// this will be different from Keygen
 	return nil

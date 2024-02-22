@@ -18,10 +18,6 @@ type Node interface {
 	// Returns the params of the curve that is bein used by the node in the
 	// Respective protocol.
 	CurveParams(curveName string) (curves.Point, curves.Point)
-	// Sends a message msg to a node n.
-	Send(n NodeDetails, msg DKGMessage) error
-	// Receives a message msg from a node sender.
-	ReceiveMessage(sender NodeDetails, msg DKGMessage)
 }
 
 // BaseNode has all the attributes that are shared by the nodes in the DPSS and

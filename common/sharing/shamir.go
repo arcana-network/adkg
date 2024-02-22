@@ -12,6 +12,7 @@
 package sharing
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -204,4 +205,19 @@ func (s Shamir) interpolatePoint(xs []curves.Scalar, ys []curves.Point) (curves.
 		result = result.Add(ys[i].Mul(num.Div(den)))
 	}
 	return result, nil
+}
+
+// GenerateCommitmentAndShares generates a commitment and shares for a given secret
+// using the provided parameters.
+func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (*sharing.FeldmanVerifier, []*sharing.ShamirShare, error) {
+	f, err := sharing.NewFeldman(k, n, curve)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
+	}
+
+	feldcommit, shares, err := f.Split(secret, rand.Reader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
+	}
+	return feldcommit, shares, nil
 }

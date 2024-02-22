@@ -27,15 +27,15 @@ type PSSParticipant interface {
 	Params() (n int, k int, t int)
 	// Broadcast a message to the old or new committee. The committee is defined
 	// by the flag toNewCommittee.
-	Broadcast(toNewCommittee bool, msg DKGMessage)
+	Broadcast(toNewCommittee bool, msg PSSMessage)
 	// Send a message to a given node.
-	Send(n NodeDetails, msg DKGMessage) error
+	Send(n NodeDetails, msg PSSMessage) error
 	// Obtains the details of the current node.
 	Details() NodeDetails
 	// Returns the private key of the current node.
 	PrivateKey() curves.Scalar
 	// Receives a message from a given sender.
-	ReceiveMessage(sender NodeDetails, msg DKGMessage)
+	ReceiveMessage(sender NodeDetails, msg PSSMessage)
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
@@ -76,7 +76,7 @@ type PSSShareStoreMap struct {
 type PSSMessage struct {
 	RoundID PSSRoundID // Round ID of the current execution of the DPSS protocol.
 	Phase   string     // Phase of the protocol in which the message belongs to.
-	Data    []byte     // Actual data in the messag.
+	Data    []byte     // Actual data in the message.
 }
 
 // Obtains a sharing store for a PSS round given the round ID. Returns the
