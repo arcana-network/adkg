@@ -13,25 +13,27 @@ import (
 
 // ShareMessageType tells wich message are we sending. In this case, the share
 // message.
-var ShareMessageType string = "hbACSS_share"
+var ShareMessageType string = "DualCommitteeACSS_share"
 
-// HbAcssShareMessage has all the information for the initial message in the
-// sharing phase.
-type HbAcssShareMessage struct {
-	RoundID   common.RoundID // ID of the round.
-	BatchSize int            // number of secrets to be shared in the hbACSS
-	Kind      string         // Type of the message.
-	Curve     *curves.Curve  // Curve used in the messages.
+// DualCommitteeACSSShareMessage has all the information for the initial message in the
+// Dual-Committee ACSS Share protocol.
+type DualCommitteeACSSShareMessage struct {
+	RoundID common.PSSRoundID  // ID of the round.
+	Kind    string             // Type of the message.
+	Curve   *curves.Curve      // Curve used in the messages.
+	Secret  curves.Scalar      // Scallar that will be shared.
+	Dealer  common.NodeDetails // Information of the node that starts the Dual-Committee ACSS.
 }
 
-// NewHbAcssShareMessage creates a new share message from the provided ID and
+// NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewHbACSSacssShareMessage(BatchSize int, roundID common.RoundID, curve *curves.Curve) (*common.DKGMessage, error) {
-	m := &HbAcssShareMessage{
-		RoundID:   roundID,
-		BatchSize: BatchSize,
-		Kind:      ShareMessageType,
-		Curve:     curve,
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve) (*common.DKGMessage, error) {
+	m := &DualCommitteeACSSShareMessage{
+		RoundID: roundID,
+		Kind:    ShareMessageType,
+		Curve:   curve,
+		Secret:  secret,
+		Dealer:  dealer,
 	}
 	bytes, err := json.Marshal(m)
 	if err != nil {
@@ -42,7 +44,7 @@ func NewHbACSSacssShareMessage(BatchSize int, roundID common.RoundID, curve *cur
 	return &msg, nil
 }
 
-func (msg *HbAcssShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	// TODO do we need to check whether sender (NodeDetails) are contained in the PssNodeDetails?
 	// Or do we need to specifically check that the NodeDetails are equal for new/old comittee (and somehow have access to this expectation)

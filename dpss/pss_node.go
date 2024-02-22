@@ -149,9 +149,9 @@ func (node *PSSNode) Details() common.NodeDetails {
 	return node.details
 }
 
-func GenerateDPSSID(rindex, noOfRandoms big.Int) common.PSSID {
+func GenerateDPSSRoundID(rindex, noOfRandoms big.Int) common.PSSRoundID {
 	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
-	return common.PSSID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
+	return common.PSSRoundID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
 }
 
 // Send sends a message to the node that has certain public key and index.

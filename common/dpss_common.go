@@ -55,14 +55,14 @@ type PSSShareStore struct {
 	Shares map[int]curves.Scalar // Map of shares. K: index of the owner of the share, V: the actual share.
 }
 
-// PSSID defines the ID of an instance of the DPSS protocol.
-type PSSID string
+// PSSRoundID defines the ID of an instance of the DPSS protocol.
+type PSSRoundID string
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
 type PSSRoundDetails struct {
-	PSSID  PSSID  // ID for the PSS.
-	Dealer int    // ID of the node that is dealing the information to other parties.
-	Kind   string // Stage of the DPSS protocol in which the round is.
+	PSSRoundID PSSRoundID // ID for the PSS.
+	Dealer     int        // ID of the node that is dealing the information to other parties.
+	Kind       string     // Stage of the DPSS protocol in which the round is.
 }
 
 // Stores the information of the shares for a given round ID. Remember that
@@ -72,12 +72,27 @@ type PSSShareStoreMap struct {
 	Map sync.Map // Key: RoundID, Value: PSSSharingStore
 }
 
+// PSSMessage represents a message in the DPSS protocol
+type PSSMessage struct {
+	RoundID PSSRoundID // Round ID of the current execution of the DPSS protocol.
+	Phase   string     // Phase of the protocol in which the message belongs to.
+	Data    []byte     // Actual data in the messag.
+}
+
 // Obtains a sharing store for a PSS round given the round ID. Returns the
 // corresponding share store, and a boolean telling if the key was found or not.
 func (m *PSSShareStoreMap) Get(r RoundID) (shares *PSSShareStore, found bool) {
 	inter, found := m.Map.Load(r)
 	shares, _ = inter.(*PSSShareStore)
 	return
+}
+
+func CreatePSSMessage(roundID PSSRoundID, phase string, data []byte) PSSMessage {
+	return PSSMessage{
+		RoundID: roundID,
+		Phase:   phase,
+		Data:    data,
+	}
 }
 
 func (store *PSSShareStoreMap) GetOrSetIfNotComplete(r RoundID, input *PSSShareStore) (keygen *PSSShareStore, complete bool) {
@@ -111,26 +126,26 @@ func (store *PSSShareStoreMap) Delete(r RoundID) {
 // Obtains an round ID from the round details by appending the information
 // together.
 func (d *PSSRoundDetails) ID() RoundID {
-	return RoundID(strings.Join([]string{string(d.PSSID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
+	return RoundID(strings.Join([]string{string(d.PSSRoundID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
 }
 
-// Generates a new PSSID for a given index.
-func NewPSSID(index big.Int) PSSID {
-	return PSSID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
+// Generates a new PSSRoundID for a given index.
+func NewPSSRoundID(index big.Int) PSSRoundID {
+	return PSSRoundID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
 }
 
-// Return the index of a PSSID.
-func (id *PSSID) GetIndex() (big.Int, error) {
+// Return the index of a PSSRoundID.
+func (id *PSSRoundID) GetIndex() (big.Int, error) {
 	str := string(*id)
 	substrs := strings.Split(str, Delimiter3)
 
 	if len(substrs) != 2 {
-		return *new(big.Int), errors.New("could not parse DPSSID")
+		return *new(big.Int), errors.New("could not parse DPSSRoundID")
 	}
 
 	index, ok := new(big.Int).SetString(substrs[1], 16)
 	if !ok {
-		return *new(big.Int), errors.New("could not get back index from DPSSID")
+		return *new(big.Int), errors.New("could not get back index from DPSSRoundID")
 	}
 
 	return *index, nil

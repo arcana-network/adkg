@@ -1,28 +1,28 @@
 package dacss
 
 import (
+	"crypto/rand"
 	"encoding/json"
-	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/dpss"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	log "github.com/sirupsen/logrus"
 )
 
 var InitMessageType string = "hbACSS_init"
 
+// Represents the initialization message for the DPSS protocol.
 type InitMessage struct {
-	RIndex    int
-	BatchSize int // number of secrets to be shared in the hbACSS
-	Kind      string
-	Curve     *curves.Curve
+	roundID   common.PSSRoundID // ID of the round.
+	oldShares []curves.Scalar   // Array of shares that will be converted.
+	Kind      string            // Phase in which we are.
+	Curve     *curves.Curve     // Curve that we will use for the protocol.
 }
 
-func NewInitMessage(rIndex, batchSize int, curve curves.Curve) (*common.DKGMessage, error) {
+// Creates a new initialization message for DPSS.
+func NewInitMessage(roundId common.PSSRoundID, oldShares []curves.Scalar, curve curves.Curve) (*common.PSSMessage, error) {
 	m := InitMessage{
-		rIndex,
-		batchSize,
+		roundId,
+		oldShares,
 		InitMessageType,
 		&curve,
 	}
@@ -32,29 +32,26 @@ func NewInitMessage(rIndex, batchSize int, curve curves.Curve) (*common.DKGMessa
 		return nil, err
 	}
 
-	//TODO: needs to confirm whether id will be "INIT"?
-	msg := common.CreateMessage("INIT", m.Kind, bytes)
+	msg := common.CreatePSSMessage(roundId, m.Kind, bytes)
 	return &msg, nil
 }
 
+// Process processes an incommint InitMessage.
 func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
-
-	if !sender.IsEqual(self.Details()) {
+	// If the node is not an old node, this should not continue.
+	if !self.IsOldNode() {
 		return
 	}
 
-	log.Debugf("InitMessageHandler: Received Init message from self(%d), starting DPSS\n\n", sender.Index)
-
-	dpssID := dpss.GenerateDPSSID(*new(big.Int).SetInt64(int64(msg.RIndex)), *new(big.Int).SetInt64(int64(msg.BatchSize)))
-	round := common.PSSRoundDetails{
-		PSSID:  dpssID,
-		Dealer: self.Details().Index,
-		Kind:   msg.Kind,
+	// Step 101: Sample B / (n - 2t) random elements.
+	nNodes, recThreshold, _ := self.Params()
+	nGenerations := len(msg.oldShares) / (nNodes + 2*recThreshold)
+	for range nGenerations {
+		r := msg.Curve.Scalar.Random(rand.Reader)
+		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.roundID, msg.Curve)
+		if err != nil {
+			return
+		}
+		go self.ReceiveMessage(self.Details(), *msg)
 	}
-	hbacssShareMsg, err := NewHbACSSacssShareMessage(msg.BatchSize, round.ID(), msg.Curve)
-	if err != nil {
-		log.WithField("error", err).Error("NewDacssShareMessage")
-		return
-	}
-	go self.ReceiveMessage(self.Details(), *hbacssShareMsg)
 }
