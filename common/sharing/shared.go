@@ -1,6 +1,7 @@
 package sharing
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math/big"
 
@@ -45,4 +46,9 @@ func CurveParams(curveName string) (curves.Point, curves.Point) {
 	}
 	// g, h
 	return c.NewGeneratorPoint().Mul(scalar), c.NewGeneratorPoint()
+}
+
+func GenerateSecret(c *curves.Curve) curves.Scalar {
+	secret := c.Scalar.Random(rand.Reader)
+	return secret
 }
