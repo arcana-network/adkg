@@ -201,28 +201,41 @@ func (store *SharingStoreMap) Delete(r RoundID) {
 	store.Map.Delete(r)
 }
 
-func GetCStore(keygen *SharingStore, s string) *CStore {
-	c, found := keygen.CStore[s]
-	if !found {
-		keygen.CStore[s] = &CStore{}
-		c = keygen.CStore[s]
-	}
-	return c
-}
-
-type CStore struct {
-	EC        int
-	RC        int
-	ReadySent bool
+type EchoStore struct {
+	Share infectious.Share
+	Hash  []byte
+	Count int
 }
 
 type SharingStore struct {
 	sync.Mutex
 	RoundID    RoundID
 	State      RBCState
-	CStore     map[string]*CStore
+	EchoStore  map[string]*EchoStore
 	ReadyStore []infectious.Share
 	Started    bool
+}
+
+// Find echo store whose count is >= threshold
+func (s *SharingStore) FindThresholdEchoStore(threshold int) *EchoStore {
+	for _, v := range s.EchoStore {
+		if v.Count >= threshold {
+			return v
+		}
+	}
+	return nil
+}
+
+// Get or create echo store according to the id
+func (s *SharingStore) GetEchoStore(id string, share infectious.Share, hash []byte) *EchoStore {
+	if _, ok := s.EchoStore[id]; !ok {
+		s.EchoStore[id] = &EchoStore{
+			Share: share,
+			Hash:  hash,
+			Count: 0,
+		}
+	}
+	return s.EchoStore[id]
 }
 
 type ADKGSession struct {
@@ -256,6 +269,7 @@ type RBCState struct {
 	Phase         phase
 	ReceivedEcho  map[int]bool
 	ReceivedReady map[int]bool
+	ReadySent     bool
 }
 
 func Keccak256(data ...[]byte) []byte {
