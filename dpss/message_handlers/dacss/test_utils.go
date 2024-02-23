@@ -230,7 +230,7 @@ func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage co
 	node.messageCount = node.messageCount + 1
 	switch {
 	case strings.HasPrefix(pssMessage.Type, "dacss"):
-		node.ProcessDACSSMessages(sender, pssMessage)
+		node.ProcessDPSSMessages(sender, pssMessage)
 
 	default:
 		log.Infof("No handler found. MsgType=%s", pssMessage.Type)
@@ -261,14 +261,14 @@ func (node *PssTestNode) GetReceivedMessages(msgType string) []common.PSSMessage
 	return filteredMessages
 }
 
-func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenMessage common.PSSMessage) {
-	switch keygenMessage.Type {
+func (node *PssTestNode) ProcessDPSSMessages(sender common.NodeDetails, dpssMessage common.PSSMessage) {
+	switch dpssMessage.Type {
 	case InitMessageType:
 		log.Debugf("Got %s", InitMessageType)
 		var msg InitMessage
-		err := bijson.Unmarshal(keygenMessage.Data, &msg)
+		err := bijson.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return
 		}
 		msg.Process(sender, node)
@@ -276,9 +276,9 @@ func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenM
 	case string(AcssOutputMessageType):
 		log.Debugf("Got %s", AcssOutputMessageType)
 		var msg AcssOutputMessage
-		err := bijson.Unmarshal(keygenMessage.Data, &msg)
+		err := bijson.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return
 		}
 		//TODO: Process not implemented
@@ -286,9 +286,9 @@ func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenM
 	case ShareMessageType:
 		log.Debugf("Got %s", ShareMessageType)
 		var msg DualCommitteeACSSShareMessage
-		err := bijson.Unmarshal(keygenMessage.Data, &msg)
+		err := bijson.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return
 		}
 		msg.Process(sender, node)

@@ -125,8 +125,8 @@ func (store *PSSShareStoreMap) Delete(r RoundID) {
 
 // Obtains an round ID from the round details by appending the information
 // together.
-func (d *PSSRoundDetails) ID() RoundID {
-	return RoundID(strings.Join([]string{string(d.PSSRoundID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
+func (d *PSSRoundDetails) ID() PSSRoundID {
+	return PSSRoundID(strings.Join([]string{string(d.PSSRoundID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
 }
 
 // Generates a new PSSRoundID for a given index.
@@ -149,4 +149,9 @@ func (id *PSSRoundID) GetIndex() (big.Int, error) {
 	}
 
 	return *index, nil
+}
+
+// GeneratePSSRoundID generates a new ID for a given round with a given index.
+func GeneratePSSRoundID(index big.Int) PSSRoundID {
+	return PSSRoundID(strings.Join([]string{"DPSS", index.Text(16)}, Delimiter3))
 }

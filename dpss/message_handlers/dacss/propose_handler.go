@@ -9,7 +9,6 @@ import (
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
-	"github.com/vivint/infectious"
 )
 
 var HbAacssProposeMessageType common.MessageType = "HbAacss_propose"
@@ -57,7 +56,7 @@ func (msg *HbAacssProposeMessage) Process(sender common.NodeDetails, self common
 	}
 
 	// Generated shared symmetric key
-	n, k, _ := self.Params()
+	_, k, _ := self.Params()
 
 	dealerKey := self.PublicKey(int(leader.Int64()), msg.NewCommittee)
 
@@ -88,45 +87,46 @@ func (msg *HbAacssProposeMessage) Process(sender common.NodeDetails, self common
 
 		// Starts the RBC protocol.
 		// Create Reed-Solomon encoding. This is part of the RBC protocol.
-		f, err := infectious.NewFEC(k, n)
-		if err != nil {
-			log.Debugf("error during creation of fec, err=%s", err)
-			return
-		}
+		// 	f, err := infectious.NewFEC(k, n)
+		// 	if err != nil {
+		// 		log.Debugf("error during creation of fec, err=%s", err)
+		// 		return
+		// 	}
 
-		// Serialize data
-		msg_bytes, err := msg.Data.Serialize()
-		// msg, err := m.data.Serialize()
-		if err != nil {
-			log.Debugf("error during data serialization of MsgData, err=%s", err)
-			return
-		}
+		// 	// Serialize data
+		// 	msg_bytes, err := msg.Data.Serialize()
+		// 	// msg, err := m.data.Serialize()
+		// 	if err != nil {
+		// 		log.Debugf("error during data serialization of MsgData, err=%s", err)
+		// 		return
+		// 	}
 
-		// This corresponds to Line 8, Algorithm 4 of "Asynchronous data disemination and applications."
-		msg_hash := common.HashByte(msg_bytes)
+		// 	// This corresponds to Line 8, Algorithm 4 of "Asynchronous data disemination and applications."
+		// 	msg_hash := common.HashByte(msg_bytes)
 
-		// Obtain Reed-Solomon shards.
-		shares, err := acss.Encode(f, msg_hash)
-		if err != nil {
-			log.Debugf("error during fec encoding, err=%s", err)
-			return
-		}
+		// 	// Obtain Reed-Solomon shards.
+		// 	shares, err := acss.Encode(f, msg_hash)
+		// 	if err != nil {
+		// 		log.Debugf("error during fec encoding, err=%s", err)
+		// 		return
+		// 	}
 
-		for _, n := range self.Nodes(msg.NewCommittee) {
-			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
-			go func(node common.NodeDetails) {
+		// 	for _, n := range self.Nodes(msg.NewCommittee) {
+		// 		log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
+		// 		go func(node common.NodeDetails) {
 
-				//This instruction corresponds to Line 10, Algorithm 4 from
-				//"Asynchronous data disemination and applications."
-				echoMsg, err := NewDacssEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, msg.Curve, self.Details().Index, msg.NewCommittee)
-				if err != nil {
-					log.WithField("error", err).Error("NewDacssEchoMessage")
-					return
-				}
-				self.Send(node, *echoMsg)
-			}(n)
-		}
-	} else {
-		log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
+		// 			//This instruction corresponds to Line 10, Algorithm 4 from
+		// 			//"Asynchronous data disemination and applications."
+		// 			echoMsg, err := NewDacssEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, msg.Curve, self.Details().Index, msg.NewCommittee)
+		// 			if err != nil {
+		// 				log.WithField("error", err).Error("NewDacssEchoMessage")
+		// 				return
+		// 			}
+		// 			self.Send(node, *echoMsg)
+		// 		}(n)
+		// 	}
+		// } else {
+		// 	log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
+		// }
 	}
 }

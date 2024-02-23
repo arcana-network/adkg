@@ -6,12 +6,11 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	log "github.com/sirupsen/logrus"
 )
 
 // ShareMessageType tells wich message are we sending. In this case, the share
 // message.
-var ShareMessageType string = "DualCommitteeACSS_share"
+var ShareMessageType string = "dacss_share"
 
 // DualCommitteeACSSShareMessage has all the information for the initial message in the
 // Dual-Committee ACSS Share protocol.
@@ -25,11 +24,11 @@ type DualCommitteeACSSShareMessage struct {
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve) (*common.PSSMessage, error) {
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve common.CurveName) (*common.PSSMessage, error) {
 	m := &DualCommitteeACSSShareMessage{
 		RoundID:   roundID,
 		Kind:      ShareMessageType,
-		CurveName: common.CurveName(curve.Name),
+		CurveName: curve,
 		Secret:    secret,
 		Dealer:    dealer,
 	}
@@ -73,18 +72,18 @@ func ExecuteACSS(withOldCommittee bool, secret curves.Scalar, self common.PSSPar
 	curve *curves.Curve, n int, k int) {
 	// TODO implement this correctly
 
-	receivingNodes := self.Nodes(withOldCommittee)
-	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
+	// receivingNodes := self.Nodes(withOldCommittee)
+	// commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 
-	// Create propose message & broadcast
-	proposeMsg, err := NewHbAacssProposeMessage(msg.RoundID, msgData, msg.Curve, self.Details().Index, true)
+	// // Create propose message & broadcast
+	// proposeMsg, err := NewHbAacssProposeMessage(msg.RoundID, msgData, msg.Curve, self.Details().Index, true)
 
-	if err != nil {
-		log.Errorf("NewHbAcssPropose:err=%v", err)
-		return
-	}
+	// if err != nil {
+	// 	log.Errorf("NewHbAcssPropose:err=%v", err)
+	// 	return
+	// }
 
-	// Step 103
-	// ReliableBroadcast(C)
-	go self.Broadcast(true, *proposeMsg)
+	// // Step 103
+	// // ReliableBroadcast(C)
+	// go self.Broadcast(true, *proposeMsg)
 }
