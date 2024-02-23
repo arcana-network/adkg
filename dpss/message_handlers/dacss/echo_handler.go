@@ -22,7 +22,7 @@ type DacssEchoMessage struct {
 	NewCommittee  bool
 }
 
-func NewDacssEchoMessage(id common.RoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.DKGMessage, error) {
+func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
 		RoundID:      id,
 		NewCommittee: newCommittee,

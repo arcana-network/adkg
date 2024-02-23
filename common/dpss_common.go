@@ -150,3 +150,20 @@ func (id *PSSRoundID) GetIndex() (big.Int, error) {
 
 	return *index, nil
 }
+
+// DACSS Round Leader
+func (r *PSSRoundID) Leader() (big.Int, error) {
+	str := string(*r)
+	substrs := strings.Split(str, Delimiter4)
+
+	if len(substrs) != 3 {
+		return *new(big.Int), errors.New("could not parse round id")
+	}
+
+	index, ok := new(big.Int).SetString(substrs[2], 16)
+	if !ok {
+		return *new(big.Int), errors.New("could not get back index from round id")
+	}
+
+	return *index, nil
+}

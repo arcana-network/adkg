@@ -15,27 +15,30 @@ import (
 var HbAacssProposeMessageType common.MessageType = "HbAacss_propose"
 
 type HbAacssProposeMessage struct {
-	RoundID      common.RoundID
-	NewCommittee bool
-	Kind         common.MessageType
-	Curve        *curves.Curve
-	Data         messages.MessageData
+	RoundID            common.PSSRoundID
+	NewCommittee       bool
+	Kind               common.MessageType
+	Curve              *curves.Curve
+	Data               messages.MessageData
+	EphemeralPublicKey curves.Point // the dealer's ephemeral publicKey
+
 }
 
-func NewHbAacssProposeMessage(roundID common.RoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool) (*common.DKGMessage, error) {
+func NewDacssProposeMessage(roundID common.PSSRoundID, msgData messages.MessageData, msgCurve *curves.Curve, id int, isNewCommittee bool, EphemeralPublicKey curves.Point) (*common.PSSMessage, error) {
 	m := HbAacssProposeMessage{
-		RoundID:      roundID,
-		NewCommittee: isNewCommittee,
-		Kind:         HbAacssProposeMessageType,
-		Curve:        msgCurve,
-		Data:         msgData,
+		RoundID:            roundID,
+		NewCommittee:       isNewCommittee,
+		Kind:               HbAacssProposeMessageType,
+		Curve:              msgCurve,
+		Data:               msgData,
+		EphemeralPublicKey: EphemeralPublicKey,
 	}
 	bytes, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
+	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
 	return &msg, nil
 }
 
