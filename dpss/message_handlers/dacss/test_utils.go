@@ -55,9 +55,9 @@ type MockTransport struct {
 	nodesNew            []*PssTestNode
 	nodeDetails         map[common.NodeDetailsID]common.NodeDetails
 	output              chan string
-	broadcastedMessages []common.DKGMessage // Store messages that are broadcasted
-	sentMessages        []common.DKGMessage
-	receivedMessages    []common.DKGMessage
+	broadcastedMessages []common.PSSMessage // Store messages that are broadcasted
+	sentMessages        []common.PSSMessage
+	receivedMessages    []common.PSSMessage
 }
 
 // getting single old/new node
@@ -177,7 +177,7 @@ func (t *MockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
 	t.nodeDetails = nodeDetails
 }
 
-func (t *MockTransport) Broadcast(sender common.NodeDetails, toNewCommittee bool, m common.DKGMessage) {
+func (t *MockTransport) Broadcast(sender common.NodeDetails, toNewCommittee bool, m common.PSSMessage) {
 
 	if toNewCommittee {
 		for _, p := range t.nodesNew {
@@ -196,12 +196,12 @@ func (t *MockTransport) Broadcast(sender common.NodeDetails, toNewCommittee bool
 }
 
 // Sends message to the participant
-func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKGMessage) {
+func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.PSSMessage) {
 
 	t.sentMessages = append(t.sentMessages, msg) // Save the message
 
 	for _, n := range t.nodesOld {
-		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
+		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Type, n.ID(), receiver.Index, msg.RoundID)
 		if n.details.IsEqual(receiver) {
 			go n.ReceiveMessage(sender, msg)
 			break
@@ -209,7 +209,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKG
 	}
 
 	for _, n := range t.nodesNew {
-		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Method, n.ID(), receiver.Index, msg.RoundID)
+		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Type, n.ID(), receiver.Index, msg.RoundID)
 		if n.details.IsEqual(receiver) {
 			go n.ReceiveMessage(sender, msg)
 			break
@@ -217,7 +217,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.DKG
 	}
 }
 
-func (t *MockTransport) GetSentMessages() []common.DKGMessage {
+func (t *MockTransport) GetSentMessages() []common.PSSMessage {
 	return t.sentMessages
 }
 
@@ -225,50 +225,50 @@ type KeyMap struct {
 	shares map[int]*big.Int
 }
 
-func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, keygenMessage common.DKGMessage) {
-	node.transport.receivedMessages = append(node.transport.receivedMessages, keygenMessage) // Save the message
+func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage common.PSSMessage) {
+	node.transport.receivedMessages = append(node.transport.receivedMessages, pssMessage) // Save the message
 	node.messageCount = node.messageCount + 1
 	switch {
-	case strings.HasPrefix(keygenMessage.Method, "dacss"):
-		node.ProcessDACSSMessages(sender, keygenMessage)
+	case strings.HasPrefix(pssMessage.Type, "dacss"):
+		node.ProcessDACSSMessages(sender, pssMessage)
 
 	default:
-		log.Infof("No handler found. MsgType=%s", keygenMessage.Method)
+		log.Infof("No handler found. MsgType=%s", pssMessage.Type)
 	}
 }
 
 func (node *PssTestNode) CountReceivedMessages(msgType string) int {
 	receivedMessages := node.transport.receivedMessages
-	filteredMessages := make([]common.DKGMessage, 0)
+	filteredMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range receivedMessages {
-		if msg.Method == msgType {
+		if msg.Type == msgType {
 			filteredMessages = append(filteredMessages, msg)
 		}
 	}
 	return len(filteredMessages)
 }
 
-func (node *PssTestNode) GetReceivedMessages(msgType string) []common.DKGMessage {
+func (node *PssTestNode) GetReceivedMessages(msgType string) []common.PSSMessage {
 	receivedMessages := node.transport.receivedMessages
-	filteredMessages := make([]common.DKGMessage, 0)
+	filteredMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range receivedMessages {
-		if msg.Method == msgType {
+		if msg.Type == msgType {
 			filteredMessages = append(filteredMessages, msg)
 		}
 	}
 	return filteredMessages
 }
 
-func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenMessage common.DKGMessage) {
-	switch keygenMessage.Method {
+func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenMessage common.PSSMessage) {
+	switch keygenMessage.Type {
 	case InitMessageType:
 		log.Debugf("Got %s", InitMessageType)
 		var msg InitMessage
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
 			return
 		}
 		msg.Process(sender, node)
@@ -278,17 +278,17 @@ func (node *PssTestNode) ProcessDACSSMessages(sender common.NodeDetails, keygenM
 		var msg AcssOutputMessage
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
 			return
 		}
 		//TODO: Process not implemented
 		// msg.Process(sender, node)
 	case ShareMessageType:
 		log.Debugf("Got %s", ShareMessageType)
-		var msg HbAcssShareMessage
+		var msg DualCommitteeACSSShareMessage
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
 		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Method)
+			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", keygenMessage.Type)
 			return
 		}
 		msg.Process(sender, node)
@@ -337,18 +337,18 @@ func (n *PssTestNode) StoreCommitment(index big.Int, metadata common.ADKGMetadat
 	// n.shares[index.Int64()] = &si
 }
 
-func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.DKGMessage) {
+func (n *PssTestNode) Broadcast(toNewCommittee bool, m common.PSSMessage) {
 	if n.isFaulty {
-		log.Debugf("Got Broadcast %s at faulty node %d", m.Method, n.details.Index)
+		log.Debugf("Got Broadcast %s at faulty node %d", m.Type, n.details.Index)
 		return
 	}
 	n.transport.Broadcast(n.Details(), toNewCommittee, m)
 }
 
-func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.DKGMessage) error {
+func (n *PssTestNode) Send(receiver common.NodeDetails, msg common.PSSMessage) error {
 
 	if n.isFaulty {
-		log.Debugf("Got Send %s at faulty node %d", msg.Method, n.details.Index)
+		log.Debugf("Got Send %s at faulty node %d", msg.Type, n.details.Index)
 		return nil
 	}
 	n.transport.Send(n.Details(), receiver, msg)
@@ -361,12 +361,11 @@ func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]comm
 }
 
 func (n *PssTestNode) Details() common.NodeDetails {
-
 	return n.details
 }
 
-func (n *PssTestNode) ReceiveBFTMessage(msg common.DKGMessage) {
-	if msg.Method == keyderivation.PubKeygenType {
+func (n *PssTestNode) ReceiveBFTMessage(msg common.PSSMessage) {
+	if msg.Type == keyderivation.PubKeygenType {
 		var m keyderivation.PubKeygenMessage
 		if err := bijson.Unmarshal(msg.Data, &m); err != nil {
 			log.WithError(err).Infof("ReceiveBFTMessage()")

@@ -8,7 +8,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-var InitMessageType string = "DualCommitteeACSS_init"
+var InitMessageType string = "dacss_init"
 
 // Represents the initialization message for the DPSS protocol.
 type InitMessage struct {

@@ -75,7 +75,7 @@ type PSSShareStoreMap struct {
 // PSSMessage represents a message in the DPSS protocol
 type PSSMessage struct {
 	RoundID PSSRoundID // Round ID of the current execution of the DPSS protocol.
-	Phase   string     // Phase of the protocol in which the message belongs to.
+	Type    string     // Phase of the protocol in which the message belongs to.
 	Data    []byte     // Actual data in the message.
 }
 
@@ -90,7 +90,7 @@ func (m *PSSShareStoreMap) Get(r RoundID) (shares *PSSShareStore, found bool) {
 func CreatePSSMessage(roundID PSSRoundID, phase string, data []byte) PSSMessage {
 	return PSSMessage{
 		RoundID: roundID,
-		Phase:   phase,
+		Type:    phase,
 		Data:    data,
 	}
 }
