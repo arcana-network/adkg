@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/coinbase/kryptology/pkg/sharing"
 )
 
 func getFixedScalar(c *curves.Curve) (curves.Scalar, error) {
@@ -51,4 +52,31 @@ func CurveParams(curveName string) (curves.Point, curves.Point) {
 func GenerateSecret(c *curves.Curve) curves.Scalar {
 	secret := c.Scalar.Random(rand.Reader)
 	return secret
+}
+
+func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
+	c := make([]byte, 0)
+	for _, v := range v.Commitments {
+		e := v.ToAffineCompressed() // 33 bytes
+		c = append(c, e[:]...)
+	}
+	return c
+}
+
+func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point, error) {
+	commitment := make([]curves.Point, 0)
+	for i := 0; i < k; i++ {
+		length := 33
+		if curve.Name == "ed25519" {
+			length = 32
+		}
+		cI, err := curve.Point.FromAffineCompressed(c[i*length : (i*length)+length])
+		if err == nil {
+			commitment = append(commitment, cI)
+		} else {
+			return nil, err
+		}
+	}
+
+	return commitment, nil
 }

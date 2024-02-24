@@ -229,11 +229,6 @@ func Keccak256(data ...[]byte) []byte {
 	return d.Sum(nil)
 }
 
-type KeyPair struct {
-	PublicKey  curves.Point
-	PrivateKey curves.Scalar
-}
-
 type KeygenDetails struct {
 	CurrentKeyIndex int
 }

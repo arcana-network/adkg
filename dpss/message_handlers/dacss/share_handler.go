@@ -5,7 +5,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -48,41 +47,47 @@ func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDe
 
 func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
+	// Only the nodes of the Old Committee should start Dual ACSS.
+	if !self.IsOldNode() {
+		log.Infof("DualCommitteeACSSShareMessage: Only Old nodes should start Dual ACSS. Not taking action.")
+		return
+	}
+
 	// Node can receive this msg only from themselves. Compare pubkeys to be sure.
 	if !self.Details().IsEqual(sender) {
 		return
 	}
 
+	// Check that Dual ACSS has not started yet for this node.
+	if self.State().DualAcssStarted {
+		log.Infof("DualCommitteeACSSShareMessage: DualAcss already started. Not taking action.")
+		return
+	}
+
+	self.State().DualAcssStarted = true
+
 	curve := common.CurveFromName(msg.CurveName)
 
-	// Generate secret
-	secret := sharing.GenerateSecret(curve)
-
-	// Emephemeral Private key of the dealer
+	// Ephemeral Private key of the dealer
 	privateKey := msg.EphemeralKeypair.PrivateKey
 
 	// Generate share and commitments
 	n, k, _ := self.Params()
 
-	// TODO do we need to check whether DPSS has already started?
-
-	ExecuteACSS(true, secret, self, privateKey, curve, n, k, msg)
-	ExecuteACSS(false, secret, self, privateKey, curve, n, k, msg)
+	// Initiate ACSS for both old and new Committe
+	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n, k, msg)
+	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n, k, msg)
 }
 
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
-// defined by the withOldCommitte flag.
-func ExecuteACSS(withOldCommittee bool, secret curves.Scalar, self common.PSSParticipant, privateKey curves.Scalar,
+// defined by the withNewCommittee flag.
+func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSParticipant, privateKey curves.Scalar,
 	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage) {
-	// TODO implement this correctly
 
-	//TODO: how do we get this node's ID (see line 93 nodePublicKey)
-	// receivingNodes := self.Nodes(withOldCommittee)
-
-	commitments, shares, err := acss.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
+	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 
 	// Compress commitments
-	compressedCommitments := acss.CompressCommitments(commitments)
+	compressedCommitments := sharing.CompressCommitments(commitments)
 
 	// Init share map
 	shareMap := make(map[uint32][]byte, n)
@@ -90,13 +95,12 @@ func ExecuteACSS(withOldCommittee bool, secret curves.Scalar, self common.PSSPar
 	// encrypt each share with node respective generated symmetric key using Ephemeral Private key and add to share map
 	for _, share := range shares {
 
-		nodePublicKey := self.PublicKey(int(share.Id), !withOldCommittee)
-
-		// NOTICE!!! this Encrypt does not use privateKey
-		// TODO: we need to implement correct encrypt
+		nodePublicKey := self.PublicKey(int(share.Id), withNewCommittee)
 
 		// This Encrypt will be a symmetric key encryption Ki = PKi ^ SKd
-		cipherShare, _ := acss.Encrypt(share.Bytes(), nodePublicKey, privateKey)
+		// TODO does this need encoding?
+		// TODO this encryption doesn't do MAC, is that needed
+		cipherShare, _ := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		shareMap[share.Id] = cipherShare
 	}
@@ -108,15 +112,14 @@ func ExecuteACSS(withOldCommittee bool, secret curves.Scalar, self common.PSSPar
 	}
 
 	// Create propose message & broadcast
-	//NOTE: This proposeMsg should NOT have Emephemeral Private key of the dealer but only the public key.
-	proposeMsg, err := NewDacssProposeMessage(msg.RoundID, msgData, common.CurveFromName(msg.CurveName), self.Details().Index, true, msg.EphemeralKeypair.PublicKey)
+	// NOTE: This proposeMsg should NOT have Emephemeral Private key of the dealer but only the public key.
+	proposeMsg, err := NewAcssProposeMessageroundID(msg.RoundID, msgData, common.CurveFromName(msg.CurveName), true, msg.EphemeralKeypair.PublicKey)
 
 	if err != nil {
 		log.Errorf("NewHbAcssPropose:err=%v", err)
 		return
 	}
 
-	// Step 103
 	// ReliableBroadcast(C)
 	go self.Broadcast(true, *proposeMsg)
 }

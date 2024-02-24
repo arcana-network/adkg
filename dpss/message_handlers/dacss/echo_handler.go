@@ -1,126 +1,117 @@
 package dacss
 
-import (
-	"encoding/hex"
-	"encoding/json"
+// var DacssEchoMessageType common.MessageType = "dacss_echo"
 
-	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
-	log "github.com/sirupsen/logrus"
-	"github.com/vivint/infectious"
-)
+// type DacssEchoMessage struct {
+// 	RoundID       common.RoundID
+// 	CommitteeType int
+// 	Kind          common.MessageType
+// 	Curve         *curves.Curve
+// 	Share         infectious.Share
+// 	Hash          []byte // Hash of the shares.
+// 	NewCommittee  bool
+// }
 
-var DacssEchoMessageType common.MessageType = "dacss_echo"
+// func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
+// 	m := DacssEchoMessage{
+// 		RoundID:      id,
+// 		NewCommittee: newCommittee,
+// 		Kind:         DacssEchoMessageType,
+// 		Curve:        curve,
+// 		Share:        s,
+// 		Hash:         hash,
+// 	}
+// 	if newCommittee {
+// 		m.CommitteeType = 1
+// 	} else {
+// 		m.CommitteeType = 0
+// 	}
 
-type DacssEchoMessage struct {
-	RoundID       common.RoundID
-	CommitteeType int
-	Kind          common.MessageType
-	Curve         *curves.Curve
-	Share         infectious.Share
-	Hash          []byte // Hash of the shares.
-	NewCommittee  bool
-}
+// 	bytes, err := json.Marshal(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
-	m := DacssEchoMessage{
-		RoundID:      id,
-		NewCommittee: newCommittee,
-		Kind:         DacssEchoMessageType,
-		Curve:        curve,
-		Share:        s,
-		Hash:         hash,
-	}
-	if newCommittee {
-		m.CommitteeType = 1
-	} else {
-		m.CommitteeType = 0
-	}
+// 	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
+// 	return &msg, nil
+// }
 
-	bytes, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+// func (m *DacssEchoMessage) Fingerprint() string {
+// 	var bytes []byte
+// 	delimiter := common.Delimiter2
+// 	bytes = append(bytes, m.Hash...)
+// 	bytes = append(bytes, delimiter...)
 
-	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
-	return &msg, nil
-}
+// 	bytes = append(bytes, m.Share.Data...)
+// 	bytes = append(bytes, delimiter...)
 
-func (m *DacssEchoMessage) Fingerprint() string {
-	var bytes []byte
-	delimiter := common.Delimiter2
-	bytes = append(bytes, m.Hash...)
-	bytes = append(bytes, delimiter...)
+// 	bytes = append(bytes, byte(m.Share.Number))
+// 	bytes = append(bytes, delimiter...)
+// 	hash := hex.EncodeToString(common.Keccak256(bytes))
+// 	return hash
+// }
 
-	bytes = append(bytes, m.Share.Data...)
-	bytes = append(bytes, delimiter...)
+// func (msg *DacssEchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
+// 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
+// 	// Get state from node
+// 	state := self.State().KeygenStore
 
-	bytes = append(bytes, byte(m.Share.Number))
-	bytes = append(bytes, delimiter...)
-	hash := hex.EncodeToString(common.Keccak256(bytes))
-	return hash
-}
+// 	// Create empty keygen state
+// 	//TODO: needs to confirm
+// 	defaultKeygen := &common.SharingStore{
+// 		RoundID: msg.RoundID,
+// 		State: common.RBCState{
+// 			Phase:         common.Initial,
+// 			ReceivedReady: make(map[int]bool),
+// 			ReceivedEcho:  make(map[int]bool),
+// 		},
+// 		CStore: make(map[string]*common.CStore),
+// 	}
 
-func (msg *DacssEchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
-	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.ID())
-	// Get state from node
-	state := self.State().KeygenStore
+// 	// Get or set if it doesn't exist
+// 	keygen, complete := state.GetOrSetIfNotComplete(msg.RoundID, defaultKeygen)
+// 	// log.Debugf("Keygen=%v, complete=%v", keygen, complete)
+// 	if complete {
+// 		// if keygen is complete, ignore and return
+// 		return
+// 	}
 
-	// Create empty keygen state
-	//TODO: needs to confirm
-	defaultKeygen := &common.SharingStore{
-		RoundID: msg.RoundID,
-		State: common.RBCState{
-			Phase:         common.Initial,
-			ReceivedReady: make(map[int]bool),
-			ReceivedEcho:  make(map[int]bool),
-		},
-		CStore: make(map[string]*common.CStore),
-	}
+// 	keygen.Lock()
+// 	defer keygen.Unlock()
+// 	// Make sure the echo received from a node is set to true
+// 	defer func() { keygen.State.ReceivedEcho[sender.Index] = true }()
 
-	// Get or set if it doesn't exist
-	keygen, complete := state.GetOrSetIfNotComplete(msg.RoundID, defaultKeygen)
-	// log.Debugf("Keygen=%v, complete=%v", keygen, complete)
-	if complete {
-		// if keygen is complete, ignore and return
-		return
-	}
+// 	// Check if the echo has alreay been received.
+// 	receivedEcho, found := keygen.State.ReceivedEcho[sender.Index]
+// 	if receivedEcho && found {
+// 		log.Debugf("Already received echo for %s from %d", msg.RoundID, sender.Index)
+// 		return
 
-	keygen.Lock()
-	defer keygen.Unlock()
-	// Make sure the echo received from a node is set to true
-	defer func() { keygen.State.ReceivedEcho[sender.Index] = true }()
+// 		// Get keygen store by serializing the share and hash of the message.
+// 		cid := msg.Fingerprint()
+// 		c := common.GetCStore(keygen, cid)
 
-	// Check if the echo has alreay been received.
-	receivedEcho, found := keygen.State.ReceivedEcho[sender.Index]
-	if receivedEcho && found {
-		log.Debugf("Already received echo for %s from %d", msg.RoundID, sender.Index)
-		return
+// 		// increment the echo messages received
+// 		c.EC = c.EC + 1
 
-	// Get keygen store by serializing the share and hash of the message.
-	cid := msg.Fingerprint()
-	c := common.GetCStore(keygen, cid)
+// 		// Broadcast ready message if echo count > 2f + 1
+// 		_, _, f := self.Params()
 
-	// increment the echo messages received
-	c.EC = c.EC + 1
-
-	// Broadcast ready message if echo count > 2f + 1
-	_, _, f := self.Params()
-
-	log.Debugf("echo_count=%d, required=%d", c.EC, 2*f+1)
-	if c.EC >= (2*f + 1) {
-		// Send Ready Message
-		c.ReadySent = true
-		for _, n := range self.Nodes() {
-			go func(node common.NodeDetails) {
-				// This corresponds to Line 12, Algorithm 4, RBC Protocol.
-				readyMsg, err := NewDacssReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee)
-				if err != nil {
-					log.WithField("error", err).Error("NewDacssReadyMessage")
-					return
-				}
-				self.Send(node, *readyMsg)
-			}(n)
-		}
-	}
-}
+// 		log.Debugf("echo_count=%d, required=%d", c.EC, 2*f+1)
+// 		if c.EC >= (2*f + 1) {
+// 			// Send Ready Message
+// 			c.ReadySent = true
+// 			for _, n := range self.Nodes() {
+// 				go func(node common.NodeDetails) {
+// 					// This corresponds to Line 12, Algorithm 4, RBC Protocol.
+// 					readyMsg, err := NewDacssReadyMessage(msg.RoundID, msg.Share, msg.Hash, msg.Curve, self.ID(), msg.NewCommittee)
+// 					if err != nil {
+// 						log.WithField("error", err).Error("NewDacssReadyMessage")
+// 						return
+// 					}
+// 					self.Send(node, *readyMsg)
+// 				}(n)
+// 			}
+// 		}
+// 	}
+// }

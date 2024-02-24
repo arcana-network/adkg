@@ -1,10 +1,5 @@
 package common
 
-import (
-	"strconv"
-	"strings"
-)
-
 type NodeNetwork struct {
 	Nodes map[NodeDetailsID]NodeDetails
 	N     int
@@ -28,16 +23,4 @@ type DKGMessage struct {
 	RoundID RoundID              `json:"round_id"`
 	Method  string               `json:"type"`
 	Data    []byte               `json:"data"`
-}
-
-type NodeDetailsID string
-
-const NullNodeDetails = NodeDetailsID("")
-
-func (n *NodeDetails) ToNodeDetailsID() NodeDetailsID {
-	return NodeDetailsID(strings.Join([]string{
-		strconv.Itoa(n.Index),
-		n.PubKey.X.Text(16),
-		n.PubKey.Y.Text(16),
-	}, Delimiter1))
 }

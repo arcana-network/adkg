@@ -48,6 +48,7 @@ func CountBit(n int) int {
 	return count
 }
 
+// TODO can be removed, is duplicate in common
 func reverse(s []byte) []byte {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
@@ -55,6 +56,7 @@ func reverse(s []byte) []byte {
 	return s
 }
 
+// TODO can be removed, is duplicate in common
 func CurvePointToPoint(p curves.Point, c common.CurveName) common.Point {
 	bytes := p.ToAffineUncompressed()
 	if c == common.ED25519 {

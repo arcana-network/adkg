@@ -4,8 +4,11 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
+	"github.com/coinbase/kryptology/pkg/core/curves"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -48,9 +51,56 @@ func (p Point) ToHex() HexPoint {
 	}
 }
 
+// curves.Point is transformed to the internally defined Point type
+func CurvePointToPoint(p curves.Point, c CurveName) Point {
+	bytes := p.ToAffineUncompressed()
+	if c == ED25519 {
+		xBytes := reverse(bytes[:32])
+		yBytes := reverse(bytes[32:])
+		return Point{
+			X: *new(big.Int).SetBytes(xBytes),
+			Y: *new(big.Int).SetBytes(yBytes),
+		}
+	} else {
+		xBytes := bytes[1:33]
+		yBytes := bytes[33:]
+		return Point{
+			X: *new(big.Int).SetBytes(xBytes),
+			Y: *new(big.Int).SetBytes(yBytes),
+		}
+	}
+}
+
+func reverse(s []byte) []byte {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
+}
+
 type NodeDetails struct {
 	Index  int
 	PubKey Point
+}
+
+type NodeDetailsID string
+
+const NullNodeDetails = NodeDetailsID("")
+
+func (n *NodeDetails) ToNodeDetailsID() NodeDetailsID {
+	return NodeDetailsID(strings.Join([]string{
+		strconv.Itoa(n.Index),
+		n.PubKey.X.Text(16),
+		n.PubKey.Y.Text(16),
+	}, Delimiter1))
+}
+
+func (n NodeDetails) GetNodeDetailsID() NodeDetailsID {
+	return NodeDetailsID(strings.Join([]string{
+		strconv.Itoa(n.Index),
+		n.PubKey.X.Text(16),
+		n.PubKey.Y.Text(16),
+	}, Delimiter1))
 }
 
 func (Node NodeDetails) IsEqual(other NodeDetails) bool {
