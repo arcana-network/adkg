@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"math/big"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ This function checks the happy path:
  2. After executing the Process function, the node should receive B / (n - 2t)
     signals to start the shares of random numbers.
 */
-func TestInitMessage(test *testing.T) {
+func TestProcessInitMessage(test *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
 	defaultSetup := testutils.DefaultTestSetup()
@@ -45,6 +46,37 @@ func TestInitMessage(test *testing.T) {
 	recvMsgAmmount := len(transport.GetSentMessages())
 	realRecvMsgAmmount := N_SECRETS / (n - 2*k)
 	assert.Equal(test, realRecvMsgAmmount, recvMsgAmmount)
+}
+
+// Tests that the creation of the messages is done correctly.
+func TestNewInitMessage(test *testing.T) {
+	defaultSetup := testutils.DefaultTestSetup()
+	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
+	const N_SECRETS int = 30
+
+	msg, err := createTestMsg(testDealer, N_SECRETS)
+	if err != nil {
+		test.Errorf("Error creating the reference message.")
+	}
+
+	createdMsgBytes, err := NewInitMessage(
+		msg.RoundID,
+		msg.OldShares,
+		*msg.CurveName,
+		msg.EphemeralKeypair,
+	)
+	if err != nil {
+		test.Errorf("Error creating the message using the function: %v", err)
+	}
+
+	var createdInitMsg InitMessage
+	json.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+
+	// Asserts that the values are the same
+	assert.Equal(test, msg.RoundID, createdInitMsg.RoundID)
+	assert.Equal(test, msg.OldShares, createdInitMsg.OldShares)
+	assert.Equal(test, *msg.CurveName, *createdInitMsg.CurveName)
+	assert.Equal(test, msg.EphemeralKeypair, createdInitMsg.EphemeralKeypair)
 }
 
 // Creates an init message for testing with a fiven ammount of old shares.
