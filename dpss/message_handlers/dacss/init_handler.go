@@ -12,14 +12,14 @@ var InitMessageType string = "dacss_init"
 
 // Represents the initialization message for the DPSS protocol.
 type InitMessage struct {
-	roundID   common.PSSRoundID      // ID of the round.
-	oldShares []*sharing.ShamirShare // Array of shares that will be converted.
-	Kind      string                 // Phase in which we are.
-	Curve     common.CurveName       // Curve that we will use for the protocol.
+	RoundID   common.PSSRoundID     // ID of the round.
+	OldShares []sharing.ShamirShare // Array of shares that will be converted.
+	Kind      string                // Phase in which we are.
+	Curve     common.CurveName      // Curve that we will use for the protocol.
 }
 
 // Creates a new initialization message for DPSS.
-func NewInitMessage(roundId common.PSSRoundID, oldShares []*sharing.ShamirShare, curve common.CurveName) (*common.PSSMessage, error) {
+func NewInitMessage(roundId common.PSSRoundID, oldShares []sharing.ShamirShare, curve common.CurveName) (*common.PSSMessage, error) {
 	m := InitMessage{
 		roundId,
 		oldShares,
@@ -46,10 +46,10 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, recThreshold, _ := self.Params()
-	nGenerations := len(msg.oldShares) / (nNodes + 2*recThreshold)
+	nGenerations := len(msg.OldShares) / (nNodes + 2*recThreshold)
 	for range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
-		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.roundID, msg.Curve)
+		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.RoundID, msg.Curve)
 		if err != nil {
 			return
 		}

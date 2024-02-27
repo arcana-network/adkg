@@ -11,10 +11,11 @@ import (
 	acssc "github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/torusresearch/bijson"
+	"encoding/json"
 )
 
 // TODO not hardcode this
@@ -266,7 +267,7 @@ func (node *PssTestNode) ProcessDPSSMessages(sender common.NodeDetails, dpssMess
 	case InitMessageType:
 		log.Debugf("Got %s", InitMessageType)
 		var msg InitMessage
-		err := bijson.Unmarshal(dpssMessage.Data, &msg)
+		err := json.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return
@@ -276,7 +277,7 @@ func (node *PssTestNode) ProcessDPSSMessages(sender common.NodeDetails, dpssMess
 	case string(AcssOutputMessageType):
 		log.Debugf("Got %s", AcssOutputMessageType)
 		var msg AcssOutputMessage
-		err := bijson.Unmarshal(dpssMessage.Data, &msg)
+		err := json.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return
@@ -286,7 +287,7 @@ func (node *PssTestNode) ProcessDPSSMessages(sender common.NodeDetails, dpssMess
 	case ShareMessageType:
 		log.Debugf("Got %s", ShareMessageType)
 		var msg DualCommitteeACSSShareMessage
-		err := bijson.Unmarshal(dpssMessage.Data, &msg)
+		err := json.Unmarshal(dpssMessage.Data, &msg)
 		if err != nil {
 			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", dpssMessage.Type)
 			return

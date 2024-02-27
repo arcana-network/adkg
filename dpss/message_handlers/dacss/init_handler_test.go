@@ -41,7 +41,7 @@ func TestInitMessage(test *testing.T) {
 
 	// Creates multiple shares for the node to simulate that the node holds
 	// its shares of multiple secrets.
-	shares := make([]*sharing.ShamirShare, N_SECRETS)
+	shares := make([]sharing.ShamirShare, N_SECRETS)
 	shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 	if err != nil {
 		test.Errorf("Error while generating the Shamir builder: %v", err)
@@ -52,7 +52,7 @@ func TestInitMessage(test *testing.T) {
 		if err != nil {
 			test.Errorf("Error creating the shares for the secret: %v", err)
 		}
-		shares[i] = sharesSecret[0]
+		shares[i] = *sharesSecret[0]
 	}
 
 	msg, err := NewInitMessage(
