@@ -33,8 +33,10 @@ func TestStartDualAcss(t *testing.T) {
 	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
 	transport := testDealer.Transport
 
+	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+
 	// Create a DualCommitteeACSSShareMessage
-	msg := getTestMsg(testDealer, defaultSetup)
+	msg := getTestMsg(testDealer, defaultSetup, ephemeralKeypair)
 
 	// Pre-check: in the node's state DualAcssStarted is false
 	assert.False(t, testDealer.State().DualAcssStarted)
@@ -79,28 +81,24 @@ func TestStartDualAcss(t *testing.T) {
 	assert.Equal(t, testutils.DefaultN_new, len(sentShares_new))
 	assert.Equal(t, testutils.DefaultK_new, len(commitments_new))
 
-	// FIXME TODO encryption/decryption is not working correctly
+	// 4. Check: Shares were correctly encrypted for node 2 of old committee
+	shares_node2 := sentShares_old[2][:]
+	symm_key2, _ := sharing.CalculateSharedKey(testDealer.GetPublicKeyFor(2, false), ephemeralKeypair.PrivateKey)
+	_, _, verified_old := sharing.Predicate(symm_key2, shares_node2, sentCommitments_old, defaultSetup.OldCommitteeParams.K, curves.K256())
+	assert.True(t, verified_old)
 
-	// // 4. Check: Shares were correctly encrypted for node 2 of old committee
-	// shares_node2 := sentShares_old[2][:]
-	// commitments_old := proposeMsg_old.Data.Commitments[:]
-	// symm_key2, _ := sharing.CalculateSharedKey(testDealer.PublicKey(2, false), testDealer.Keypair.PrivateKey)
-	// _, _, verified_old := sharing.Predicate(symm_key2, shares_node2, commitments_old, defaultSetup.OldCommitteeParams.K, curves.K256())
-	// assert.True(t, verified_old)
-
-	// // 5. Check: Shares were correctly encrypted for node 3 of new committee
-	// share_node3 := sentShares_new[3][:]
-	// commitments_new := proposeMsg_new.Data.Commitments[:]
-	// symm_key3, _ := sharing.CalculateSharedKey(testDealer.PublicKey(3, true), testDealer.Keypair.PrivateKey)
-	// _, _, verified_new := sharing.Predicate(symm_key3, share_node3, commitments_new, defaultSetup.NewCommitteeParams.K, curves.K256())
-	// assert.True(t, verified_new)
+	// 5. Check: Shares were correctly encrypted for node 3 of new committee
+	share_node3 := sentShares_new[3][:]
+	symm_key3, _ := sharing.CalculateSharedKey(testDealer.GetPublicKeyFor(3, true), ephemeralKeypair.PrivateKey)
+	_, _, verified_new := sharing.Predicate(symm_key3, share_node3, sentCommitments_new, defaultSetup.NewCommitteeParams.K, curves.K256())
+	assert.True(t, verified_new)
 
 	// 6. Check DualAcssStarted is true in the node's state
 	assert.True(t, testDealer.State().DualAcssStarted)
 
 }
 
-func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup) DualCommitteeACSSShareMessage {
+func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup, ephemeralKeypair common.KeyPair) DualCommitteeACSSShareMessage {
 	roundId := common.NewPSSRoundID(big.Int{})
 	testSecret := sharing.GenerateSecret(curves.K256())
 	msg := DualCommitteeACSSShareMessage{
@@ -108,8 +106,8 @@ func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestS
 		Kind:               ShareMessageType,
 		CurveName:          common.CurveName(curves.K256().Name),
 		Secret:             testSecret,
-		EphemeralSecretKey: testDealer.Keypair.PrivateKey.Bytes(),
-		EphemeralPublicKey: testDealer.Keypair.PublicKey.ToAffineCompressed(),
+		EphemeralSecretKey: ephemeralKeypair.PrivateKey.Bytes(),             // FIXME
+		EphemeralPublicKey: ephemeralKeypair.PublicKey.ToAffineCompressed(), // FIXME
 		Dealer:             testDealer.Details(),
 		NewCommitteeParams: defaultSetup.NewCommitteeParams,
 	}
@@ -130,8 +128,10 @@ func TestNodeInNewCommittee(t *testing.T) {
 	nodeNewCommittee := defaultSetup.GetSingleNewNodeFromTestSetup()
 	transport := nodeNewCommittee.Transport
 
+	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+
 	// Create a DualCommitteeACSSShareMessage
-	msg := getTestMsg(nodeNewCommittee, defaultSetup)
+	msg := getTestMsg(nodeNewCommittee, defaultSetup, ephemeralKeypair)
 
 	// Call the process on the msg
 	msg.Process(nodeNewCommittee.Details(), nodeNewCommittee)
@@ -154,8 +154,10 @@ func TestSenderNotSelf(t *testing.T) {
 	oldNode1, oldNode2 := defaultSetup.GetTwoOldNodesFromTestSetup()
 	transport := oldNode1.Transport
 
+	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+
 	// Create a DualCommitteeACSSShareMessage
-	msg := getTestMsg(oldNode1, defaultSetup)
+	msg := getTestMsg(oldNode1, defaultSetup, ephemeralKeypair)
 
 	// Call the process on the msg
 	// The sender is not equal to the "self"(receiver)
@@ -179,8 +181,11 @@ func TestDualACSSAlreadyStarted(t *testing.T) {
 	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
 	transport := testDealer.Transport
 
+	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+
 	// Create a DualCommitteeACSSShareMessage
-	msg := getTestMsg(testDealer, defaultSetup)
+	msg := getTestMsg(testDealer, defaultSetup, ephemeralKeypair)
+
 	testDealer.State().DualAcssStarted = true
 
 	// Manually set DualAcssStarted to true

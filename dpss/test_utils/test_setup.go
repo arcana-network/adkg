@@ -87,6 +87,18 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 		setup.newCommitteeNetwork[i] = node
 	}
 
+	// Add check all pub keys of the nodes are distinct
+	pubKeys := make(map[curves.Point]bool)
+	for _, node := range setup.oldCommitteeNetwork {
+		pubKeys[node.LongtermKey.PublicKey] = true
+	}
+	for _, node := range setup.newCommitteeNetwork {
+		pubKeys[node.LongtermKey.PublicKey] = true
+	}
+	if len(pubKeys) != oldCommitteeParams.N+newCommitteeParams.N {
+		panic("Some nodes have the same public key")
+	}
+
 	// Update the transport with the created nodes
 	sharedTransport.Init(setup.oldCommitteeNetwork, setup.newCommitteeNetwork)
 

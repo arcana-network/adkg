@@ -25,8 +25,8 @@ func NewNoSendMockTransport(nodesOld, nodesNew []*PssTestNode) *NoSendMockTransp
 }
 
 func (transport *NoSendMockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
-	transport.nodesNew = nodesOld
-	transport.nodesOld = nodesNew
+	transport.nodesOld = nodesOld
+	transport.nodesNew = nodesNew
 }
 
 // Registers a message was broadcast by a node
