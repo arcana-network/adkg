@@ -9,12 +9,11 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	log "github.com/sirupsen/logrus"
 )
 
 // ShareMessageType tells wich message are we sending. In this case, the share
 // message.
-var ShareMessageType string = "DualCommitteeACSS_share"
+var ShareMessageType string = "dacss_share"
 
 // DualCommitteeACSSShareMessage has all the information for the initial message in the
 // Dual-Committee ACSS Share protocol.

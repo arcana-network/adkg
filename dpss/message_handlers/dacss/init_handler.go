@@ -26,7 +26,7 @@ func NewInitMessage(roundId common.PSSRoundID, oldShares []curves.Scalar, curve 
 		oldShares,
 		EphemeralKeypair,
 		InitMessageType,
-		&curve,
+		curve,
 	}
 
 	bytes, err := json.Marshal(m)
@@ -40,6 +40,7 @@ func NewInitMessage(roundId common.PSSRoundID, oldShares []curves.Scalar, curve 
 
 // Process processes an incommint InitMessage.
 func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	curve := common.CurveFromName(msg.Curve)
 	// If the node is not an old node, this should not continue.
 	if !self.IsOldNode() {
 		return
