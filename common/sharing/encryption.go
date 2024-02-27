@@ -17,11 +17,11 @@ import (
 
 // Combine the keys to create a shared key and encrypt the message (symmetric encryption)
 func EncryptSymmetricCalculateKey(msg []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
-	key, _ := calculateSharedKey(public, priv)
+	key, _ := CalculateSharedKey(public, priv)
 	return EncryptSymmetric(msg, key)
 }
 
-func calculateSharedKey(public curves.Point, priv curves.Scalar) (curves.Point, error) {
+func CalculateSharedKey(public curves.Point, priv curves.Scalar) (curves.Point, error) {
 	// TODO check if the public key is valid and possibly throw error
 
 	key := public.Mul(priv)
@@ -62,12 +62,16 @@ func EncryptSymmetric(msg []byte, key curves.Point) ([]byte, error) {
 
 // Decrypts the message using AES-GCM with the given elliptic curve point as the key
 func DecryptSymmetricCalculateKey(encryptedMsg []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
-	key, _ := calculateSharedKey(public, priv)
+	key, _ := CalculateSharedKey(public, priv)
 
 	// Serialize the elliptic curve point to bytes (the shared key) and hash it to derive the symmetric key
 	keyBytes := key.ToAffineCompressed()
 	hashedKey := sha256.Sum256(keyBytes)
 
+	return Decrypt(hashedKey, encryptedMsg)
+}
+
+func Decrypt(hashedKey [32]byte, encryptedMsg []byte) ([]byte, error) {
 	// Create a new AES cipher block using the hashed key
 	block, err := aes.NewCipher(hashedKey[:])
 	if err != nil {

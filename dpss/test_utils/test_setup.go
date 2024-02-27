@@ -5,56 +5,65 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-type CommitteeTestParams struct {
-	isNewCommittee bool
-	// n: total number of nodes in this committee.
-	N int
-	// number of faulty nodes in this committee.
-	nrFaulty int
-	// k: number of corrupt nodes in this committee.
-	K int
-	// t: the reconstruction threshold in this committee.
-	// fixed to k-1
-	T int
-}
+// The default parameters for old & new committee are distinct on purpose,
+// to make sure the correct ones are being used
+const DefaultN_old = 7
+const DefaultNrFaulty_old = 0
+const DefaultK_old = 3
 
-// NewCommitteeParams creates a CommitteeTestParams for a single committee
-func NewCommitteeParams(N, nrFaulty, K int, isNewCommittee bool) CommitteeTestParams {
-	return CommitteeTestParams{
-		isNewCommittee: isNewCommittee,
-		N:              N,
-		nrFaulty:       nrFaulty,
-		K:              K,
-		T:              K - 1,
+const DefaultN_new = 8
+const DefaultNrFaulty_new = 0
+const DefaultK_new = 2
+
+// NewCommitteeParams creates a common.CommitteeParams for a single committee
+func NewCommitteeParams(N, K int) common.CommitteeParams {
+	return common.CommitteeParams{
+		N: N,
+		K: K,
+		T: K - 1,
 	}
 }
 
-// a standard committe has 7 honest nodes and t=3
-func StandardCommitteeParams(isNewCommittee bool) CommitteeTestParams {
-	return NewCommitteeParams(7, 0, 3, isNewCommittee)
+// a standard old committe has 7 honest nodes and t=3
+func StandardOldCommitteeParams() common.CommitteeParams {
+	return NewCommitteeParams(DefaultN_old, DefaultK_old)
+}
+
+// a standard new committe has 8 honest nodes and t=2
+func StandardNewCommitteeParams() common.CommitteeParams {
+	return NewCommitteeParams(DefaultN_new, DefaultK_new)
 }
 
 // returns the standard params for old & new committees at once
-func StandardCommitteesParams() (oldCommitteeParams, newCommitteeParams CommitteeTestParams) {
-	return StandardCommitteeParams(false), StandardCommitteeParams(true)
+func StandardCommitteesParams() (oldCommitteeParams, newCommitteeParams common.CommitteeParams) {
+	return StandardOldCommitteeParams(), StandardNewCommitteeParams()
 }
 
 type TestSetup struct {
-	oldCommitteeParams CommitteeTestParams
-	newCommitteeParams CommitteeTestParams
+	OldCommitteeParams   common.CommitteeParams
+	NrFaultyOldCommittee int
+	NewCommitteeParams   common.CommitteeParams
+	NrFaultyNewCommittee int
 
 	oldCommitteeNetwork []*PssTestNode
 	newCommitteeNetwork []*PssTestNode
 }
 
+func DefaultTestSetup() *TestSetup {
+	oldCommitteeParams, newCommitteeParams := StandardCommitteesParams()
+	return NewTestSetup(oldCommitteeParams, newCommitteeParams, DefaultNrFaulty_old, DefaultNrFaulty_new)
+}
+
 // NewTestSetup creates a complete TestSetup with the given committee parameters.
 // It generates all the nodes necessary and connects them with a standard NoSendMockTransport.
-func NewTestSetup(oldCommitteeParams, newCommitteeParams CommitteeTestParams) *TestSetup {
+func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams, nrFaultyOldCommittee, nrFaultyNewCommittee int) *TestSetup {
 	setup := &TestSetup{
-		oldCommitteeParams:  oldCommitteeParams,
-		newCommitteeParams:  newCommitteeParams,
-		oldCommitteeNetwork: make([]*PssTestNode, oldCommitteeParams.N),
-		newCommitteeNetwork: make([]*PssTestNode, newCommitteeParams.N),
+		OldCommitteeParams:   oldCommitteeParams,
+		NrFaultyOldCommittee: nrFaultyOldCommittee,
+		NewCommitteeParams:   newCommitteeParams,
+		NrFaultyNewCommittee: nrFaultyNewCommittee,
+		oldCommitteeNetwork:  make([]*PssTestNode, oldCommitteeParams.N),
+		newCommitteeNetwork:  make([]*PssTestNode, newCommitteeParams.N),
 	}
 
 	// This MockTransport doesn't pass on any msg, it only registers what has been sent/broadcasted.
@@ -62,17 +71,19 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams CommitteeTestParams) *T
 
 	// Create the nodes of the Old Committee
 	for i := 0; i < oldCommitteeParams.N; i++ {
-		isFaulty := i < oldCommitteeParams.nrFaulty // Mark first 'nrFaulty' nodes as faulty
+		isFaulty := i < nrFaultyOldCommittee // Mark first 'nrFaulty' nodes as faulty
 		keypair := common.GenerateKeyPair(curves.K256())
-		node := NewEmptyNode(i, keypair, sharedTransport, isFaulty, false)
+		// Make sure the index starts at 1
+		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, false)
 		setup.oldCommitteeNetwork[i] = node
 	}
 
 	// Create the nodes of the New Committee
 	for i := 0; i < newCommitteeParams.N; i++ {
-		isFaulty := i < newCommitteeParams.nrFaulty // Mark first 'nrFaulty' nodes as faulty
+		isFaulty := i < nrFaultyNewCommittee // Mark first 'nrFaulty' nodes as faulty
 		keypair := common.GenerateKeyPair(curves.K256())
-		node := NewEmptyNode(i, keypair, sharedTransport, isFaulty, true)
+		// Make sure the index starts at 1
+		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, true)
 		setup.newCommitteeNetwork[i] = node
 	}
 
@@ -80,4 +91,16 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams CommitteeTestParams) *T
 	sharedTransport.Init(setup.oldCommitteeNetwork, setup.newCommitteeNetwork)
 
 	return setup
+}
+
+func (setup *TestSetup) GetSingleOldNodeFromTestSetup() *PssTestNode {
+	return setup.oldCommitteeNetwork[0]
+}
+
+func (setup *TestSetup) GetTwoOldNodesFromTestSetup() (*PssTestNode, *PssTestNode) {
+	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1]
+}
+
+func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
+	return setup.newCommitteeNetwork[0]
 }

@@ -66,6 +66,15 @@ type PSSRoundDetails struct {
 	Kind       string     // Stage of the DPSS protocol in which the round is.
 }
 
+// n -> total number of nodes
+// t = f -> number of *max* malicious nodes
+// k = f + 1 > reconstruction threshold
+type CommitteeParams struct {
+	N int
+	K int
+	T int // = K - 1
+}
+
 // Stores the information of the shares for a given round ID. Remember that
 // RBC can be executed in multiple rounds at the same time. This storage saves
 // the RBC information for all of the rounds.

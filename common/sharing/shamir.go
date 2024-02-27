@@ -13,12 +13,14 @@ package sharing
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
+	log "github.com/sirupsen/logrus"
 )
 
 type ShamirShare struct {
@@ -86,6 +88,46 @@ func (s Shamir) getPolyAndShares(secret curves.Scalar, reader io.Reader) ([]*Sha
 		}
 	}
 	return shares, poly
+}
+
+// TODO this is duplicate code, but should be here in common folder
+func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*sharing.FeldmanVerifier, error) {
+
+	commitment, err := DecompressCommitments(k, c, curve)
+	if err != nil {
+		return nil, err
+	}
+	verifier := new(sharing.FeldmanVerifier)
+	verifier.Commitments = commitment
+	return verifier, nil
+}
+
+// TODO this is (almost) duplicate code, but should be here in common folder
+// Predicate verifies if the share fits the polynomial commitments
+func Predicate(secret_point curves.Point, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
+	keyBytes := secret_point.ToAffineCompressed()
+
+	// Hash the serialized point to derive a symmetric key.
+	hashedKey := sha256.Sum256(keyBytes)
+
+	shareBytes, err := Decrypt(hashedKey, cipher)
+	if err != nil {
+		log.Errorf("Error while decrypting share: err=%s", err)
+		return nil, nil, false
+	}
+	share := sharing.ShamirShare{Id: binary.BigEndian.Uint32(shareBytes[:4]), Value: shareBytes[4:]}
+	log.Debugf("share: id=%d, val=%v", share.Id, share.Value)
+	verifier, err := verifierFromCommits(k, commits, curve)
+	if err != nil {
+		log.Errorf("Error while getting verifier from commits=%s", err)
+		return nil, nil, false
+	}
+
+	if err = verifier.Verify(&share); err != nil {
+		log.Errorf("Error while verifying share=%s", err)
+		return nil, nil, false
+	}
+	return &share, verifier, true
 }
 
 func (s Shamir) LagrangeCoeffs(identities []uint32) (map[uint32]curves.Scalar, error) {

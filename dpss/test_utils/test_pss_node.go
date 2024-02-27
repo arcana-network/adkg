@@ -12,13 +12,13 @@ type PssTestNode struct {
 	// Index & PubKey of this node
 	details             common.NodeDetails
 	isNewCommittee      bool
-	committeeTestParams CommitteeTestParams
+	committeeTestParams common.CommitteeParams
 
 	state    *common.PSSNodeState
 	Keypair  common.KeyPair
 	isFaulty bool
 
-	transport *NoSendMockTransport
+	Transport *NoSendMockTransport
 
 	//shares of old/new committee
 	//false: old, true: new
@@ -37,8 +37,19 @@ func (n *PssTestNode) IsOldNode() bool {
 	return !n.isNewCommittee
 }
 
+// This requires the testnode to actually have the new committee/old committee nodes
 func (n *PssTestNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
-	return n.Keypair.PublicKey
+	nodes := n.Nodes(fromNewCommittee)
+	for _, n := range nodes {
+		if n.Index == idx {
+			pk, err := curves.K256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
+			if err != nil {
+				return nil
+			}
+			return pk
+		}
+	}
+	return nil
 }
 
 func (node *PssTestNode) Params() (n int, k int, t int) {
@@ -46,11 +57,11 @@ func (node *PssTestNode) Params() (n int, k int, t int) {
 }
 
 func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
-	node.transport.Broadcast(node.Details(), msg)
+	node.Transport.Broadcast(node.Details(), msg)
 }
 
 func (node *PssTestNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
-	node.transport.Send(node.Details(), n, msg)
+	node.Transport.Send(node.Details(), n, msg)
 	return nil
 }
 
@@ -64,30 +75,36 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 
 // only register a message was received, no further action
 func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage common.PSSMessage) {
-	node.transport.receivedMessages = append(node.transport.receivedMessages, pssMessage)
+	node.Transport.receivedMessages = append(node.Transport.receivedMessages, pssMessage)
 }
 
 func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	nodes := make(map[common.NodeDetailsID]common.NodeDetails)
-	for _, node := range n.transport.nodesOld {
+	for _, node := range n.Transport.nodesOld {
 		nodes[node.Details().GetNodeDetailsID()] = node.details
 	}
-	for _, node := range n.transport.nodesNew {
+	for _, node := range n.Transport.nodesNew {
 		nodes[node.Details().GetNodeDetailsID()] = node.details
 	}
 	return nodes
 }
 
 func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMockTransport, isFaulty, isNewCommittee bool) *PssTestNode {
+	var params common.CommitteeParams
+	if isNewCommittee {
+		params = StandardNewCommitteeParams()
+	} else {
+		params = StandardOldCommitteeParams()
+	}
 	node := PssTestNode{
 		details:             common.NodeDetails{Index: index, PubKey: common.CurvePointToPoint(keypair.PublicKey, common.SECP256K1)},
 		isNewCommittee:      isNewCommittee,
-		committeeTestParams: StandardCommitteeParams(isNewCommittee),
+		committeeTestParams: params,
 		state: &common.PSSNodeState{
 			ShareStore: &common.PSSShareStoreMap{},
 			RbcStore:   &common.RBCStateMap{},
 		},
-		transport: noSendTransport,
+		Transport: noSendTransport,
 		Keypair:   keypair,
 		isFaulty:  isFaulty,
 

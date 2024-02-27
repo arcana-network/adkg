@@ -2,6 +2,8 @@ package dacss
 
 import (
 	"encoding/json"
+	"fmt"
+	"sync"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -17,12 +19,13 @@ var ShareMessageType string = "DualCommitteeACSS_share"
 // DualCommitteeACSSShareMessage has all the information for the initial message in the
 // Dual-Committee ACSS Share protocol.
 type DualCommitteeACSSShareMessage struct {
-	RoundID          common.PSSRoundID  // ID of the round.
-	Kind             string             // Type of the message.
-	CurveName        common.CurveName   // Name of curve used in the messages.
-	Secret           curves.Scalar      // Scalar that will be shared.
-	EphemeralKeypair common.KeyPair     // the dealer's ephemeral keypair at the start of the protocol (Section V(C)hbACSS)
-	Dealer           common.NodeDetails // Information of the node that starts the Dual-Committee ACSS.
+	RoundID            common.PSSRoundID      // ID of the round.
+	Kind               string                 // Type of the message.
+	CurveName          common.CurveName       // Name of curve used in the messages.
+	Secret             curves.Scalar          // Scalar that will be shared.
+	EphemeralKeypair   common.KeyPair         // the dealer's ephemeral keypair at the start of the protocol (Section V(C)hbACSS)
+	Dealer             common.NodeDetails     // Information of the node that starts the Dual-Committee ACSS.
+	NewCommitteeParams common.CommitteeParams // n, k & t parameters of the new committee
 }
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
@@ -71,18 +74,25 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 	// Ephemeral Private key of the dealer
 	privateKey := msg.EphemeralKeypair.PrivateKey
 
-	// Generate share and commitments
-	n, k, _ := self.Params()
+	n_old, k_old, _ := self.Params()
+	n_new := msg.NewCommitteeParams.N
+	k_new := msg.NewCommitteeParams.K
+
+	// This is to make sure both runs of ACCS are done
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	// Initiate ACSS for both old and new Committe
-	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n, k, msg)
-	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n, k, msg)
+	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n_old, k_old, msg, &wg)
+	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n_new, k_new, msg, &wg)
+
+	wg.Wait()
 }
 
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
 // defined by the withNewCommittee flag.
 func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSParticipant, privateKey curves.Scalar,
-	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage) {
+	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage, wg *sync.WaitGroup) {
 
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 
@@ -96,11 +106,27 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 	for _, share := range shares {
 
 		nodePublicKey := self.PublicKey(int(share.Id), withNewCommittee)
+		if nodePublicKey == nil {
+			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
+			return
+		}
 
 		// This Encrypt will be a symmetric key encryption Ki = PKi ^ SKd
 		// TODO does this need encoding?
 		// TODO this encryption doesn't do MAC, is that needed
-		cipherShare, _ := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
+		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
+		// TODO remove, this is just for testing purposes
+		test, errT := sharing.DecryptSymmetricCalculateKey(cipherShare, nodePublicKey, privateKey)
+		fmt.Println("test", test)
+		if errT != nil {
+			log.Errorf("Error while DECRYPT secret share, err=%v", err)
+			return
+		}
+
+		if err != nil {
+			log.Errorf("Error while encrypting secret share, err=%v", err)
+			return
+		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		shareMap[share.Id] = cipherShare
 	}
@@ -113,13 +139,17 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 
 	// Create propose message & broadcast
 	// NOTE: This proposeMsg should NOT have Emephemeral Private key of the dealer but only the public key.
-	proposeMsg, err := NewAcssProposeMessageroundID(msg.RoundID, msgData, common.CurveFromName(msg.CurveName), true, msg.EphemeralKeypair.PublicKey)
+	proposeMsg, err := NewAcssProposeMessageroundID(msg.RoundID, msgData, msg.CurveName, withNewCommittee, msg.EphemeralKeypair.PublicKey)
 
 	if err != nil {
-		log.Errorf("NewHbAcssPropose:err=%v", err)
+		log.Errorf("Error while creating new AcssProposeMessage, err=%v", err)
 		return
 	}
 
 	// ReliableBroadcast(C)
-	go self.Broadcast(true, *proposeMsg)
+	go func() {
+		self.Broadcast(withNewCommittee, *proposeMsg)
+		defer wg.Done()
+	}()
+
 }

@@ -14,18 +14,62 @@ type AcssProposeMessage struct {
 	RoundID            common.PSSRoundID
 	NewCommittee       bool
 	Kind               common.MessageType
-	Curve              *curves.Curve
+	Curve              common.CurveName
 	Data               messages.MessageData
 	EphemeralPublicKey curves.Point // the dealer's ephemeral publicKey
 
 }
 
-func NewAcssProposeMessageroundID(roundID common.PSSRoundID, msgData messages.MessageData, msgCurve *curves.Curve, isNewCommittee bool, ephemeralPublicKey curves.Point) (*common.PSSMessage, error) {
+// convert json to acssProposeMessage
+func (m *AcssProposeMessage) UnmarshalJSON(data []byte) error {
+	type Alias AcssProposeMessage
+	aux := &struct {
+		EphemeralPublicKey json.RawMessage `json:"EphemeralPublicKey"`
+		*Alias
+	}{
+		Alias: (*Alias)(m),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	if len(aux.EphemeralPublicKey) > 0 {
+		epk, err := common.PointUnmarshalJson([]byte(aux.EphemeralPublicKey))
+		if err != nil {
+			return err
+		}
+		m.EphemeralPublicKey = epk
+	}
+
+	return nil
+}
+
+// convert acssProposeMessage to json
+func (m *AcssProposeMessage) MarshalJSON() ([]byte, error) {
+	// Convert EphemeralPublicKey to a suitable JSON representation
+	epkJSON, err := common.PointMarshalJson(m.EphemeralPublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Marshal the rest of AcssProposeMessage as usual, but replace
+	// EphemeralPublicKey with its JSON representation
+	type Alias AcssProposeMessage // Prevent recursion
+	return json.Marshal(&struct {
+		EphemeralPublicKey json.RawMessage `json:"EphemeralPublicKey"`
+		*Alias
+	}{
+		EphemeralPublicKey: json.RawMessage(epkJSON),
+		Alias:              (*Alias)(m),
+	})
+}
+
+func NewAcssProposeMessageroundID(roundID common.PSSRoundID, msgData messages.MessageData, curveName common.CurveName, isNewCommittee bool, ephemeralPublicKey curves.Point) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
 		RoundID:            roundID,
 		NewCommittee:       isNewCommittee,
 		Kind:               AcssProposeMessageType,
-		Curve:              msgCurve,
+		Curve:              curveName,
 		Data:               msgData,
 		EphemeralPublicKey: ephemeralPublicKey,
 	}
