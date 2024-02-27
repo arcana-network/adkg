@@ -41,7 +41,7 @@ func TestProcessInitMessage(test *testing.T) {
 	msg.Process(testDealer.Details(), testDealer)
 
 	// Wait a bit until all the goroutines are finished.
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second)
 
 	recvMsgAmmount := len(transport.GetSentMessages())
 	realRecvMsgAmmount := N_SECRETS / (n - 2*k)
@@ -63,7 +63,7 @@ func TestNewInitMessage(test *testing.T) {
 		msg.RoundID,
 		msg.OldShares,
 		*msg.CurveName,
-		msg.EphemeralKeypair,
+		testDealer.Keypair,
 	)
 	if err != nil {
 		test.Errorf("Error creating the message using the function: %v", err)
@@ -76,7 +76,8 @@ func TestNewInitMessage(test *testing.T) {
 	assert.Equal(test, msg.RoundID, createdInitMsg.RoundID)
 	assert.Equal(test, msg.OldShares, createdInitMsg.OldShares)
 	assert.Equal(test, *msg.CurveName, *createdInitMsg.CurveName)
-	assert.Equal(test, msg.EphemeralKeypair, createdInitMsg.EphemeralKeypair)
+	assert.Equal(test, msg.EphemeralPublicKey, createdInitMsg.EphemeralPublicKey)
+	assert.Equal(test, msg.EphemeralSecretKey, createdInitMsg.EphemeralSecretKey)
 }
 
 // Creates an init message for testing with a fiven ammount of old shares.
@@ -89,11 +90,12 @@ func createTestMsg(testDealer *testutils.PssTestNode, nSecrets int) (*InitMessag
 	}
 
 	msg := &InitMessage{
-		RoundID:          roundID,
-		OldShares:        shares,
-		EphemeralKeypair: testDealer.Keypair,
-		Kind:             InitMessageType,
-		CurveName:        &common.SECP256K1,
+		RoundID:            roundID,
+		OldShares:          shares,
+		EphemeralSecretKey: testDealer.Keypair.PrivateKey.Bytes(),
+		EphemeralPublicKey: testDealer.Keypair.PublicKey.ToAffineCompressed(),
+		Kind:               InitMessageType,
+		CurveName:          &common.SECP256K1,
 	}
 	return msg, nil
 }

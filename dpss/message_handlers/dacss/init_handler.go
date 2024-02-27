@@ -12,11 +12,12 @@ var InitMessageType string = "dacss_init"
 
 // Represents the initialization message for the DPSS protocol.
 type InitMessage struct {
-	RoundID          common.PSSRoundID     // ID of the round.
-	OldShares        []sharing.ShamirShare // Array of shares that will be converted.
-	EphemeralKeypair common.KeyPair        // the dealer's ephemeral keypair at the start of the protocol (Section V(C)hbACSS)
-	Kind             string                // Phase in which we are.
-	CurveName        *common.CurveName     // Curve that we will use for the protocol.
+	RoundID            common.PSSRoundID     // ID of the round.
+	OldShares          []sharing.ShamirShare // Array of shares that will be converted.
+	EphemeralSecretKey []byte                // the dealer's ephemeral secret key at the start of the protocol (Section V(C)hbACSS)
+	EphemeralPublicKey []byte                // the dealer's ephemeral public key.
+	Kind               string                // Phase in which we are.
+	CurveName          *common.CurveName     // Curve that we will use for the protocol.
 }
 
 // Creates a new initialization message for DPSS.
@@ -24,7 +25,8 @@ func NewInitMessage(roundId common.PSSRoundID, oldShares []sharing.ShamirShare, 
 	m := InitMessage{
 		roundId,
 		oldShares,
-		ephemeralKeypair,
+		ephemeralKeypair.PrivateKey.Bytes(),
+		ephemeralKeypair.PublicKey.ToAffineCompressed(),
 		InitMessageType,
 		&curve,
 	}
@@ -55,7 +57,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	nGenerations := len(msg.OldShares) / (nNodes - 2*recThreshold)
 	for range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
-		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.RoundID, curve, msg.EphemeralKeypair)
+		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.RoundID, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey)
 		if err != nil {
 			return
 		}

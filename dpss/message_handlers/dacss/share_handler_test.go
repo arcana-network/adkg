@@ -108,7 +108,8 @@ func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestS
 		Kind:               ShareMessageType,
 		CurveName:          common.CurveName(curves.K256().Name),
 		Secret:             testSecret,
-		EphemeralKeypair:   testDealer.Keypair,
+		EphemeralSecretKey: testDealer.Keypair.PrivateKey.Bytes(),
+		EphemeralPublicKey: testDealer.Keypair.PublicKey.ToAffineCompressed(),
 		Dealer:             testDealer.Details(),
 		NewCommitteeParams: defaultSetup.NewCommitteeParams,
 	}

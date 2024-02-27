@@ -23,21 +23,23 @@ type DualCommitteeACSSShareMessage struct {
 	Kind               string                 // Type of the message.
 	CurveName          common.CurveName       // Name of curve used in the messages.
 	Secret             curves.Scalar          // Scalar that will be shared.
-	EphemeralKeypair   common.KeyPair         // the dealer's ephemeral keypair at the start of the protocol (Section V(C)hbACSS)
+	EphemeralSecretKey []byte                 // the dealer's ephemeral secret key at the start of the protocol (Section V(C)hbACSS)
+	EphemeralPublicKey []byte                 // the dealer's ephemeral public key.
 	Dealer             common.NodeDetails     // Information of the node that starts the Dual-Committee ACSS.
 	NewCommitteeParams common.CommitteeParams // n, k & t parameters of the new committee
 }
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve, EphemeralKeypair common.KeyPair) (*common.PSSMessage, error) {
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve, ephemeralSecretKey []byte, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
 	m := &DualCommitteeACSSShareMessage{
-		RoundID:          roundID,
-		Kind:             ShareMessageType,
-		CurveName:        common.CurveName(curve.Name),
-		Secret:           secret,
-		EphemeralKeypair: EphemeralKeypair,
-		Dealer:           dealer,
+		RoundID:            roundID,
+		Kind:               ShareMessageType,
+		CurveName:          common.CurveName(curve.Name),
+		Secret:             secret,
+		EphemeralSecretKey: ephemeralSecretKey,
+		EphemeralPublicKey: ephemeralPublicKey,
+		Dealer:             dealer,
 	}
 	bytes, err := json.Marshal(m)
 	if err != nil {
@@ -72,7 +74,11 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 	curve := common.CurveFromName(msg.CurveName)
 
 	// Ephemeral Private key of the dealer
-	privateKey := msg.EphemeralKeypair.PrivateKey
+	privateKey, err := curve.Scalar.SetBytes(msg.EphemeralSecretKey)
+	if err != nil {
+		log.Errorf("DualCommitteeACSSShareMessage: error constructing the private key: %v", err)
+		return
+	}
 
 	n_old, k_old, _ := self.Params()
 	n_new := msg.NewCommitteeParams.N
@@ -139,7 +145,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 
 	// Create propose message & broadcast
 	// NOTE: This proposeMsg should NOT have Emephemeral Private key of the dealer but only the public key.
-	proposeMsg, err := NewAcssProposeMessageroundID(msg.RoundID, msgData, msg.CurveName, withNewCommittee, msg.EphemeralKeypair.PublicKey)
+	proposeMsg, err := NewAcssProposeMessageroundID(msg.RoundID, msgData, msg.CurveName, withNewCommittee, msg.EphemeralPublicKey)
 
 	if err != nil {
 		log.Errorf("Error while creating new AcssProposeMessage, err=%v", err)
