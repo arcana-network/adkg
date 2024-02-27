@@ -93,14 +93,17 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 	return setup
 }
 
+// Returns just a node in the old committee from the given test setup.
 func (setup *TestSetup) GetSingleOldNodeFromTestSetup() *PssTestNode {
 	return setup.oldCommitteeNetwork[0]
 }
 
+// Returns two nodes in the old committee for a given test setup.
 func (setup *TestSetup) GetTwoOldNodesFromTestSetup() (*PssTestNode, *PssTestNode) {
 	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1]
 }
 
+// Returns a node in the new committee from a given test setup.
 func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
 	return setup.newCommitteeNetwork[0]
 }
