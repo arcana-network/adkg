@@ -161,7 +161,6 @@ func (id *PSSRoundID) GetIndex() (big.Int, error) {
 	return *index, nil
 }
 
-<<<<<<< HEAD
 // DACSS Round Leader
 func (r *PSSRoundID) Leader() (big.Int, error) {
 	str := string(*r)
@@ -177,9 +176,4 @@ func (r *PSSRoundID) Leader() (big.Int, error) {
 	}
 
 	return *index, nil
-=======
-// GeneratePSSRoundID generates a new ID for a given round with a given index.
-func GeneratePSSRoundID(index big.Int) PSSRoundID {
-	return PSSRoundID(strings.Join([]string{"DPSS", index.Text(16)}, Delimiter3))
->>>>>>> dev-dpss-init-handler
 }

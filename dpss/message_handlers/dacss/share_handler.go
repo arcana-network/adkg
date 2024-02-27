@@ -9,6 +9,7 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	log "github.com/sirupsen/logrus"
 )
 
 // ShareMessageType tells wich message are we sending. In this case, the share
