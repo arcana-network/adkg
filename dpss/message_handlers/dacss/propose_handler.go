@@ -2,7 +2,6 @@ package dacss
 
 import (
 	"encoding/json"
-	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -44,20 +43,22 @@ func NewAcssProposeMessageroundID(roundID common.PSSRoundID, msgData messages.Me
 
 func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
-	log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
+	// FIXME: a node is not uniquely identified by its index
+	// log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
 	log.Debugf("Propose: Node=%d, Value=%v", self.Details().Index, msg.Data)
 
-	leader, err := msg.RoundID.Leader()
-	if err != nil {
-		log.Debugf("Cound not get leader from roundID, err=%s", err)
-		return
-	}
-	senderId := *new(big.Int).SetInt64(int64(sender.Index))
+	// FIXME: a node is not uniquely identified by its index
+	// leader, err := msg.RoundID.Leader()
+	// if err != nil {
+	// 	log.Debugf("Cound not get leader from roundID, err=%s", err)
+	// 	return
+	// }
+	// senderId := *new(big.Int).SetInt64(int64(sender.Index))
 
-	// If leader of the round is not sender skip
-	if leader.Cmp(&senderId) != 0 {
-		return
-	}
+	// // If leader of the round is not sender skip
+	// if leader.Cmp(&senderId) != 0 {
+	// 	return
+	// }
 
 	// Generated shared symmetric key
 	n, k, _ := self.Params()

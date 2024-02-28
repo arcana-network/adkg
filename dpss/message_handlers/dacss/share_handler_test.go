@@ -99,10 +99,17 @@ func TestStartDualAcss(t *testing.T) {
 }
 
 func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup, ephemeralKeypair common.KeyPair) DualCommitteeACSSShareMessage {
-	roundId := common.NewPSSRoundID(big.Int{})
+
+	id := big.NewInt(1)
+	roundDetails := common.PSSRoundDetails{
+		PssID:    common.NewPssID(*id),
+		DealerID: testDealer.Details().GetNodeDetailsID(),
+	}
+	roundID := roundDetails.ID()
+
 	testSecret := sharing.GenerateSecret(curves.K256())
 	msg := DualCommitteeACSSShareMessage{
-		RoundID:            roundId,
+		RoundID:            roundID,
 		Kind:               ShareMessageType,
 		CurveName:          common.CurveName(curves.K256().Name),
 		Secret:             testSecret,

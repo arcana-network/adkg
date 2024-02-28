@@ -114,7 +114,11 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 // Creates an init message for testing with a fiven ammount of old shares.
 func createTestMsg(testDealer *testutils.PssTestNode, nSecrets, n, k int, ephemeralKeypair common.KeyPair) (*InitMessage, error) {
 	id := big.NewInt(1)
-	roundID := common.NewPSSRoundID(*id)
+	roundDetails := common.PSSRoundDetails{
+		PssID:    common.NewPssID(*id),
+		DealerID: testDealer.Details().GetNodeDetailsID(),
+	}
+	roundID := roundDetails.ID()
 	shares, err := generateOldShares(nSecrets, n, k, common.SECP256K1)
 	if err != nil {
 		return nil, err

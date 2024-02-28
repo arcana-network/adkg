@@ -55,9 +55,16 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, recThreshold, _ := self.Params()
 	nGenerations := len(msg.OldShares) / (nNodes - 2*recThreshold)
-	for range nGenerations {
+	for i := range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
-		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.RoundID, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey)
+		acssRoundDetails := common.ACSSRoundDetails{
+			PSSRoundID: msg.RoundID,
+			ACSSCount:  i,
+		}
+
+		acssRoundId := acssRoundDetails.ID()
+
+		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), msg.RoundID, acssRoundId, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey)
 		if err != nil {
 			return
 		}

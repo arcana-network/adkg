@@ -1,9 +1,7 @@
 package common
 
 import (
-	"errors"
 	"math/big"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -45,12 +43,13 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	ShareStore      *PSSShareStoreMap // Storage for the shares in the ACSS Protocol.
-	RbcStore        *RBCStateMap      // Storage for the RBC protocol.
-	DualAcssStarted bool              // Flag whether the DualAcss part of the protocol has started.
+	ShareStore           *PSSShareStoreMap    // Storage for the shares in the ACSS Protocol.
+	RbcStore             *RBCStateMap         // Storage for the RBC protocol.
+	DualAcssStarted      bool                 // Flag whether the DualAcss part of the protocol has started.
+	ShareRecoveryOngoing map[ACSSRoundID]bool // Indicates per dACSS round whether the Share Recovery is in process
 }
 
-// Stores the shares tha the node receives during the DPSS protocol.
+// Stores the shares that the node receives during the DPSS protocol.
 type PSSShareStore struct {
 	sync.Mutex
 	Shares map[int]curves.Scalar // Map of shares. K: index of the owner of the share, V: the actual share.
@@ -61,9 +60,19 @@ type PSSRoundID string
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
 type PSSRoundDetails struct {
-	PSSRoundID PSSRoundID // ID for the PSS.
-	Dealer     int        // ID of the node that is dealing the information to other parties.
-	Kind       string     // Stage of the DPSS protocol in which the round is.
+	// ID for the PSS.
+	PssID string
+	// ID of the node that is dealing the information to other parties.
+	// Note that only index is not enough, since indices can appear in both committees
+	DealerID NodeDetailsID
+}
+
+// ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
+type ACSSRoundID string
+
+type ACSSRoundDetails struct {
+	PSSRoundID PSSRoundID // ID for the PSS round.
+	ACSSCount  int        // number of ACSS round this is in the PSS
 }
 
 // n -> total number of nodes
@@ -136,44 +145,52 @@ func (store *PSSShareStoreMap) Delete(r RoundID) {
 // Obtains an round ID from the round details by appending the information
 // together.
 func (d *PSSRoundDetails) ID() PSSRoundID {
-	return PSSRoundID(strings.Join([]string{string(d.PSSRoundID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
+	return PSSRoundID(strings.Join([]string{string(d.PssID), string(d.DealerID)}, Delimiter4))
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPSSRoundID(index big.Int) PSSRoundID {
-	return PSSRoundID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
+func NewPssID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
 }
 
-// Return the index of a PSSRoundID.
-func (id *PSSRoundID) GetIndex() (big.Int, error) {
-	str := string(*id)
-	substrs := strings.Split(str, Delimiter3)
+// FIXME: what is this for?
+// // Return the index of a PSSRoundID.
+// func (id *PSSRoundID) GetIndex() (big.Int, error) {
+// 	str := string(*id)
+// 	substrs := strings.Split(str, Delimiter3)
 
-	if len(substrs) != 2 {
-		return *new(big.Int), errors.New("could not parse DPSSRoundID")
-	}
+// 	if len(substrs) != 2 {
+// 		return *new(big.Int), errors.New("could not parse DPSSRoundID")
+// 	}
 
-	index, ok := new(big.Int).SetString(substrs[1], 16)
-	if !ok {
-		return *new(big.Int), errors.New("could not get back index from DPSSRoundID")
-	}
+// 	index, ok := new(big.Int).SetString(substrs[1], 16)
+// 	if !ok {
+// 		return *new(big.Int), errors.New("could not get back index from DPSSRoundID")
+// 	}
 
-	return *index, nil
-}
+// 	return *index, nil
+// }
 
-// DACSS Round Leader
-func (r *PSSRoundID) Leader() (big.Int, error) {
-	str := string(*r)
-	substrs := strings.Split(str, Delimiter4)
+// FIXME: this is not the correct implementation for PSS since a node is not uniquely identified by index
+// // PSS Round Leader
+// func (r *PSSRoundID) Leader() (big.Int, error) {
+// 	str := string(*r)
+// 	substrs := strings.Split(str, Delimiter4)
 
-	if len(substrs) != 3 {
-		return *new(big.Int), errors.New("could not parse round id")
-	}
+// 	if len(substrs) != 3 {
+// 		return *new(big.Int), errors.New("could not parse round id")
+// 	}
 
-	index, ok := new(big.Int).SetString(substrs[2], 16)
-	if !ok {
-		return *new(big.Int), errors.New("could not get back index from round id")
-	}
+// 	index, ok := new(big.Int).SetString(substrs[2], 16)
+// 	if !ok {
+// 		return *new(big.Int), errors.New("could not get back index from round id")
+// 	}
 
-	return *index, nil
+// 	return *index, nil
+// }
+
+// Obtains an round ID from the round details by appending the information
+// together.
+func (a *ACSSRoundDetails) ID() ACSSRoundID {
+	return ACSSRoundID(strings.Join([]string{string(a.PSSRoundID), string(a.ACSSCount)}, Delimiter4))
 }

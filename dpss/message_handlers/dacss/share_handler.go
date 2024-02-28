@@ -18,7 +18,8 @@ var ShareMessageType string = "dacss_share"
 // DualCommitteeACSSShareMessage has all the information for the initial message in the
 // Dual-Committee ACSS Share protocol.
 type DualCommitteeACSSShareMessage struct {
-	RoundID            common.PSSRoundID      // ID of the round.
+	RoundID            common.PSSRoundID      // ID of the PSS round.
+	ACSSRoundID        common.ACSSRoundID     // ID of the specific ACSS round within DPSS.
 	Kind               string                 // Type of the message.
 	CurveName          common.CurveName       // Name of curve used in the messages.
 	Secret             curves.Scalar          // Scalar that will be shared.
@@ -30,9 +31,10 @@ type DualCommitteeACSSShareMessage struct {
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, curve *curves.Curve, ephemeralSecretKey []byte, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, roundID common.PSSRoundID, acssID common.ACSSRoundID, curve *curves.Curve, ephemeralSecretKey []byte, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
 	m := &DualCommitteeACSSShareMessage{
 		RoundID:            roundID,
+		ACSSRoundID:        acssID,
 		Kind:               ShareMessageType,
 		CurveName:          common.CurveName(curve.Name),
 		Secret:             secret,
