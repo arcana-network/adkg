@@ -21,7 +21,7 @@ type PSSParticipant interface {
 	IsOldNode() bool
 	// Obtains the public key from a node in the old or new committee. The
 	// committee is defined by the flag fromNewCOmmittee.
-	PublicKey(idx int, fromNewCommittee bool) curves.Point
+	GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point
 	// Obtains the parameters of the protocols for the committee for which the
 	// current node belongs.
 	Params() (n int, k int, t int)

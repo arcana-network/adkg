@@ -77,7 +77,7 @@ func (node *PSSNode) IsOldNode() bool {
 
 // PublicKey returns the public key of the node with index idx that belongs to
 // the old or new commitee according to the fromNewCommittee flag.
-func (node *PSSNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
+func (node *PSSNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
 	nodes := node.Nodes(fromNewCommittee)
 	for _, n := range nodes {
 		if n.Index == idx {

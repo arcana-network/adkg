@@ -8,7 +8,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNIZKP(t *testing.T) {
+func TestValidNIZKP(t *testing.T) {
+
+	for i := 0; i < 20; i++ {
+		curve := curves.ED25519()
+		SK_i := curve.Scalar.Random(rand.Reader)
+		g := curve.NewGeneratorPoint()
+		PK_i := g.Mul(SK_i) // g^SK_i
+
+		PK_d := curve.Point.Random(rand.Reader)
+
+		K_i_d := PK_d.Mul(SK_i)
+
+		//completeness
+		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
+
+		proof, err := unpackProof(curve, proofBytes)
+
+		assert.Nil(t, err)
+		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), true)
+	}
+
+}
+
+func TestInvalidNIZKP(t *testing.T) {
 	curve := curves.ED25519()
 	SK_i := curve.Scalar.Random(rand.Reader)
 	g := curve.NewGeneratorPoint()
@@ -16,22 +39,12 @@ func TestNIZKP(t *testing.T) {
 
 	PK_d := curve.Point.Random(rand.Reader)
 
-	K_i_d := PK_d.Mul(SK_i)
-
-	//completeness
-	proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
-
-	proof, err := unpackProof(curve, proofBytes)
-
-	assert.Nil(t, err)
-	assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), true)
-
 	//soundness
 	//trying to prove for random symmetric shared key
 	for i := 0; i < 10; i++ {
-		K_i_d = curve.Point.Random(rand.Reader)
-		proofBytes = GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
-		proof, err = unpackProof(curve, proofBytes)
+		K_i_d := curve.Point.Random(rand.Reader)
+		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
+		proof, err := unpackProof(curve, proofBytes)
 		assert.Nil(t, err)
 		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
 	}
@@ -41,8 +54,8 @@ func TestNIZKP(t *testing.T) {
 
 		PK_i := curve.Point.Random(rand.Reader)
 		K_i_d := PK_d.Mul(SK_i)
-		proofBytes = GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
-		proof, err = unpackProof(curve, proofBytes)
+		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
+		proof, err := unpackProof(curve, proofBytes)
 		assert.Nil(t, err)
 		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
 	}

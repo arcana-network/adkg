@@ -1,40 +1,48 @@
 package dacss
 
-// var DacssEchoMessageType common.MessageType = "dacss_echo"
+import (
+	"encoding/json"
 
-// type DacssEchoMessage struct {
-// 	RoundID       common.RoundID
-// 	CommitteeType int
-// 	Kind          common.MessageType
-// 	Curve         *curves.Curve
-// 	Share         infectious.Share
-// 	Hash          []byte // Hash of the shares.
-// 	NewCommittee  bool
-// }
+	"github.com/arcana-network/dkgnode/common"
+	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/vivint/infectious"
+)
 
-// func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
-// 	m := DacssEchoMessage{
-// 		RoundID:      id,
-// 		NewCommittee: newCommittee,
-// 		Kind:         DacssEchoMessageType,
-// 		Curve:        curve,
-// 		Share:        s,
-// 		Hash:         hash,
-// 	}
-// 	if newCommittee {
-// 		m.CommitteeType = 1
-// 	} else {
-// 		m.CommitteeType = 0
-// 	}
+var DacssEchoMessageType common.MessageType = "dacss_echo"
 
-// 	bytes, err := json.Marshal(m)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+type DacssEchoMessage struct {
+	RoundID       common.PSSRoundID
+	CommitteeType int
+	Kind          common.MessageType
+	Curve         *curves.Curve
+	Share         infectious.Share
+	Hash          []byte // Hash of the shares.
+	NewCommittee  bool
+}
 
-// 	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
-// 	return &msg, nil
-// }
+func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
+	m := DacssEchoMessage{
+		RoundID:      id,
+		NewCommittee: newCommittee,
+		Kind:         DacssEchoMessageType,
+		Curve:        curve,
+		Share:        s,
+		Hash:         hash,
+	}
+	if newCommittee {
+		m.CommitteeType = 1
+	} else {
+		m.CommitteeType = 0
+	}
+
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
+	return &msg, nil
+}
 
 // func (m *DacssEchoMessage) Fingerprint() string {
 // 	var bytes []byte

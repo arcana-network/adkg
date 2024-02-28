@@ -2,7 +2,6 @@ package dacss
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -86,10 +85,11 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 
 	// This is to make sure both runs of ACCS are done
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
 	// Initiate ACSS for both old and new Committe
 	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n_old, k_old, msg, &wg)
+	wg.Add(1)
 	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n_new, k_new, msg, &wg)
 
 	wg.Wait()
@@ -97,7 +97,7 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
 // defined by the withNewCommittee flag.
-func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSParticipant, privateKey curves.Scalar,
+func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSParticipant, privateKey curves.Scalar,
 	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage, wg *sync.WaitGroup) {
 
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
@@ -111,7 +111,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 	// encrypt each share with node respective generated symmetric key using Ephemeral Private key and add to share map
 	for _, share := range shares {
 
-		nodePublicKey := self.PublicKey(int(share.Id), withNewCommittee)
+		nodePublicKey := sender.GetPublicKeyFor(int(share.Id), withNewCommittee)
 		if nodePublicKey == nil {
 			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
 			return
@@ -121,14 +121,6 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 		// TODO does this need encoding?
 		// TODO this encryption doesn't do MAC, is that needed
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
-		// TODO remove, this is just for testing purposes
-		test, errT := sharing.DecryptSymmetricCalculateKey(cipherShare, nodePublicKey, privateKey)
-		fmt.Println("test", test)
-		if errT != nil {
-			log.Errorf("Error while DECRYPT secret share, err=%v", err)
-			return
-		}
-
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 			return
@@ -154,7 +146,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, self common.PSSPar
 
 	// ReliableBroadcast(C)
 	go func() {
-		self.Broadcast(withNewCommittee, *proposeMsg)
+		sender.Broadcast(withNewCommittee, *proposeMsg)
 		defer wg.Done()
 	}()
 

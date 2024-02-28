@@ -14,9 +14,9 @@ type PssTestNode struct {
 	isNewCommittee      bool
 	committeeTestParams common.CommitteeParams
 
-	state    *common.PSSNodeState
-	Keypair  common.KeyPair
-	isFaulty bool
+	state       *common.PSSNodeState
+	LongtermKey common.KeyPair
+	isFaulty    bool
 
 	Transport *NoSendMockTransport
 
@@ -38,7 +38,7 @@ func (n *PssTestNode) IsOldNode() bool {
 }
 
 // This requires the testnode to actually have the new committee/old committee nodes
-func (n *PssTestNode) PublicKey(idx int, fromNewCommittee bool) curves.Point {
+func (n *PssTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
 	nodes := n.Nodes(fromNewCommittee)
 	for _, n := range nodes {
 		if n.Index == idx {
@@ -70,7 +70,7 @@ func (n *PssTestNode) Details() common.NodeDetails {
 }
 
 func (n *PssTestNode) PrivateKey() curves.Scalar {
-	return n.Keypair.PrivateKey
+	return n.LongtermKey.PrivateKey
 }
 
 // only register a message was received, no further action
@@ -79,13 +79,18 @@ func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage co
 }
 
 func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
-	nodes := make(map[common.NodeDetailsID]common.NodeDetails)
-	for _, node := range n.Transport.nodesOld {
+	var selectedNodes []*PssTestNode
+	if fromNewCommittee {
+		selectedNodes = n.Transport.nodesNew
+	} else {
+		selectedNodes = n.Transport.nodesOld
+	}
+
+	nodes := make(map[common.NodeDetailsID]common.NodeDetails, len(selectedNodes))
+	for _, node := range selectedNodes {
 		nodes[node.Details().GetNodeDetailsID()] = node.details
 	}
-	for _, node := range n.Transport.nodesNew {
-		nodes[node.Details().GetNodeDetailsID()] = node.details
-	}
+
 	return nodes
 }
 
@@ -104,9 +109,9 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 			ShareStore: &common.PSSShareStoreMap{},
 			RbcStore:   &common.RBCStateMap{},
 		},
-		Transport: noSendTransport,
-		Keypair:   keypair,
-		isFaulty:  isFaulty,
+		Transport:   noSendTransport,
+		LongtermKey: keypair,
+		isFaulty:    isFaulty,
 
 		shares: make(map[bool]map[int64]*big.Int),
 	}
