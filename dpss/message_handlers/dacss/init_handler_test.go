@@ -91,9 +91,12 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 	testDealer := defaultSetup.GetSingleNewNodeFromTestSetup()
 	transport := testDealer.Transport
 
+	n, k, _ := testDealer.Params()
+	ephemeralKey := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
+
 	const N_SECRETS int = 30
 
-	msg, err := createTestMsg(testDealer, N_SECRETS)
+	msg, err := createTestMsg(testDealer, N_SECRETS, n, k, ephemeralKey)
 	if err != nil {
 		test.Error("Error creating the init message.")
 	}
