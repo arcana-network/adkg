@@ -80,6 +80,31 @@ func TestNewInitMessage(test *testing.T) {
 	assert.Equal(test, msg.EphemeralSecretKey, createdInitMsg.EphemeralSecretKey)
 }
 
+// Tests that if the node is from the new committee, it should do nothing.
+func TestNewCommitteeDoNothing(test *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	defaultSetup := testutils.DefaultTestSetup()
+	testDealer := defaultSetup.GetSingleNewNodeFromTestSetup()
+	transport := testDealer.Transport
+
+	const N_SECRETS int = 30
+
+	msg, err := createTestMsg(testDealer, N_SECRETS)
+	if err != nil {
+		test.Error("Error creating the init message.")
+	}
+
+	msg.Process(testDealer.Details(), testDealer)
+
+	// Wait a bit until all the goroutines are finished.
+	time.Sleep(time.Second)
+
+	// The party should not send any message
+	recvMsgAmmount := len(transport.GetSentMessages())
+	assert.Equal(test, 0, recvMsgAmmount)
+}
+
 // Creates an init message for testing with a fiven ammount of old shares.
 func createTestMsg(testDealer *testutils.PssTestNode, nSecrets int) (*InitMessage, error) {
 	id := big.NewInt(1)
