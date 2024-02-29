@@ -42,7 +42,7 @@ func GenerateNIZKProof(
 	return proof
 }
 
-func verify(u *Proof, g, PK_i, PK_d, K_i_d curves.Point, curve *curves.Curve) bool {
+func Verify(u *Proof, g, PK_i, PK_d, K_i_d curves.Point, curve *curves.Curve) bool {
 
 	// re-construct the random challenge by hashing all the public parameters and the commitment values provided in the proof
 	e := Hash(g, PK_i, PK_d, K_i_d, u.R, u.S, curve)
@@ -68,7 +68,7 @@ type Proof struct {
 }
 
 // unpacks proofs from bytes
-func unpackProof(curve *curves.Curve, proofBytes []byte) (*Proof, error) {
+func UnpackProof(curve *curves.Curve, proofBytes []byte) (*Proof, error) {
 	proof := Proof{}
 
 	byteLen := 33 //k256

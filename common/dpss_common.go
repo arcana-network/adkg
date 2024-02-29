@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -88,7 +89,7 @@ type CommitteeParams struct {
 // RBC can be executed in multiple rounds at the same time. This storage saves
 // the RBC information for all of the rounds.
 type PSSShareStoreMap struct {
-	Map sync.Map // Key: RoundID, Value: PSSSharingStore
+	Map sync.Map // Key: RoundID, Value: PSSShareStore
 }
 
 // PSSMessage represents a message in the DPSS protocol
@@ -189,8 +190,19 @@ func NewPssID(index big.Int) string {
 // 	return *index, nil
 // }
 
+// TODO test
 // Obtains an round ID from the round details by appending the information
 // together.
 func (a *ACSSRoundDetails) ID() ACSSRoundID {
 	return ACSSRoundID(strings.Join([]string{string(a.PSSRoundID), string(a.ACSSCount)}, Delimiter4))
+}
+
+// TODO test
+func RetrievePSSRoundID(acssRoundID ACSSRoundID) (PSSRoundID, error) {
+	parts := strings.Split(string(acssRoundID), Delimiter4)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("invalid ACSSRoundID format")
+	}
+	// The first part of the split result is the PSSRoundID.
+	return PSSRoundID(parts[0]), nil
 }
