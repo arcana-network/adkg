@@ -1,9 +1,7 @@
 package dpss
 
 import (
-	"math/big"
 	"strconv"
-	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -149,10 +147,11 @@ func (node *PSSNode) Details() common.NodeDetails {
 	return node.details
 }
 
-func GenerateDPSSRoundID(rindex, noOfRandoms big.Int) common.PSSRoundID {
-	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
-	return common.PSSRoundID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
-}
+//TODO: Do we need this?
+// func GenerateDPSSRoundID(rindex, noOfRandoms big.Int) common.PSSRoundID {
+// 	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
+// 	return common.PSSRoundID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
+// }
 
 // Send sends a message to the node that has certain public key and index.
 func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {

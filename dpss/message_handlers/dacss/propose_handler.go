@@ -47,36 +47,35 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	if !dealerNodeDetails.IsEqual(sender) {
 		return
 	}
+	//save shares in node's state
+	state := common.DacssShareStoreMap{
+		SharesForACSSRound: make(map[common.ACSSRoundID]common.DacssData),
+	}
+	state.SharesForACSSRound[msg.ACSSRoundDetails.ToACSSRoundID()] = msg.Data
+	//storing into dacss state
+	self.State().DacssStore = &state
 
-	// TODO save shareMap in node's state
-
-	// FIXME: a node is not uniquely identified by its index
-	// log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
-	log.Debugf("Propose: Node=%d, Value=%v", self.Details().Index, msg.Data)
-
-	// FIXME: a node is not uniquely identified by its index
-	// leader, err := msg.RoundID.Leader()
-	// if err != nil {
-	// 	log.Debugf("Cound not get leader from roundID, err=%s", err)
-	// 	return
-	// }
-	// senderId := *new(big.Int).SetInt64(int64(sender.Index))
-
-	// // If leader of the round is not sender skip
-	// if leader.Cmp(&senderId) != 0 {
-	// 	return
-	// }
+	//Identified by nodeDetailsId
+	log.Debugf("Received Propose message from %s on %s", sender.GetNodeDetailsID(), self.Details().GetNodeDetailsID())
+	log.Debugf("Propose: Node=%s, Value=%s", self.Details().GetNodeDetailsID(), msg.Data)
 
 	// Generated shared symmetric key
 	n, k, _ := self.Params()
 
 	curve := common.CurveFromName(msg.CurveName)
-	// TODO obtain dealer's pubky from hex string msg.Data.DealerEphemeralPubKey
-	dealerKey := curve.NewGeneratorPoint()
-	// if err != nil {
-	// 	log.Errorf("AcssProposeMessage: error constructing the EphemeralPublicKey: %v", err)
-	// 	return
-	// }
+
+	pubkeyBytes, err := hex.DecodeString(msg.Data.DealerEphemeralPubKey)
+	if err != nil {
+		log.Errorf("Error decoding hex string: %v", err)
+		return
+	}
+
+	dealerKey, err := curve.Point.FromAffineCompressed(pubkeyBytes)
+
+	if err != nil {
+		log.Errorf("AcssProposeMessage: error constructing the EphemeralPublicKey: %v", err)
+		return
+	}
 
 	priv := self.PrivateKey()
 	key, err := sharing.CalculateSharedKey(dealerKey, priv)
@@ -86,12 +85,18 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Verify self share against commitments.
-	log.Debugf("Going to verify predicate for node=%d", self.Details().Index)
-	// log.Debugf("IMP1: round=%s, node=%d, msg=%v", msg.RoundID, self.Details().Index, msg.Data)
+	//TODO: we can identify by node index and whether in old or new committee by self.IsOldNode()
+	log.Debugf("Going to verify predicate for node=%v, %v", self.Details().Index, self.IsOldNode())
+	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
 	X := self.Details().PubKey.X
 	Y := self.Details().PubKey.Y
 	pubKeyPoint, err := curves.K256().NewIdentityPoint().Set(&X, &Y)
+
+	if err != nil {
+		log.Errorf("AcssProposeMessage: error calculating pubKeyPoint: %v", err)
+		return
+	}
 
 	hexPubKey := hex.EncodeToString(pubKeyPoint.ToAffineCompressed())
 	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[hexPubKey][:],
