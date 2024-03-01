@@ -1,13 +1,13 @@
 package dacss
 
 import (
-	"encoding/json"
+	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/arcana-network/dkgnode/keygen/messages"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 )
 
 // TODO docs
@@ -17,39 +17,35 @@ import (
 var ImplicateMessageType string = "dacss_implicate"
 
 type ImplicateMessage struct {
-	RoundID      common.PSSRoundID
-	AcssRoundID  common.ACSSRoundID
-	Kind         string
-	CurveName    common.CurveName
-	SymmetricKey []byte // Compressed Affine Point
-	Proof        []byte // Contains d, R, S
-	Data         messages.MessageData
+	ACSSRoundDetails common.ACSSRoundDetails // ID of the specific ACSS round within DPSS.
+	Kind             string
+	CurveName        common.CurveName
+	SymmetricKey     []byte // Compressed Affine Point
+	Proof            []byte // Contains d, R, S
 }
 
-func NewImplicateMessage(roundID common.PSSRoundID, acssID common.ACSSRoundID, curve *curves.Curve, symmetricKey []byte, proof []byte, messageData messages.MessageData) (*common.PSSMessage, error) {
+func NewImplicateMessage(acssRoundDetails common.ACSSRoundDetails, curve *curves.Curve, symmetricKey []byte, proof []byte) (*common.PSSMessage, error) {
 	m := &ImplicateMessage{
-		RoundID:      roundID,
-		AcssRoundID:  acssID,
-		Kind:         ImplicateMessageType,
-		CurveName:    common.CurveName(curve.Name),
-		SymmetricKey: symmetricKey,
-		Proof:        proof,
-		Data:         messageData,
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             ImplicateMessageType,
+		CurveName:        common.CurveName(curve.Name),
+		SymmetricKey:     symmetricKey,
+		Proof:            proof,
 	}
 
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreatePSSMessage(m.RoundID, m.Kind, bytes)
+	msg := common.CreatePSSMessage(m.ACSSRoundDetails.PSSRoundDetails, m.Kind, bytes)
 	return &msg, nil
 }
 
 func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
-	if self.State().ShareRecoveryOngoing[msg.AcssRoundID] {
+	if self.State().ShareRecoveryOngoing[msg.ACSSRoundDetails.ToACSSRoundID()] {
 		return
 	}
 
@@ -57,7 +53,7 @@ func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSP
 
 	proof, err := sharing.UnpackProof(curve, msg.Proof)
 	if err != nil {
-		log.Errorf("Can't unpack nizk proof in Implicate flow for ACSS round %s, err: %s", msg.AcssRoundID, err)
+		log.Errorf("Can't unpack nizk proof in Implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
 
@@ -67,7 +63,21 @@ func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSP
 
 	// Verify ZKP that the symmetric key is actually generated correctly
 	PK_i, _ := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y) // TODO err
-	// FIXME get the dealer's ephemeral pub key
+
+	// FIXME we have to consider the possibility the shareMap has not been received yet.
+	// possible solution: upon receiving shareMap, if an implicate message was received,
+	// trigger the following functionality
+	// For now, we just execute directly
+
+	// Retrieve all data wrt the specific ACSS round from Node's storage
+	// from this we also get the dealer's ephemeral public key
+	dacssData := self.State().DacssStore.SharesForACSSRound[msg.ACSSRoundDetails.ToACSSRoundID()]
+	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
+	share := dacssData.ShareMap[senderPubkeyHex]
+	commitments := dacssData.Commitments
+
+	// FIXME convert hex string dealerPubkey to PK_d: Point
+	// dealerPubkey := dacssData.DealerEphemeralPubKey
 	PK_d, _ := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y) // TODO err
 	// TODO error handling
 	K_i_d, _ := curve.Point.FromAffineCompressed(msg.SymmetricKey)
@@ -77,18 +87,14 @@ func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSP
 	}
 
 	// Check Predicate for share
-	// FIXME shareMap has to be verified, we cannot just accept it from the msg
-	// FIXME how do we get the index of the share. And should it be part of the zkp?
-	var index uint32 = 1
-	_, _, verified := sharing.Predicate(K_i_d, msg.Data.ShareMap[index][:],
-		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
+	_, _, verified := sharing.Predicate(K_i_d, share, commitments, k, common.CurveFromName(msg.CurveName))
 
 	if verified {
 		return
 	}
 
 	// send ShareRecoveryMsg
-	recoveryMsg, err := NewShareRecoveryMessage(msg.RoundID, msg.AcssRoundID)
+	recoveryMsg, err := NewShareRecoveryMessage(msg.ACSSRoundDetails)
 
 	// TODO boradcast?
 	self.Broadcast(!self.IsOldNode(), *recoveryMsg)

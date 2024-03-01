@@ -1,12 +1,14 @@
 package dacss
 
 import (
-	"encoding/json"
+	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	"github.com/arcana-network/dkgnode/keygen/messages"
+	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/torusresearch/bijson"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 )
@@ -14,34 +16,39 @@ import (
 var AcssProposeMessageType common.MessageType = "Acss_propose"
 
 type AcssProposeMessage struct {
-	RoundID            common.PSSRoundID
-	NewCommittee       bool
-	Kind               common.MessageType
-	CurveName          common.CurveName
-	Data               messages.MessageData
-	EphemeralPublicKey []byte // the dealer's ephemeral publicKey
-
+	ACSSRoundDetails common.ACSSRoundDetails
+	NewCommittee     bool
+	Kind             common.MessageType
+	CurveName        common.CurveName
+	Data             common.DacssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
 }
 
-func NewAcssProposeMessageroundID(roundID common.PSSRoundID, msgData messages.MessageData, curveName common.CurveName, isNewCommittee bool, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
+func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.DacssData, curveName common.CurveName, isNewCommittee bool) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
-		RoundID:            roundID,
-		NewCommittee:       isNewCommittee,
-		Kind:               AcssProposeMessageType,
-		CurveName:          curveName,
-		Data:               msgData,
-		EphemeralPublicKey: ephemeralPublicKey,
+		ACSSRoundDetails: acssRoundDetails,
+		NewCommittee:     isNewCommittee,
+		Kind:             AcssProposeMessageType,
+		CurveName:        curveName,
+		Data:             msgData,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
+	msg := common.CreatePSSMessage(m.ACSSRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
 }
 
 func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+
+	// Retrieve Dealer from PSSRoundID & verify it equals the sender
+	dealerNodeDetails := msg.ACSSRoundDetails.PSSRoundDetails.Dealer
+	if !dealerNodeDetails.IsEqual(sender) {
+		return
+	}
+
+	// TODO save shareMap in node's state
 
 	// FIXME: a node is not uniquely identified by its index
 	// log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
@@ -64,11 +71,12 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	n, k, _ := self.Params()
 
 	curve := common.CurveFromName(msg.CurveName)
-	dealerKey, err := curve.Point.FromAffineCompressed(msg.EphemeralPublicKey)
-	if err != nil {
-		log.Errorf("AcssProposeMessage: error constructing the EphemeralPublicKey: %v", err)
-		return
-	}
+	// TODO obtain dealer's pubky from hex string msg.Data.DealerEphemeralPubKey
+	dealerKey := curve.NewGeneratorPoint()
+	// if err != nil {
+	// 	log.Errorf("AcssProposeMessage: error constructing the EphemeralPublicKey: %v", err)
+	// 	return
+	// }
 
 	priv := self.PrivateKey()
 	key, err := sharing.CalculateSharedKey(dealerKey, priv)
@@ -79,9 +87,14 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 	// Verify self share against commitments.
 	log.Debugf("Going to verify predicate for node=%d", self.Details().Index)
-	log.Debugf("IMP1: round=%s, node=%d, msg=%v", msg.RoundID, self.Details().Index, msg.Data)
+	// log.Debugf("IMP1: round=%s, node=%d, msg=%v", msg.RoundID, self.Details().Index, msg.Data)
 
-	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[uint32(self.Details().Index)][:],
+	X := self.Details().PubKey.X
+	Y := self.Details().PubKey.Y
+	pubKeyPoint, err := curves.K256().NewIdentityPoint().Set(&X, &Y)
+
+	hexPubKey := hex.EncodeToString(pubKeyPoint.ToAffineCompressed())
+	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[hexPubKey][:],
 		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
 
 	//If verified, means the share is encrypted correctly and the commitments is also verified
@@ -109,7 +122,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		}
 
 		// Serialize data
-		msg_bytes, err := msg.Data.Serialize()
+		msg_bytes, err := bijson.Marshal(msg.Data)
 
 		if err != nil {
 			log.Debugf("error during data serialization of MsgData, err=%s", err)
@@ -132,7 +145,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 				//This instruction corresponds to Line 10, Algorithm 4 from
 				//"Asynchronous data disemination and applications."
-				echoMsg, err := NewDacssEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, common.CurveFromName(msg.CurveName), self.Details().Index, msg.NewCommittee)
+				echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[node.Index-1], msg_hash, common.CurveFromName(msg.CurveName), self.Details().Index, msg.NewCommittee)
 				if err != nil {
 					log.WithField("error", err).Error("NewDacssEchoMessage")
 					return

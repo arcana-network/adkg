@@ -1,33 +1,32 @@
 package dacss
 
 import (
-	"encoding/json"
-
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
 )
 
 var DacssEchoMessageType common.MessageType = "dacss_echo"
 
 type DacssEchoMessage struct {
-	RoundID       common.PSSRoundID
-	CommitteeType int
-	Kind          common.MessageType
-	Curve         *curves.Curve
-	Share         infectious.Share
-	Hash          []byte // Hash of the shares.
-	NewCommittee  bool
+	ACSSRoundDetails common.ACSSRoundDetails
+	CommitteeType    int
+	Kind             common.MessageType
+	Curve            *curves.Curve
+	Share            infectious.Share
+	Hash             []byte // Hash of the shares.
+	NewCommittee     bool
 }
 
-func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
+func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
-		RoundID:      id,
-		NewCommittee: newCommittee,
-		Kind:         DacssEchoMessageType,
-		Curve:        curve,
-		Share:        s,
-		Hash:         hash,
+		ACSSRoundDetails: acssRoundDetails,
+		NewCommittee:     newCommittee,
+		Kind:             DacssEchoMessageType,
+		Curve:            curve,
+		Share:            s,
+		Hash:             hash,
 	}
 	if newCommittee {
 		m.CommitteeType = 1
@@ -35,12 +34,12 @@ func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, 
 		m.CommitteeType = 0
 	}
 
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
+	msg := common.CreatePSSMessage(m.ACSSRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
 }
 
