@@ -14,6 +14,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
+	"github.com/vivint/infectious"
 
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
@@ -339,10 +340,24 @@ func MapFromNodeList(nodeList []NodeDetails) (res map[NodeDetailsID]NodeDetails)
 
 // Represents the state of the node in the RBC protocol
 type RBCState struct {
-	Phase           phase        // Phase of within the protocol.
-	ReceivedEcho    map[int]bool // Echos received.
-	ReceivedReady   map[int]bool // Ready received.
-	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
+	Phase               phase            // Phase of within the protocol.
+	ReceivedEcho        map[int]bool     // Echos received.
+	ReceivedReady       map[int]bool     // Ready received.
+	ReceivedMessage     []byte           // The actual message as a result of the RBC protocol.
+	OwnReedSolomonShard infectious.Share // Shard that belongs to the party in the RS error correcting code.
+	IsReadyMsgSent      bool             // Tells whether the ready message was sent by the party.
+	HashMsg             []byte           // Message of the hash received in the propose.
+}
+
+// Counts the ammount of received ECHO messages.
+func (state *RBCState) CountEcho() int {
+	count := 0
+	for _, received := range state.ReceivedEcho {
+		if received {
+			count += 1
+		}
+	}
+	return count
 }
 
 func Stringify(i interface{}) string {

@@ -1,8 +1,11 @@
 package dacss
 
 import (
+	"reflect"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
 )
@@ -41,6 +44,40 @@ func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, s infectious.
 
 	msg := common.CreatePSSMessage(m.ACSSRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
+}
+
+func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
+
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
+
+	acssState, isStored, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
+	if !isStored {
+		// TODO: Handle if the acssState is not stored yet.
+	}
+	if err != nil {
+		// TODO: Handle error.
+	}
+	ownShare := acssState.RBCState.OwnReedSolomonShard
+	ownHash := acssState.RBCState.HashMsg
+
+	// Check that the incoming message matches with the share of self (Line 11)
+	// of Algorithm 4, "Asynchronous Data Disemination".
+	// TODO: Question - Do we need to compare the hash too?
+	// TODO: We need to store the own share and the hash of the message in RBCState.
+	if reflect.DeepEqual(ownShare.Data, m.Share.Data) && reflect.DeepEqual(m.Hash, ownHash) {
+		_, t, _ := self.Params()
+		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
+			acssState.RBCState.IsReadyMsgSent = true
+			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.Curve)
+			if err != nil {
+				// TODO: Handle error
+			}
+			acssState.RBCState.ReceivedEcho[sender.Index] = true
+			self.Broadcast(m.NewCommittee, *readyMsg)
+		}
+	}
 }
 
 // func (m *DacssEchoMessage) Fingerprint() string {
