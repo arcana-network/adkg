@@ -49,13 +49,13 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	if !dealerNodeDetails.IsEqual(sender) {
 		return
 	}
-	//save shares in node's state
-	state := common.DacssShareStoreMap{
-		SharesForACSSRound: make(map[common.ACSSRoundID]common.DacssData),
+
+	//save shares, commitments & dealer's ephemeral pubkey in node's state
+	err := self.State().DacssStore.UpdateDacssData(msg.ACSSRoundDetails.ToACSSRoundID(), msg.Data)
+	if err != nil {
+		log.Errorf("Error updating DacssData in state: %v", err)
+		return
 	}
-	state.SharesForACSSRound[msg.ACSSRoundDetails.ToACSSRoundID()] = msg.Data
-	//storing into dacss state
-	self.State().DacssStore = &state
 
 	//Identified by nodeDetailsId
 	log.Debugf("Received Propose message from %s on %s", sender.GetNodeDetailsID(), self.Details().GetNodeDetailsID())

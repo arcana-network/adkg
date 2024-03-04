@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	ethCommon "github.com/ethereum/go-ethereum/common"
@@ -360,39 +359,4 @@ func Stringify(i interface{}) string {
 		log.WithError(err).Error("Could not fastjsonmarshal")
 	}
 	return string(byt)
-}
-
-type RBCStateMap struct {
-	sync.Mutex
-	Map sync.Map // Key: roundID, Value: RBCState
-}
-
-func (m *RBCStateMap) Get(r RoundID) (keygen *RBCState, found bool) {
-	inter, found := m.Map.Load(r)
-	keygen, _ = inter.(*RBCState)
-	return
-}
-
-func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *RBCState) (keygen *RBCState, complete bool) {
-	inter, found := store.GetOrSet(r, input)
-	if found {
-		if inter == nil {
-			return inter, true
-		}
-	}
-	return inter, false
-}
-
-func (store *RBCStateMap) GetOrSet(r RoundID, input *RBCState) (keygen *RBCState, found bool) {
-	inter, found := store.Map.LoadOrStore(r, input)
-	keygen, _ = inter.(*RBCState)
-	return
-}
-
-func (store *RBCStateMap) Complete(r RoundID) {
-	store.Map.Store(r, nil)
-}
-
-func (store *RBCStateMap) Delete(r RoundID) {
-	store.Map.Delete(r)
 }

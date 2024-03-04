@@ -44,8 +44,17 @@ func NewImplicateMessage(acssRoundDetails common.ACSSRoundDetails, curve *curves
 
 func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
+	dacssState, found, err := self.State().DacssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if err != nil {
+		// TODO error
+	}
+
+	if !found {
+		// TODO error
+	}
+
 	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
-	if self.State().ShareRecoveryOngoing[msg.ACSSRoundDetails.ToACSSRoundID()] {
+	if dacssState.ShareRecoveryOngoing {
 		return
 	}
 
@@ -71,7 +80,7 @@ func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSP
 
 	// Retrieve all data wrt the specific ACSS round from Node's storage
 	// from this we also get the dealer's ephemeral public key
-	dacssData := self.State().DacssStore.SharesForACSSRound[msg.ACSSRoundDetails.ToACSSRoundID()]
+	dacssData := dacssState.DacssData
 	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
 	share := dacssData.ShareMap[senderPubkeyHex]
 	commitments := dacssData.Commitments
