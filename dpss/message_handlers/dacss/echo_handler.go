@@ -67,6 +67,7 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 	// TODO: Question - Do we need to compare the hash too?
 	// TODO: We need to store the own share and the hash of the message in RBCState.
 	if reflect.DeepEqual(ownShare.Data, m.Share.Data) && reflect.DeepEqual(m.Hash, ownHash) {
+		acssState.RBCState.ReceivedEcho[sender.Index] = true
 		_, t, _ := self.Params()
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 			acssState.RBCState.IsReadyMsgSent = true
@@ -74,7 +75,6 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 			if err != nil {
 				// TODO: Handle error
 			}
-			acssState.RBCState.ReceivedEcho[sender.Index] = true
 			self.Broadcast(m.NewCommittee, *readyMsg)
 		}
 	}
