@@ -367,13 +367,13 @@ type RBCStateMap struct {
 	Map sync.Map // Key: roundID, Value: RBCState
 }
 
-func (m *RBCStateMap) Get(r RoundID) (keygen *ABAState, found bool) {
+func (m *RBCStateMap) Get(r RoundID) (keygen *RBCState, found bool) {
 	inter, found := m.Map.Load(r)
-	keygen, _ = inter.(*ABAState)
+	keygen, _ = inter.(*RBCState)
 	return
 }
 
-func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *ABAState) (keygen *ABAState, complete bool) {
+func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *RBCState) (keygen *RBCState, complete bool) {
 	inter, found := store.GetOrSet(r, input)
 	if found {
 		if inter == nil {
@@ -383,9 +383,9 @@ func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *ABAState) (key
 	return inter, false
 }
 
-func (store *RBCStateMap) GetOrSet(r RoundID, input *ABAState) (keygen *ABAState, found bool) {
+func (store *RBCStateMap) GetOrSet(r RoundID, input *RBCState) (keygen *RBCState, found bool) {
 	inter, found := store.Map.LoadOrStore(r, input)
-	keygen, _ = inter.(*ABAState)
+	keygen, _ = inter.(*RBCState)
 	return
 }
 

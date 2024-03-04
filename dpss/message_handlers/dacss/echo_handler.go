@@ -5,6 +5,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 )
 
@@ -42,6 +43,10 @@ func NewDacssEchoMessage(id common.PSSRoundID, s infectious.Share, hash []byte, 
 
 	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
 	return &msg, nil
+}
+
+func (msg *DacssEchoMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
+	log.Debugf("Echo message received - Sender: %d, Receiver: %d", sender.Index, self.ID())
 }
 
 // func (m *DacssEchoMessage) Fingerprint() string {
