@@ -20,11 +20,11 @@ type AcssProposeMessage struct {
 	NewCommittee       bool
 	Kind               common.MessageType
 	CurveName          common.CurveName
-	Data               common.DacssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
+	Data               common.AcssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
 	NewCommitteeParams common.CommitteeParams
 }
 
-func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.DacssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
+func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.AcssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
 		ACSSRoundDetails:   acssRoundDetails,
 		NewCommittee:       isNewCommittee,
@@ -51,9 +51,9 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	//save shares, commitments & dealer's ephemeral pubkey in node's state
-	err := self.State().DacssStore.UpdateDacssData(msg.ACSSRoundDetails.ToACSSRoundID(), msg.Data)
+	err := self.State().AcssStore.UpdateAcssData(msg.ACSSRoundDetails.ToACSSRoundID(), msg.Data)
 	if err != nil {
-		log.Errorf("Error updating DacssData in state: %v", err)
+		log.Errorf("Error updating AcssData in state: %v", err)
 		return
 	}
 

@@ -43,24 +43,24 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	DacssStore      *DacssStateMap // State for the separate ACSS rounds
-	DualAcssStarted bool           // Flag whether the DualAcss part of the protocol has started.
+	AcssStore       *AcssStateMap // State for the separate ACSS rounds
+	DualAcssStarted bool          // Flag whether the DualAcss part of the protocol has started.
 }
 
 // Stores the information of the shares for a given ACSS Round
-type DacssStateMap struct {
+type AcssStateMap struct {
 	sync.Mutex
 	// For each specific ACSS round, we have a DacssState
-	DacssStateForRound sync.Map // key:ACSSRoundID, value: DaccsState
+	AcssStateForRound sync.Map // key:ACSSRoundID, value: AccsState
 }
 
-type DaccsState struct {
-	DacssData            DacssData // Commitments, encrypted shares & ephemeral public key of the dealer
-	RBCState             RBCState  // Storage for RBC protocol that is executed in this ACSS round
-	ShareRecoveryOngoing bool      // Indicates per dACSS round whether the Share Recovery is in process
+type AccsState struct {
+	AcssData             AcssData // Commitments, encrypted shares & ephemeral public key of the dealer
+	RBCState             RBCState // Storage for RBC protocol that is executed in this ACSS round
+	ShareRecoveryOngoing bool     // Indicates per dACSS round whether the Share Recovery is in process
 }
 
-type DacssData struct {
+type AcssData struct {
 	Commitments []byte
 	// Key = hex of PubKey receiving node
 	// Value = encrypted share for receiving node
@@ -69,40 +69,40 @@ type DacssData struct {
 	DealerEphemeralPubKey string
 }
 
-func (m *DacssStateMap) Get(acssRoundID ACSSRoundID) (*DaccsState, bool, error) {
-	value, found := m.DacssStateForRound.Load(acssRoundID)
+func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
+	value, found := m.AcssStateForRound.Load(acssRoundID)
 	if !found {
 		return nil, false, nil
 	}
 
-	dacssState, ok := value.(*DaccsState)
+	dacssState, ok := value.(*AccsState)
 	if !ok {
-		// If the value is found but is not of type *DaccsState, return an error.
-		return nil, true, errors.New("value found, but type is not *DaccsState")
+		// If the value is found but is not of type *AccsState, return an error.
+		return nil, true, errors.New("value found, but type is not *AccsState")
 	}
 
 	// If everything is ok, return the dacssState, true for found, and no error.
 	return dacssState, true, nil
 }
 
-func (m *DacssStateMap) UpdateDacssData(acssRoundID ACSSRoundID, dacssData DacssData) error {
-	// Attempt to load the existing DaccsState for the given acssRoundID
-	value, found := m.DacssStateForRound.Load(acssRoundID)
+func (m *AcssStateMap) UpdateAcssData(acssRoundID ACSSRoundID, AcssData AcssData) error {
+	// Attempt to load the existing AccsState for the given acssRoundID
+	value, found := m.AcssStateForRound.Load(acssRoundID)
 	if found {
-		// If found, type assert the value to *DaccsState
-		existingState, ok := value.(*DaccsState)
+		// If found, type assert the value to *AccsState
+		existingState, ok := value.(*AccsState)
 		if ok {
-			// Update the DacssData field of the existing DaccsState
-			existingState.DacssData = dacssData
-			// Store the updated DaccsState back into the map
-			m.DacssStateForRound.Store(acssRoundID, existingState)
+			// Update the AcssData field of the existing AccsState
+			existingState.AcssData = AcssData
+			// Store the updated AccsState back into the map
+			m.AcssStateForRound.Store(acssRoundID, existingState)
 			return nil
 		} else {
-			return errors.New("value found, but type is not *DaccsState")
+			return errors.New("value found, but type is not *AccsState")
 		}
 	} else {
-		// If the DaccsState for the acssRoundID does not exist, create a new one and store it
-		m.DacssStateForRound.Store(acssRoundID, &DaccsState{DacssData: dacssData})
+		// If the AccsState for the acssRoundID does not exist, create a new one and store it
+		m.AcssStateForRound.Store(acssRoundID, &AccsState{AcssData: AcssData})
 		return nil
 	}
 }

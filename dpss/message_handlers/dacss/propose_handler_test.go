@@ -91,7 +91,7 @@ func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *tes
 		pubkeyHex := hex.EncodeToString(nodePublicKey.ToAffineCompressed())
 		shareMap[pubkeyHex] = cipherShare
 	}
-	msgData := common.DacssData{
+	msgData := common.AcssData{
 		Commitments:           compressedCommitments,
 		ShareMap:              shareMap,
 		DealerEphemeralPubKey: hex.EncodeToString(DealerEphemeralKey.PublicKey.ToAffineCompressed()),

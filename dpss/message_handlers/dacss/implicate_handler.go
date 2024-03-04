@@ -44,7 +44,7 @@ func NewImplicateMessage(acssRoundDetails common.ACSSRoundDetails, curve *curves
 
 func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
-	dacssState, found, err := self.State().DacssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
 		// TODO error
 	}
@@ -80,13 +80,13 @@ func (msg *ImplicateMessage) Process(sender common.NodeDetails, self common.PSSP
 
 	// Retrieve all data wrt the specific ACSS round from Node's storage
 	// from this we also get the dealer's ephemeral public key
-	dacssData := dacssState.DacssData
+	AcssData := dacssState.AcssData
 	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
-	share := dacssData.ShareMap[senderPubkeyHex]
-	commitments := dacssData.Commitments
+	share := AcssData.ShareMap[senderPubkeyHex]
+	commitments := AcssData.Commitments
 
 	// FIXME convert hex string dealerPubkey to PK_d: Point
-	// dealerPubkey := dacssData.DealerEphemeralPubKey
+	// dealerPubkey := AcssData.DealerEphemeralPubKey
 	PK_d, _ := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y) // TODO err
 	// TODO error handling
 	K_i_d, _ := curve.Point.FromAffineCompressed(msg.SymmetricKey)

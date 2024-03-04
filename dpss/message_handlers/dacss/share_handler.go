@@ -133,7 +133,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 	}
 
 	// Create Dacss data for this round
-	msgData := common.DacssData{
+	msgData := common.AcssData{
 		Commitments:           compressedCommitments,
 		ShareMap:              shareMap,
 		DealerEphemeralPubKey: hex.EncodeToString(dealerEphemeralPubkey),
