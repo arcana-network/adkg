@@ -21,38 +21,38 @@ import (
 func TestProcessProposeMessage(t *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
-	// oldParams := defaultSetup.OldCommitteeParams
-	// newParams := defaultSetup.NewCommitteeParams
-	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
-	transport := testDealer.Transport
 
-	msgNewCommittee := getTestValidProposeMsg(testDealer, defaultSetup, false)
-	msgOldCommittee := getTestValidProposeMsg(testDealer, defaultSetup, false)
+	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
+	transport := SingleOldNode.Transport
 
-	// // Pre-check: in the node's state DualAcssStarted is false
-	assert.False(t, testDealer.State().DualAcssStarted)
+	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
-	// var wg sync.WaitGroup
+	// Pre-check: in the node's state DualAcssStarted is false
+	assert.False(t, SingleOldNode.State().DualAcssStarted)
+
 	// Call the process on the msg
-	msgNewCommittee.Process(testDealer.Details(), testDealer)
-
-	// wg.Wait()
+	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
 
 	sent_msg := transport.GetSentMessages()
-	assert.Equal(t, len(sent_msg), defaultSetup.NewCommitteeParams.N)
+	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
 
-	msgOldCommittee.Process(testDealer.Details(), testDealer)
+	singleNewNode := defaultSetup.GetSingleNewNodeFromTestSetup()
+
+	msgNewCommittee := getTestValidProposeMsg(singleNewNode, defaultSetup, true)
+	msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
+
 	sent_msg = transport.GetSentMessages()
-	assert.Equal(t, len(sent_msg), defaultSetup.NewCommitteeParams.N)
+	//total length of the transport msg = length of the old msgs + new msgs
+	assert.Equal(t, len(sent_msg), defaultSetup.NewCommitteeParams.N+defaultSetup.OldCommitteeParams.N)
 
 }
 
-func getTestValidProposeMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
+func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
 
 	id := big.NewInt(1)
 	pssRoundDetails := common.PSSRoundDetails{
 		PssID:  common.NewPssID(*id),
-		Dealer: testDealer.Details(),
+		Dealer: SingleNode.Details(),
 	}
 	acssRoundDetails := common.ACSSRoundDetails{
 		PSSRoundDetails: pssRoundDetails,
@@ -78,7 +78,7 @@ func getTestValidProposeMsg(testDealer *testutils.PssTestNode, defaultSetup *tes
 
 	for _, share := range shares {
 
-		nodePublicKey := testDealer.GetPublicKeyFor(int(share.Id), newCommittee)
+		nodePublicKey := SingleNode.GetPublicKeyFor(int(share.Id), newCommittee)
 		if nodePublicKey == nil {
 			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
 		}
@@ -98,11 +98,12 @@ func getTestValidProposeMsg(testDealer *testutils.PssTestNode, defaultSetup *tes
 	}
 
 	msg := AcssProposeMessage{
-		ACSSRoundDetails: acssRoundDetails,
-		Kind:             AcssProposeMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
-		Data:             msgData,
-		NewCommittee:     newCommittee,
+		ACSSRoundDetails:   acssRoundDetails,
+		Kind:               AcssProposeMessageType,
+		CurveName:          common.CurveName(curves.K256().Name),
+		Data:               msgData,
+		NewCommittee:       newCommittee,
+		NewCommitteeParams: defaultSetup.NewCommitteeParams,
 	}
 	return msg
 }

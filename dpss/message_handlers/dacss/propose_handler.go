@@ -16,20 +16,22 @@ import (
 var AcssProposeMessageType common.MessageType = "Acss_propose"
 
 type AcssProposeMessage struct {
-	ACSSRoundDetails common.ACSSRoundDetails
-	NewCommittee     bool
-	Kind             common.MessageType
-	CurveName        common.CurveName
-	Data             common.DacssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
+	ACSSRoundDetails   common.ACSSRoundDetails
+	NewCommittee       bool
+	Kind               common.MessageType
+	CurveName          common.CurveName
+	Data               common.DacssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
+	NewCommitteeParams common.CommitteeParams
 }
 
-func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.DacssData, curveName common.CurveName, isNewCommittee bool) (*common.PSSMessage, error) {
+func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.DacssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
-		ACSSRoundDetails: acssRoundDetails,
-		NewCommittee:     isNewCommittee,
-		Kind:             AcssProposeMessageType,
-		CurveName:        curveName,
-		Data:             msgData,
+		ACSSRoundDetails:   acssRoundDetails,
+		NewCommittee:       isNewCommittee,
+		Kind:               AcssProposeMessageType,
+		CurveName:          curveName,
+		Data:               msgData,
+		NewCommitteeParams: NewCommitteeParams,
 	}
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
@@ -61,7 +63,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 	// Generated shared symmetric key
 	n, k, _ := self.Params()
-
+	if msg.NewCommittee {
+		n = msg.NewCommitteeParams.N
+		k = msg.NewCommitteeParams.K
+	}
 	curve := common.CurveFromName(msg.CurveName)
 
 	pubkeyBytes, err := hex.DecodeString(msg.Data.DealerEphemeralPubKey)
@@ -112,8 +117,8 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		// s, err := common.GetSessionStoreFromRoundID(msg.RoundID, self)
 		// if err != nil {
-		// 	log.Debugf("Could not get session store for roundID=%s, self=%d", msg.RoundID, self.ID())
-		// 	return
+		//  log.Debugf("Could not get session store for roundID=%s, self=%d", msg.RoundID, self.ID())
+		//  return
 		// }
 		// s.Lock()
 		// defer s.Unlock()
@@ -146,17 +151,21 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
-			go func(node common.NodeDetails) {
 
-				//This instruction corresponds to Line 10, Algorithm 4 from
-				//"Asynchronous data disemination and applications."
-				echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[node.Index-1], msg_hash, common.CurveFromName(msg.CurveName), self.Details().Index, msg.NewCommittee)
-				if err != nil {
-					log.WithField("error", err).Error("NewDacssEchoMessage")
-					return
-				}
-				self.Send(node, *echoMsg)
-			}(n)
+			//TODO: running this go-routine result into error in few cases
+			// Therefore, as of now we are directly sending the the msg
+
+			// go func(node common.NodeDetails) {
+
+			//This instruction corresponds to Line 10, Algorithm 4 from
+			//"Asynchronous data disemination and applications."
+			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, common.CurveFromName(msg.CurveName), self.Details().Index, msg.NewCommittee)
+			if err != nil {
+				log.WithField("error", err).Error("NewDacssEchoMessage")
+				return
+			}
+			self.Send(n, *echoMsg)
+			// }(n)
 		}
 	} else {
 
