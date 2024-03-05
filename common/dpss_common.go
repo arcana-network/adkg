@@ -55,10 +55,20 @@ type AcssStateMap struct {
 }
 
 type AccsState struct {
-	AcssData             AcssData // Commitments, encrypted shares & ephemeral public key of the dealer
-	RBCState             RBCState // Storage for RBC protocol that is executed in this ACSS round
-	ShareRecoveryOngoing bool     // Indicates per dACSS round whether the Share Recovery is in process
+	// Commitments, encrypted shares & ephemeral public key of the dealer
+	// This is being sent around by the nodes as well
+	AcssData AcssData
+	// Storage for RBC protocol that is executed in this ACSS round
+	RBCState RBCState
+	// Information about all the possible implicate flows that can be in progress
+	ImplicateInformationSlice []ImplicateInformation
+	// Indicates per ACSS round whether the Share Recovery is in process
+	ShareRecoveryOngoing bool
+	// Indicates whether the shares for current node for this ACSS round were validated
+	SharesValidated bool
 }
+
+type AccsStateUpdater func(*AccsState)
 
 type AcssData struct {
 	Commitments []byte
@@ -67,6 +77,13 @@ type AcssData struct {
 	ShareMap map[string][]byte
 	// hex of ephemeral public key of the dealer
 	DealerEphemeralPubKey string
+}
+
+func (a *AcssData) IsUninitialized() bool {
+	// Check if all the fields are in their zero value state.
+	// For Commitments and DealerEphemeralPubKey, this means checking if they are empty.
+	// For ShareMap, check if it is nil or has no entries.
+	return len(a.Commitments) == 0 && len(a.DealerEphemeralPubKey) == 0 && (a.ShareMap == nil || len(a.ShareMap) == 0)
 }
 
 func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
@@ -85,26 +102,40 @@ func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
 	return dacssState, true, nil
 }
 
-func (m *AcssStateMap) UpdateAcssData(acssRoundID ACSSRoundID, AcssData AcssData) error {
+// Generic updater for a AcssState within the AcssStateMap
+func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStateUpdater) error {
 	// Attempt to load the existing AccsState for the given acssRoundID
 	value, found := m.AcssStateForRound.Load(acssRoundID)
+	var existingState *AccsState
+
 	if found {
 		// If found, type assert the value to *AccsState
-		existingState, ok := value.(*AccsState)
-		if ok {
-			// Update the AcssData field of the existing AccsState
-			existingState.AcssData = AcssData
-			// Store the updated AccsState back into the map
-			m.AcssStateForRound.Store(acssRoundID, existingState)
-			return nil
-		} else {
+		var ok bool
+		existingState, ok = value.(*AccsState)
+		if !ok {
 			return errors.New("value found, but type is not *AccsState")
 		}
 	} else {
-		// If the AccsState for the acssRoundID does not exist, create a new one and store it
-		m.AcssStateForRound.Store(acssRoundID, &AccsState{AcssData: AcssData})
-		return nil
+		// If not found, create a new AccsState
+		existingState = &AccsState{}
 	}
+
+	// Apply the updater function to the existing or new AccsState
+	updater(existingState)
+
+	// Store the updated or new AccsState back into the map
+	m.AcssStateForRound.Store(acssRoundID, existingState)
+
+	return nil
+}
+
+// Data that is needed to execute Implicate flow
+// This flow might have a waiting period in between until it has access to the shareMap
+// to be able to continue the flow once the shareMap has been received, this information is stored
+type ImplicateInformation struct {
+	SymmetricKey    []byte // Compressed Affine Point
+	Proof           []byte // Contains d, R, S
+	SenderPubkeyHex string // Hex of compressed Affine Point
 }
 
 // Stores the shares that the node receives during the DPSS protocol.

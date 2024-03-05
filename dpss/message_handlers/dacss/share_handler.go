@@ -128,7 +128,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 			return
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
-		pubkeyHex := hex.EncodeToString(nodePublicKey.ToAffineCompressed())
+		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}
 

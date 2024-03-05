@@ -50,11 +50,40 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
-	//save shares, commitments & dealer's ephemeral pubkey in node's state
-	err := self.State().AcssStore.UpdateAcssData(msg.ACSSRoundDetails.ToACSSRoundID(), msg.Data)
+	// TODO check whether this check is indeed desired
+	// Check whether the shares were already received. If so, ignore the message
+	_, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found {
+		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// Immediately: save shares, commitments & dealer's ephemeral pubkey in node's state
+	// This information is also needed for the implicate flow (when received from other nodes)
+	err := self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		state.AcssData = msg.Data
+	})
 	if err != nil {
 		log.Errorf("Error updating AcssData in state: %v", err)
 		return
+	}
+
+	// Check whether for this round we are already in Implicate flow, waiting for the shares that just arrived
+	// If so, send ImplicateExecuteMessage
+	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found && err == nil && len(acssState.ImplicateInformationSlice) > 0 {
+		// TODO iterate over all implicate flows that might be happening
+		// implicateExecuteMessage, err := NewImplicateExecuteMessage(
+		// 	msg.ACSSRoundDetails,
+		// 	msg.CurveName,
+		// 	acssState.ImplicateInformation.SymmetricKey,
+		// 	acssState.ImplicateInformation.Proof,
+		// 	acssState.ImplicateInformation.SenderPubkeyHex)
+		// if err != nil {
+		// 	log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		// 	return
+		// }
+		// self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
 	}
 
 	//Identified by nodeDetailsId
@@ -108,20 +137,18 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
 
 	//If verified, means the share is encrypted correctly and the commitments is also verified
-	// If verified, send echo to each node
+
+	// If verified:
+	// - save in node's state that shares were validated
+	// - send echo to each node
 	if verified {
-
-		// Store dealerPublicKey
-		//TODO: GetSessionStoreFromRoundID is not defined
-		// TODO: The variable s is not being used.
-
-		// s, err := common.GetSessionStoreFromRoundID(msg.RoundID, self)
-		// if err != nil {
-		//  log.Debugf("Could not get session store for roundID=%s, self=%d", msg.RoundID, self.ID())
-		//  return
-		// }
-		// s.Lock()
-		// defer s.Unlock()
+		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+			state.SharesValidated = true
+		})
+		if err != nil {
+			log.Errorf("Error updating AcssData in state: %v", err)
+			return
+		}
 
 		// Starts the RBC protocol.
 		// Create Reed-Solomon encoding. This is part of the RBC protocol.
@@ -171,8 +198,12 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		//If verified is false, that means either an error occured while decrypting share or shares not verified.
 		//In that case send implicate with the ephemeral public key of the dealer
-		//TODO: IMPLICATE
 
 		log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
+		// TODO: create proof
+		// TODO create symmetric key
+
+		// implicateMsg := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, msg.Data.DealerEphemeralPubKey)
+		// TODO broadcast msg / send directly to all. What is the difference?
 	}
 }
