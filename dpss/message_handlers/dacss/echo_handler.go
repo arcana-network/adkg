@@ -12,16 +12,17 @@ import (
 
 var DacssEchoMessageType common.MessageType = "dacss_echo"
 
+// DacssEchoMessage represents the echo handler in the RBC protocol
 type DacssEchoMessage struct {
-	ACSSRoundDetails common.ACSSRoundDetails
-	CommitteeType    int
-	Kind             common.MessageType
-	Curve            *curves.Curve
-	Share            infectious.Share
-	Hash             []byte // Hash of the shares.
-	NewCommittee     bool
+	ACSSRoundDetails common.ACSSRoundDetails // Details of the current row
+	Kind             common.MessageType      // Type of the message
+	Curve            *curves.Curve           // Curve used for the computation
+	Share            infectious.Share        // Shard comming from the RS Encoding.
+	Hash             []byte                  // Hash of the shares.
+	NewCommittee     bool                    // Tells if this message was sent to an old or new committee.
 }
 
+// NewDacssEchoMessage creates an ECHO message in the RBC protocol.
 func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
@@ -41,6 +42,7 @@ func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infecti
 	return &msg, nil
 }
 
+// Process handles the incomming ECHO message.
 func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
 
