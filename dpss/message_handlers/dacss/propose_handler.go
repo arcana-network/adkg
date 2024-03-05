@@ -50,6 +50,16 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
+
+	// Check whether the shares were already received. If so, ignore the message
+	_, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found {
+		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
 	// Immediately: save shares, commitments & dealer's ephemeral pubkey in node's state
 	// This information is also needed for the implicate flow (when received from other nodes)
 	err := self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {

@@ -28,9 +28,6 @@ func TestProcessProposeMessage(t *testing.T) {
 
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
-	// Pre-check: in the node's state DualAcssStarted is false
-	assert.False(t, SingleOldNode.State().DualAcssStarted)
-
 	// Call the process on the msg
 	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
 
@@ -77,9 +74,6 @@ func TestInvalidShare(t *testing.T) {
 		Value: bytes, //random bytes instead of actual share
 	}.Bytes()
 
-	// Pre-check: in the node's state DualAcssStarted is false
-	assert.False(t, SingleOldNode.State().DualAcssStarted)
-
 	// Call the process on the msg
 	// should send an implicate
 	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
@@ -94,6 +88,7 @@ func TestInvalidShare(t *testing.T) {
 	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
 
 }
+
 func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
 
 	id := big.NewInt(1)

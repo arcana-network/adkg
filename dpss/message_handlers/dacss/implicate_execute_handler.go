@@ -8,15 +8,16 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
+// The message for the actual execution of the Implicate flow
 var ImplicateExecuteMessageType string = "dacss_implicate_execute"
 
 type ImplicateExecuteMessage struct {
 	ACSSRoundDetails common.ACSSRoundDetails // ID of the specific ACSS round within DPSS.
-	Kind             string
-	CurveName        common.CurveName
-	SymmetricKey     []byte // Compressed Affine Point
-	Proof            []byte // Contains d, R, S
-	SenderPubkeyHex  string // Hex of Compressed Affine Point
+	Kind             string                  // Type of the message
+	CurveName        common.CurveName        // Name (indicator) of curve used in the messages.
+	SymmetricKey     []byte                  // Compressed Affine Point
+	Proof            []byte                  // Contains d, R, S
+	SenderPubkeyHex  string                  // Hex of Compressed Affine Point
 }
 
 func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, senderPubkeyHex string) (*common.PSSMessage, error) {
@@ -29,6 +30,7 @@ func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveN
 		SenderPubkeyHex:  senderPubkeyHex,
 	}
 
+	// Use bijson because of bigint in ACSSRoundDetails
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
@@ -38,8 +40,25 @@ func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveN
 	return &msg, nil
 }
 
+/*
+The ImplicateExecuteHandler verifies whether the "implication" is correct and if so, goes into ShareRecovery.
+For this step the Node needs to have the shareMap for the specific ACSS round.
+
+Steps:
+ 1. Check self is the sender
+    If not: return
+ 2. Retrieve the ACSS state for the specific ACSS round
+    If not found: error and return
+ 3. Check whether we are already in Share Recovery for this ACSS round
+    If so: return
+ 4. Verify ZKP (this should pass) and Predicate on the share (this should fail)
+    If both are as expected, proceed to Share Recovery
+    Otherwise: return
+*/
 func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
 	// TODO check sender == self
 
 	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())

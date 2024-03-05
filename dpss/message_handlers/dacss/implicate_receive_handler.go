@@ -13,14 +13,15 @@ import (
 // TODO tests
 // TODO error handling
 
+// The message for the first step of Implicate flow
 var ImplicateReceiveMessageType string = "dacss_implicate_receive"
 
 type ImplicateReceiveMessage struct {
 	ACSSRoundDetails common.ACSSRoundDetails // ID of the specific ACSS round within DPSS.
-	Kind             string
-	CurveName        common.CurveName
-	SymmetricKey     []byte // Compressed Affine Point
-	Proof            []byte // Contains d, R, S
+	Kind             string                  // Type of the message
+	CurveName        common.CurveName        // Name (indicator) of curve used in the messages.
+	SymmetricKey     []byte                  // Compressed Affine Point
+	Proof            []byte                  // Contains d, R, S
 }
 
 func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte) (*common.PSSMessage, error) {
@@ -32,6 +33,7 @@ func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveN
 		Proof:            proof,
 	}
 
+	// Use bijson because of bigint in ACSSRoundDetails
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
@@ -41,7 +43,25 @@ func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveN
 	return &msg, nil
 }
 
+/*
+The ImplicateReceiveHandler receives the initial Implicate message and checks whether the necessary shareMap is already present in the Node's state.
+If this is the case, it continues the Implicate flow by sending an ImplicateExecute message.
+If the Node doesn't yet have the shareMap, the implicate information is added to the state,
+so the follow-up can be done as soon as the shareMap is received (in ProposeHandler)
+
+Steps:
+ 1. Check if sharemap for indicated ACSS round has already been stored
+    If not: return
+ 2. Check whether we are already in Share Recovery for this ACSS round
+    If so: return
+ 3. If the node has the shareMap, continue the Implicate flow by sending an ImplicateExecute message
+ 4. If the node doesnt have the shareMap, store the symmetric key, proof and sender's public key as hex value
+    this will be picked up by the ProposeHandler once the shareMap has been received
+*/
 func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
 
 	// First check whether the sharemap for this acss round has already been stored
 	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
@@ -56,7 +76,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 	}
 
 	curve := curves.GetCurveByName(string(msg.CurveName))
-
+	// Convert sender's public key to hex
 	PK_i, err := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
 	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
 
