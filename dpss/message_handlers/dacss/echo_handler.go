@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
@@ -15,20 +14,20 @@ var DacssEchoMessageType string = "dacss_echo"
 // DacssEchoMessage represents the echo handler in the RBC protocol
 type DacssEchoMessage struct {
 	ACSSRoundDetails common.ACSSRoundDetails // Details of the current row
-	Kind             common.MessageType      // Type of the message
-	Curve            *curves.Curve           // Curve used for the computation
+	Kind             string                  // Type of the message
+	CurveName        common.CurveName        // Curve used for the computation
 	Share            infectious.Share        // Shard comming from the RS Encoding.
 	Hash             []byte                  // Hash of the shares.
 	NewCommittee     bool                    // Tells if this message was sent to an old or new committee.
 }
 
 // NewDacssEchoMessage creates an ECHO message in the RBC protocol.
-func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.PSSMessage, error) {
+func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName, sender int, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		NewCommittee:     newCommittee,
 		Kind:             DacssEchoMessageType,
-		Curve:            curve,
+		CurveName:        curve,
 		Share:            share,
 		Hash:             hash,
 	}
@@ -68,7 +67,7 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 		_, t, _ := self.Params()
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 			acssState.RBCState.IsReadyMsgSent = true
-			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.Curve)
+			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName)
 			if err != nil {
 				log.WithField("error", err).Error("DacssEchoMessage - Process()")
 				return

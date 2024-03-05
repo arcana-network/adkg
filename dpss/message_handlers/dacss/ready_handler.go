@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/vivint/infectious"
 )
 
@@ -15,12 +14,12 @@ var AcssReadyMessageType common.MessageType = "dacss_ready"
 type DacssReadyMessage struct {
 	AcssRoundDetails common.ACSSRoundDetails
 	Kind             common.MessageType
-	Curve            *curves.Curve
+	Curve            common.CurveName
 	Share            infectious.Share
 	Hash             []byte
 }
 
-func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve *curves.Curve) (*common.PSSMessage, error) {
+func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName) (*common.PSSMessage, error) {
 	m := DacssReadyMessage{
 		Kind:             AcssReadyMessageType,
 		Curve:            curve,
