@@ -13,12 +13,12 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssProposeMessageType common.MessageType = "Acss_propose"
+var AcssProposeMessageType string = "Acss_propose"
 
 type AcssProposeMessage struct {
 	ACSSRoundDetails   common.ACSSRoundDetails
 	NewCommittee       bool
-	Kind               common.MessageType
+	Kind               string
 	CurveName          common.CurveName
 	Data               common.AcssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
 	NewCommitteeParams common.CommitteeParams
@@ -50,14 +50,6 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
-	// TODO check whether this check is indeed desired
-	// Check whether the shares were already received. If so, ignore the message
-	_, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if found {
-		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
-		return
-	}
-
 	// Immediately: save shares, commitments & dealer's ephemeral pubkey in node's state
 	// This information is also needed for the implicate flow (when received from other nodes)
 	err := self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
@@ -72,18 +64,21 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// If so, send ImplicateExecuteMessage
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if found && err == nil && len(acssState.ImplicateInformationSlice) > 0 {
-		// TODO iterate over all implicate flows that might be happening
-		// implicateExecuteMessage, err := NewImplicateExecuteMessage(
-		// 	msg.ACSSRoundDetails,
-		// 	msg.CurveName,
-		// 	acssState.ImplicateInformation.SymmetricKey,
-		// 	acssState.ImplicateInformation.Proof,
-		// 	acssState.ImplicateInformation.SenderPubkeyHex)
-		// if err != nil {
-		// 	log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
-		// 	return
-		// }
-		// self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
+
+		for _, implicate := range acssState.ImplicateInformationSlice {
+			implicateExecuteMessage, err := NewImplicateExecuteMessage(
+				msg.ACSSRoundDetails,
+				msg.CurveName,
+				implicate.SymmetricKey,
+				implicate.Proof,
+				implicate.SenderPubkeyHex)
+			if err != nil {
+				log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+				return
+			}
+			self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
+		}
+
 	}
 
 	//Identified by nodeDetailsId
@@ -119,7 +114,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Verify self share against commitments.
-	//TODO: we can identify by node index and whether in old or new committee by self.IsOldNode()
+	//we can identify by node index and whether in old or new committee by self.IsOldNode()
 	log.Debugf("Going to verify predicate for node=%v, %v", self.Details().Index, self.IsOldNode())
 	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
@@ -200,10 +195,20 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		//In that case send implicate with the ephemeral public key of the dealer
 
 		log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
-		// TODO: create proof
-		// TODO create symmetric key
 
-		// implicateMsg := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, msg.Data.DealerEphemeralPubKey)
+		symmetricKey := key
+		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
+
+		implicateMsg, err := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey)
+
+		if err != nil {
+			log.WithField("error constructing ImplicateMsg", err).Error("ImplicateReceiveMessage")
+			return
+		}
+
 		// TODO broadcast msg / send directly to all. What is the difference?
+		for _, node := range self.Nodes(msg.NewCommittee) {
+			self.Send(node, *implicateMsg)
+		}
 	}
 }

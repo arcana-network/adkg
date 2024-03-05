@@ -10,12 +10,12 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var DacssEchoMessageType common.MessageType = "dacss_echo"
+var DacssEchoMessageType string = "dacss_echo"
 
 type DacssEchoMessage struct {
 	ACSSRoundDetails common.ACSSRoundDetails
 	CommitteeType    int
-	Kind             common.MessageType
+	Kind             string
 	Curve            *curves.Curve
 	Share            infectious.Share
 	Hash             []byte // Hash of the shares.

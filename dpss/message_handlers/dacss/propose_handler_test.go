@@ -1,6 +1,7 @@
 package dacss
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"math/big"
 	"testing"
@@ -42,11 +43,57 @@ func TestProcessProposeMessage(t *testing.T) {
 	msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
 
 	sent_msg = transport.GetSentMessages()
+
+	for i := 0; i < defaultSetup.NewCommitteeParams.N+defaultSetup.OldCommitteeParams.N; i++ {
+		assert.Equal(t, sent_msg[i].Type, DacssEchoMessageType)
+
+	}
 	//total length of the transport msg = length of the old msgs + new msgs
 	assert.Equal(t, len(sent_msg), defaultSetup.NewCommitteeParams.N+defaultSetup.OldCommitteeParams.N)
 
 }
 
+// Test for invalid share
+// if not verified, then the node should send implicate to all the other node
+func TestInvalidShare(t *testing.T) {
+	defaultSetup := testutils.DefaultTestSetup()
+
+	//invalid msg construction
+	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
+	transport := SingleOldNode.Transport
+
+	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
+
+	//constructing an invalid share for node0
+	X := SingleOldNode.Details().PubKey.X
+	Y := SingleOldNode.Details().PubKey.Y
+	pubKeyPoint, _ := curves.K256().NewIdentityPoint().Set(&X, &Y)
+
+	bytes := make([]byte, 33)
+	_, _ = rand.Read(bytes)
+
+	msgOldCommittee.Data.ShareMap[hex.EncodeToString(pubKeyPoint.ToAffineCompressed())] = sharing.ShamirShare{
+		Id:    0,
+		Value: bytes, //random bytes instead of actual share
+	}.Bytes()
+
+	// Pre-check: in the node's state DualAcssStarted is false
+	assert.False(t, SingleOldNode.State().DualAcssStarted)
+
+	// Call the process on the msg
+	// should send an implicate
+	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
+
+	sent_msg := transport.GetSentMessages()
+
+	for i := 0; i < defaultSetup.OldCommitteeParams.N; i++ {
+		assert.Equal(t, sent_msg[i].Type, ImplicateReceiveMessageType)
+
+	}
+
+	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
+
+}
 func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
 
 	id := big.NewInt(1)
