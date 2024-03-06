@@ -47,12 +47,6 @@ func TestIncrement(test *testing.T) {
 
 	ephemeralKeypairSender := common.GenerateKeyPair(curves.K256())
 
-	// Initialize the AcssStore as default
-	testRecvr.State().AcssStore.UpdateAccsState(
-		acssRoundDetails.ToACSSRoundID(),
-		func(as *common.AccsState) {},
-	)
-
 	echoMsg, err := getTestEchoMsg(
 		testSender,
 		testRecvr,
@@ -87,13 +81,62 @@ func TestIncrement(test *testing.T) {
 	testRecvr.State().AcssStore.Unlock()
 }
 
-func getTestEchoMsg(
-	sender *testutils.PssTestNode,
-	receiver *testutils.PssTestNode,
-	ephemeralKey common.KeyPair,
-	acssRoundDetails common.ACSSRoundDetails,
-) (DacssEchoMessage, error) {
+/*
+Function: Process
 
+Test case: happy path. The receiver node receives 2t + 1 ECHO messages and then,
+it sends the corresponding ready message to all parties.
+
+Expectations:
+- the node increments the counter of echo messages.
+- the node sends a READY message to all parties.
+*/
+// TODO Finish this
+func TestCounterEchoMessages(test *testing.T) {
+	const COMMITTEE = true
+	defaultSetup := testutils.DefaultTestSetup()
+	receiverNode, senderGroup := defaultSetup.GetDealerAnd2kPlusOneNodes(COMMITTEE)
+	dealerNode := senderGroup[0]
+
+	// Set the round parameters
+	id := big.NewInt(1)
+	pssRoundDetails := common.PSSRoundDetails{
+		PssID:  common.NewPssID(*id),
+		Dealer: dealerNode.Details(),
+	}
+	acssRoundDetails := common.ACSSRoundDetails{
+		PSSRoundDetails: pssRoundDetails,
+		ACSSCount:       1,
+	}
+
+	ephemeralKeypairSender := common.GenerateKeyPair(curves.K256())
+
+	// Initialize the AcssStore as default for the receiver node
+	receiverNode.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
+
+	for _, senderNode := range senderGroup {
+		echoMsg, err := getTestEchoMsg(
+			senderNode,
+			receiverNode,
+			ephemeralKeypairSender,
+			acssRoundDetails,
+		)
+		if err != nil {
+			test.Errorf("Error creating the echo message: %v", err)
+		}
+
+		echoMsg.Process(senderNode.Details(), receiverNode)
+	}
+
+}
+
+func generateShardsRndSecret(
+	sender *testutils.PssTestNode,
+	ephemeralKey common.KeyPair,
+) ([]infectious.Share, []byte, error) {
 	n, k, _ := sender.Params()
 
 	secret := sharing.GenerateSecret(curves.K256())
@@ -105,10 +148,10 @@ func getTestEchoMsg(
 	)
 	if err != nil {
 		log.Errorf("Error creating the secret sharing: %v", err)
-		return DacssEchoMessage{}, err
+		return []infectious.Share{}, []byte{}, err
 	}
 
-	shards, hashMsg, err := computeReedSolomonShardsAndHash(
+	return computeReedSolomonShardsAndHash(
 		commitment,
 		sender,
 		shares,
@@ -116,6 +159,15 @@ func getTestEchoMsg(
 		n,
 		k,
 	)
+}
+
+func getTestEchoMsg(
+	sender *testutils.PssTestNode,
+	receiver *testutils.PssTestNode,
+	ephemeralKey common.KeyPair,
+	acssRoundDetails common.ACSSRoundDetails,
+) (DacssEchoMessage, error) {
+	shards, hashMsg, err := generateShardsRndSecret(sender, ephemeralKey)
 	if err != nil {
 		log.Errorf("Error creating the RS shards sharing: %v", err)
 		return DacssEchoMessage{}, err

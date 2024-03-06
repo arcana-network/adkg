@@ -64,6 +64,12 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 	// of Algorithm 4, "Asynchronous Data Disemination".
 	if reflect.DeepEqual(ownShare.Data, m.Share.Data) && reflect.DeepEqual(m.Hash, ownHash) {
 		acssState.RBCState.ReceivedEcho[sender.Index] = true
+		self.State().AcssStore.UpdateAccsState(
+			m.ACSSRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RBCState.ReceivedEcho[sender.Index] = true
+			},
+		)
 		_, t, _ := self.Params()
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 			acssState.RBCState.IsReadyMsgSent = true
