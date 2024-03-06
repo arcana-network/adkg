@@ -94,28 +94,6 @@ func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]comm
 	return nodes
 }
 
-// SetupRBCState sets up the default state for the RBC protocol for a given ACSS
-// round ID. At the end of the execution, all the fileds are empty and the state
-// reflects that the node has not sent the READY message. It returns error if
-// the setup is not done correctly.
-func (n *PssTestNode) SetupRBCState(acssRoundDetails common.ACSSRoundDetails) error {
-	err := n.State().AcssStore.UpdateAccsState(
-		acssRoundDetails.ToACSSRoundID(),
-		func(state *common.AccsState) {
-			state.RBCState = common.RBCState{
-				Phase:           common.Initial,
-				ReceivedEcho:    make(map[int]bool),
-				ReceivedReady:   make(map[int]bool),
-				ReceivedMessage: make([]byte, 0),
-				IsReadyMsgSent:  false,
-				HashMsg:         make([]byte, 0),
-			}
-		},
-	)
-
-	return err
-}
-
 func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMockTransport, isFaulty, isNewCommittee bool) *PssTestNode {
 	var params common.CommitteeParams
 	if isNewCommittee {

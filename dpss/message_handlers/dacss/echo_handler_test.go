@@ -45,11 +45,13 @@ func TestIncrement(test *testing.T) {
 		ACSSCount:       1,
 	}
 
-	// Sets up the RBC state for the sender and receiver to be empty.
-	testRecvr.SetupRBCState(acssRoundDetails)
-	testSender.SetupRBCState(acssRoundDetails)
-
 	ephemeralKeypairSender := common.GenerateKeyPair(curves.K256())
+
+	// Initialize the AcssStore as default
+	testRecvr.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
 
 	echoMsg, err := getTestEchoMsg(
 		testSender,
@@ -64,6 +66,7 @@ func TestIncrement(test *testing.T) {
 	echoMsg.Process(testSender.Details(), testRecvr)
 
 	testRecvr.State().AcssStore.Lock()
+
 	acssState, stateExists, err := testRecvr.State().AcssStore.Get(
 		echoMsg.ACSSRoundDetails.ToACSSRoundID(),
 	)
