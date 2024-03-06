@@ -75,7 +75,7 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 
 // only register a message was received, no further action
 func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage common.PSSMessage) {
-	node.Transport.receivedMessages = append(node.Transport.receivedMessages, pssMessage)
+	node.Transport.ReceivedMessages = append(node.Transport.ReceivedMessages, pssMessage)
 }
 
 func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {

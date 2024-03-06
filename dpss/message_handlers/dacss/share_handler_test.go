@@ -62,7 +62,7 @@ func TestStartDualAcss(t *testing.T) {
 
 	sentShares_old := proposeMsg_old.Data.ShareMap
 	sentCommitments_old := proposeMsg_old.Data.Commitments
-	commitments_old, err := sharing.DecompressCommitments(oldParams.K, sentCommitments_old, curves.K256())
+	commitments_old, _ := sharing.DecompressCommitments(oldParams.K, sentCommitments_old, curves.K256())
 
 	assert.Equal(t, testutils.DefaultN_old, len(sentShares_old))
 	assert.Equal(t, testutils.DefaultK_old, len(commitments_old))
@@ -77,7 +77,7 @@ func TestStartDualAcss(t *testing.T) {
 
 	sentShares_new := proposeMsg_new.Data.ShareMap
 	sentCommitments_new := proposeMsg_new.Data.Commitments
-	commitments_new, err := sharing.DecompressCommitments(newParams.K, sentCommitments_new, curves.K256())
+	commitments_new, _ := sharing.DecompressCommitments(newParams.K, sentCommitments_new, curves.K256())
 
 	assert.Equal(t, testutils.DefaultN_new, len(sentShares_new))
 	assert.Equal(t, testutils.DefaultK_new, len(commitments_new))
