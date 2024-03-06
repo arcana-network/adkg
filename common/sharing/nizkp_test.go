@@ -23,10 +23,10 @@ func TestValidNIZKP(t *testing.T) {
 		//completeness
 		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
 
-		proof, err := unpackProof(curve, proofBytes)
+		proof, err := UnpackProof(curve, proofBytes)
 
 		assert.Nil(t, err)
-		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), true)
+		assert.Equal(t, Verify(proof, g, PK_i, PK_d, K_i_d, curve), true)
 	}
 
 }
@@ -44,9 +44,9 @@ func TestInvalidNIZKP(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		K_i_d := curve.Point.Random(rand.Reader)
 		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
-		proof, err := unpackProof(curve, proofBytes)
+		proof, err := UnpackProof(curve, proofBytes)
 		assert.Nil(t, err)
-		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
+		assert.Equal(t, Verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
 	}
 
 	//trying to prove for random PK_i != g^SK_i
@@ -55,8 +55,8 @@ func TestInvalidNIZKP(t *testing.T) {
 		PK_i := curve.Point.Random(rand.Reader)
 		K_i_d := PK_d.Mul(SK_i)
 		proofBytes := GenerateNIZKProof(curve, SK_i, PK_i, PK_d, K_i_d, g)
-		proof, err := unpackProof(curve, proofBytes)
+		proof, err := UnpackProof(curve, proofBytes)
 		assert.Nil(t, err)
-		assert.Equal(t, verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
+		assert.Equal(t, Verify(proof, g, PK_i, PK_d, K_i_d, curve), false)
 	}
 }

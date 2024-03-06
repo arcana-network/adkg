@@ -3,11 +3,11 @@ package common
 import (
 	"errors"
 	"math/big"
-	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/coinbase/kryptology/pkg/sharing"
 )
 
 // PSSParticipant is the interface that covers all the participants inside the
@@ -15,8 +15,6 @@ import (
 type PSSParticipant interface {
 	// For PSS state
 	State() *PSSNodeState
-	// Returns the ID of the participant
-	ID() int
 	// Defines if the current node belongs to the old or new committee.
 	IsOldNode() bool
 	// Obtains the public key from a node in the old or new committee. The
@@ -31,6 +29,7 @@ type PSSParticipant interface {
 	// Send a message to a given node.
 	Send(n NodeDetails, msg PSSMessage) error
 	// Obtains the details of the current node.
+	// The public key in the NodeDetails uniquely identifies the node.
 	Details() NodeDetails
 	// Returns the private key of the current node.
 	PrivateKey() curves.Scalar
@@ -45,25 +44,130 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	ShareStore      *PSSShareStoreMap // Storage for the shares in the ACSS Protocol.
-	RbcStore        *RBCStateMap      // Storage for the RBC protocol.
-	DualAcssStarted bool              // Flag whether the DualAcss part of the protocol has started.
+	AcssStore       *AcssStateMap // State for the separate ACSS rounds
+	DualAcssStarted bool          // Flag whether the DualAcss part of the protocol has started.
 }
 
-// Stores the shares tha the node receives during the DPSS protocol.
+// Stores the information of the shares for a given ACSS Round
+type AcssStateMap struct {
+	sync.Mutex
+	// For each specific ACSS round, we have a DacssState
+	AcssStateForRound sync.Map // key:ACSSRoundID, value: AccsState
+}
+
+type AccsState struct {
+	// Commitments, encrypted shares & ephemeral public key of the dealer
+	// This is being sent around by the nodes as well
+	AcssData AcssData
+	// Storage for RBC protocol that is executed in this ACSS round
+	RBCState RBCState
+	// TODO do we want to extract ImplicateInformationSlice, VerifiedRecoveryShares & ShareRecoveryOngoing to a separate state field?
+	// Information about all the possible implicate flows that can be in progress
+	ImplicateInformationSlice []ImplicateInformation
+	// Received verified shares from other nodes, needed to recover Node's share in Implicate phase
+	VerifiedRecoveryShares map[int]*sharing.ShamirShare
+	// Indicates per ACSS round whether the Share Recovery is in process
+	ShareRecoveryOngoing bool
+	// Indicates whether the shares for current node for this ACSS round were validated
+	SharesValidated bool
+}
+
+type AccsStateUpdater func(*AccsState)
+
+type AcssData struct {
+	Commitments []byte
+	// Key = hex of PubKey receiving node
+	// Value = encrypted share for receiving node
+	ShareMap map[string][]byte
+	// hex of ephemeral public key of the dealer
+	DealerEphemeralPubKey string
+}
+
+func (a *AcssData) IsUninitialized() bool {
+	// Check if all the fields are in their zero value state.
+	// For Commitments and DealerEphemeralPubKey, this means checking if they are empty.
+	// For ShareMap, check if it is nil or has no entries.
+	return len(a.Commitments) == 0 && len(a.DealerEphemeralPubKey) == 0 && (a.ShareMap == nil || len(a.ShareMap) == 0)
+}
+
+func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
+	value, found := m.AcssStateForRound.Load(acssRoundID)
+	if !found {
+		return nil, false, nil
+	}
+
+	dacssState, ok := value.(*AccsState)
+	if !ok {
+		// If the value is found but is not of type *AccsState, return an error.
+		return nil, true, errors.New("value found, but type is not *AccsState")
+	}
+
+	// If everything is ok, return the dacssState, true for found, and no error.
+	return dacssState, true, nil
+}
+
+// Generic updater for a AcssState within the AcssStateMap
+func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStateUpdater) error {
+	// Attempt to load the existing AccsState for the given acssRoundID
+	value, found := m.AcssStateForRound.Load(acssRoundID)
+	var existingState *AccsState
+
+	if found {
+		// If found, type assert the value to *AccsState
+		var ok bool
+		existingState, ok = value.(*AccsState)
+		if !ok {
+			return errors.New("value found, but type is not *AccsState")
+		}
+	} else {
+		// If not found, create a new AccsState
+		existingState = &AccsState{}
+	}
+
+	// Apply the updater function to the existing or new AccsState
+	updater(existingState)
+
+	// Store the updated or new AccsState back into the map
+	m.AcssStateForRound.Store(acssRoundID, existingState)
+
+	return nil
+}
+
+// Data that is needed to execute Implicate flow
+// This flow might have a waiting period in between until it has access to the shareMap
+// to be able to continue the flow once the shareMap has been received, this information is stored
+type ImplicateInformation struct {
+	SymmetricKey    []byte // Compressed Affine Point
+	Proof           []byte // Contains d, R, S
+	SenderPubkeyHex string // Hex of compressed Affine Point
+}
+
+// Stores the shares that the node receives during the DPSS protocol.
 type PSSShareStore struct {
 	sync.Mutex
 	Shares map[int]curves.Scalar // Map of shares. K: index of the owner of the share, V: the actual share.
 }
 
-// PSSRoundID defines the ID of an instance of the DPSS protocol.
-type PSSRoundID string
-
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
 type PSSRoundDetails struct {
-	PSSRoundID PSSRoundID // ID for the PSS.
-	Dealer     int        // ID of the node that is dealing the information to other parties.
-	Kind       string     // Stage of the DPSS protocol in which the round is.
+	// ID for the PSS.
+	PssID string
+	// Index & PubKey of the dealer Node.
+	Dealer NodeDetails
+}
+
+// ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
+type ACSSRoundID string
+
+type ACSSRoundDetails struct {
+	PSSRoundDetails PSSRoundDetails // PSSRoundDetails represented in a string
+	ACSSCount       int             // number of ACSS round this is in the PSS
+}
+
+// FIXME
+func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
+	// TODO implement
+	return "test"
 }
 
 // n -> total number of nodes
@@ -75,105 +179,22 @@ type CommitteeParams struct {
 	T int // = K - 1
 }
 
-// Stores the information of the shares for a given round ID. Remember that
-// RBC can be executed in multiple rounds at the same time. This storage saves
-// the RBC information for all of the rounds.
-type PSSShareStoreMap struct {
-	Map sync.Map // Key: RoundID, Value: PSSSharingStore
-}
-
 // PSSMessage represents a message in the DPSS protocol
 type PSSMessage struct {
-	RoundID PSSRoundID // Round ID of the current execution of the DPSS protocol.
-	Type    string     // Phase of the protocol in which the message belongs to.
-	Data    []byte     // Actual data in the message.
+	PSSRoundDetails PSSRoundDetails // Round ID of the current execution of the DPSS protocol.
+	Type            string          // Phase of the protocol in which the message belongs to.
+	Data            []byte          // Actual data in the message.
 }
 
-// Obtains a sharing store for a PSS round given the round ID. Returns the
-// corresponding share store, and a boolean telling if the key was found or not.
-func (m *PSSShareStoreMap) Get(r RoundID) (shares *PSSShareStore, found bool) {
-	inter, found := m.Map.Load(r)
-	shares, _ = inter.(*PSSShareStore)
-	return
-}
-
-func CreatePSSMessage(roundID PSSRoundID, phase string, data []byte) PSSMessage {
+func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte) PSSMessage {
 	return PSSMessage{
-		RoundID: roundID,
-		Type:    phase,
-		Data:    data,
+		PSSRoundDetails: pssRoundDetails,
+		Type:            phase,
+		Data:            data,
 	}
-}
-
-func (store *PSSShareStoreMap) GetOrSetIfNotComplete(r RoundID, input *PSSShareStore) (keygen *PSSShareStore, complete bool) {
-	inter, found := store.GetOrSet(r, input)
-	if found {
-		if inter == nil {
-			return inter, true
-		}
-	}
-	return inter, false
-}
-
-// Obtains a share store given a round ID. If such key is not in the map, it
-// sotres the given share store using the provided key. If the key was not in
-// the map, then the function returns a boolean flag.
-func (store *PSSShareStoreMap) GetOrSet(r RoundID, input *PSSShareStore) (keygen *PSSShareStore, found bool) {
-	inter, found := store.Map.LoadOrStore(r, input)
-	keygen, _ = inter.(*PSSShareStore)
-	return
-}
-
-func (store *PSSShareStoreMap) Complete(r RoundID) {
-	store.Map.Store(r, nil)
-}
-
-// Deletes a share store given the ID of its round.
-func (store *PSSShareStoreMap) Delete(r RoundID) {
-	store.Map.Delete(r)
-}
-
-// Obtains an round ID from the round details by appending the information
-// together.
-func (d *PSSRoundDetails) ID() PSSRoundID {
-	return PSSRoundID(strings.Join([]string{string(d.PSSRoundID), d.Kind, strconv.Itoa(d.Dealer)}, Delimiter4))
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPSSRoundID(index big.Int) PSSRoundID {
-	return PSSRoundID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
-}
-
-// Return the index of a PSSRoundID.
-func (id *PSSRoundID) GetIndex() (big.Int, error) {
-	str := string(*id)
-	substrs := strings.Split(str, Delimiter3)
-
-	if len(substrs) != 2 {
-		return *new(big.Int), errors.New("could not parse DPSSRoundID")
-	}
-
-	index, ok := new(big.Int).SetString(substrs[1], 16)
-	if !ok {
-		return *new(big.Int), errors.New("could not get back index from DPSSRoundID")
-	}
-
-	return *index, nil
-}
-
-// DACSS Round Leader
-func (r *PSSRoundID) Leader() (big.Int, error) {
-	str := string(*r)
-	substrs := strings.Split(str, Delimiter4)
-
-	if len(substrs) != 3 {
-		return *new(big.Int), errors.New("could not parse round id")
-	}
-
-	index, ok := new(big.Int).SetString(substrs[2], 16)
-	if !ok {
-		return *new(big.Int), errors.New("could not get back index from round id")
-	}
-
-	return *index, nil
+func NewPssID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
 }

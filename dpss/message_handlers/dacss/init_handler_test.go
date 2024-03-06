@@ -2,7 +2,6 @@ package dacss
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"math/big"
 	"testing"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/torusresearch/bijson"
 )
 
 /*
@@ -63,7 +63,7 @@ func TestNewInitMessage(test *testing.T) {
 	}
 
 	createdMsgBytes, err := NewInitMessage(
-		msg.RoundID,
+		msg.PSSRoundDetails,
 		msg.OldShares,
 		*msg.CurveName,
 		ephemeralKeypair,
@@ -73,10 +73,10 @@ func TestNewInitMessage(test *testing.T) {
 	}
 
 	var createdInitMsg InitMessage
-	json.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+	bijson.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
 
 	// Asserts that the values are the same
-	assert.Equal(test, msg.RoundID, createdInitMsg.RoundID)
+	assert.Equal(test, msg.PSSRoundDetails, createdInitMsg.PSSRoundDetails)
 	assert.Equal(test, msg.OldShares, createdInitMsg.OldShares)
 	assert.Equal(test, *msg.CurveName, *createdInitMsg.CurveName)
 	assert.Equal(test, msg.EphemeralPublicKey, createdInitMsg.EphemeralPublicKey)
@@ -114,14 +114,18 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 // Creates an init message for testing with a fiven ammount of old shares.
 func createTestMsg(testDealer *testutils.PssTestNode, nSecrets, n, k int, ephemeralKeypair common.KeyPair) (*InitMessage, error) {
 	id := big.NewInt(1)
-	roundID := common.NewPSSRoundID(*id)
+	roundDetails := common.PSSRoundDetails{
+		PssID:  common.NewPssID(*id),
+		Dealer: testDealer.Details(),
+	}
+
 	shares, err := generateOldShares(nSecrets, n, k, common.SECP256K1)
 	if err != nil {
 		return nil, err
 	}
 
 	msg := &InitMessage{
-		RoundID:            roundID,
+		PSSRoundDetails:    roundDetails,
 		OldShares:          shares,
 		EphemeralSecretKey: ephemeralKeypair.PrivateKey.Bytes(),
 		EphemeralPublicKey: ephemeralKeypair.PublicKey.ToAffineCompressed(),

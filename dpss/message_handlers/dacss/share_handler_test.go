@@ -1,7 +1,7 @@
 package dacss
 
 import (
-	"encoding/json"
+	"encoding/hex"
 	"log"
 	"math/big"
 	"testing"
@@ -11,6 +11,7 @@ import (
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/stretchr/testify/assert"
+	"github.com/torusresearch/bijson"
 )
 
 /*
@@ -54,7 +55,7 @@ func TestStartDualAcss(t *testing.T) {
 	// The first broadcasted msg was for the old committee
 	msgContent_old := broadcastedMsgs[0]
 	var proposeMsg_old AcssProposeMessage
-	err := json.Unmarshal(msgContent_old.Data, &proposeMsg_old)
+	err := bijson.Unmarshal(msgContent_old.Data, &proposeMsg_old)
 	if err != nil {
 		log.Fatalf("Error parsing ProposeMsg JSON: %v", err)
 	}
@@ -69,7 +70,7 @@ func TestStartDualAcss(t *testing.T) {
 	// 3. Check N_new shares & K_new commitments were sent to the new committee
 	msgContent_new := broadcastedMsgs[1]
 	var proposeMsg_new AcssProposeMessage
-	err = json.Unmarshal(msgContent_new.Data, &proposeMsg_new)
+	err = bijson.Unmarshal(msgContent_new.Data, &proposeMsg_new)
 	if err != nil {
 		log.Fatalf("Error parsing ProposeMsg JSON: %v", err)
 	}
@@ -82,14 +83,17 @@ func TestStartDualAcss(t *testing.T) {
 	assert.Equal(t, testutils.DefaultK_new, len(commitments_new))
 
 	// 4. Check: Shares were correctly encrypted for node 2 of old committee
-	shares_node2 := sentShares_old[2][:]
-	symm_key2, _ := sharing.CalculateSharedKey(testDealer.GetPublicKeyFor(2, false), ephemeralKeypair.PrivateKey)
-	_, _, verified_old := sharing.Predicate(symm_key2, shares_node2, sentCommitments_old, defaultSetup.OldCommitteeParams.K, curves.K256())
+	pubkeyOldNode2 := testDealer.GetPublicKeyFor(2, false)
+	share_node2 := sentShares_old[hex.EncodeToString(pubkeyOldNode2.ToAffineCompressed())]
+	symm_key2, _ := sharing.CalculateSharedKey(pubkeyOldNode2, ephemeralKeypair.PrivateKey)
+	_, _, verified_old := sharing.Predicate(symm_key2, share_node2, sentCommitments_old, defaultSetup.OldCommitteeParams.K, curves.K256())
 	assert.True(t, verified_old)
 
 	// 5. Check: Shares were correctly encrypted for node 3 of new committee
-	share_node3 := sentShares_new[3][:]
-	symm_key3, _ := sharing.CalculateSharedKey(testDealer.GetPublicKeyFor(3, true), ephemeralKeypair.PrivateKey)
+	pubkeyNewNode3 := testDealer.GetPublicKeyFor(3, true)
+	share_node3 := sentShares_new[hex.EncodeToString(pubkeyNewNode3.ToAffineCompressed())]
+
+	symm_key3, _ := sharing.CalculateSharedKey(pubkeyNewNode3, ephemeralKeypair.PrivateKey)
 	_, _, verified_new := sharing.Predicate(symm_key3, share_node3, sentCommitments_new, defaultSetup.NewCommitteeParams.K, curves.K256())
 	assert.True(t, verified_new)
 
@@ -99,15 +103,24 @@ func TestStartDualAcss(t *testing.T) {
 }
 
 func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup, ephemeralKeypair common.KeyPair) DualCommitteeACSSShareMessage {
-	roundId := common.NewPSSRoundID(big.Int{})
+
+	id := big.NewInt(1)
+	pssRoundDetails := common.PSSRoundDetails{
+		PssID:  common.NewPssID(*id),
+		Dealer: testDealer.Details(),
+	}
+	acssRoundDetails := common.ACSSRoundDetails{
+		PSSRoundDetails: pssRoundDetails,
+		ACSSCount:       1,
+	}
 	testSecret := sharing.GenerateSecret(curves.K256())
 	msg := DualCommitteeACSSShareMessage{
-		RoundID:            roundId,
+		ACSSRoundDetails:   acssRoundDetails,
 		Kind:               ShareMessageType,
 		CurveName:          common.CurveName(curves.K256().Name),
 		Secret:             testSecret,
-		EphemeralSecretKey: ephemeralKeypair.PrivateKey.Bytes(),             // FIXME
-		EphemeralPublicKey: ephemeralKeypair.PublicKey.ToAffineCompressed(), // FIXME
+		EphemeralSecretKey: ephemeralKeypair.PrivateKey.Bytes(),
+		EphemeralPublicKey: ephemeralKeypair.PublicKey.ToAffineCompressed(),
 		Dealer:             testDealer.Details(),
 		NewCommitteeParams: defaultSetup.NewCommitteeParams,
 	}

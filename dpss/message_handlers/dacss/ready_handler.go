@@ -5,48 +5,35 @@ import (
 	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/vivint/infectious"
 )
 
 var AcssReadyMessageType common.MessageType = "dacss_ready"
 
-const (
-	OldCommittee = iota
-	NewCommittee
-)
-
 // Stores the information for the READY message in the RBC protocol.
 type DacssReadyMessage struct {
-	RoundID       common.RoundID
-	NewCommittee  bool
-	CommitteeType int
-	Kind          common.MessageType
-	Curve         *curves.Curve
-	Share         infectious.Share
-	Hash          []byte
+	AcssRoundDetails common.ACSSRoundDetails
+	Kind             common.MessageType
+	Curve            common.CurveName
+	Share            infectious.Share
+	Hash             []byte
 }
 
-func NewDacssReadyMessage(id common.RoundID, s infectious.Share, hash []byte, curve *curves.Curve, sender int, newCommittee bool) (*common.DKGMessage, error) {
+func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName) (*common.PSSMessage, error) {
 	m := DacssReadyMessage{
-		RoundID:      id,
-		NewCommittee: newCommittee,
-		Kind:         AcssReadyMessageType,
-		Curve:        curve,
-		Share:        s,
-		Hash:         hash,
+		Kind:             AcssReadyMessageType,
+		Curve:            curve,
+		Share:            share,
+		Hash:             hash,
+		AcssRoundDetails: acssRoundDetails,
 	}
-	if newCommittee {
-		m.CommitteeType = 1
-	} else {
-		m.CommitteeType = 0
-	}
+
 	bytes, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreateMessage(m.RoundID, string(m.Kind), bytes)
+	msg := common.CreatePSSMessage(m.AcssRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
 }
 

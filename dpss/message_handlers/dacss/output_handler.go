@@ -1,10 +1,9 @@
 package dacss
 
 import (
-	"encoding/json"
-
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/torusresearch/bijson"
 )
 
 var AcssOutputMessageType common.MessageType = "dacss_output"
@@ -30,7 +29,7 @@ func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, s
 		handlerType:  handlerType,
 	}
 
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}

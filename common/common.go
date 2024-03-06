@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	ethCommon "github.com/ethereum/go-ethereum/common"
@@ -15,6 +14,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
+	"github.com/vivint/infectious"
 
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
@@ -69,6 +69,18 @@ func CurvePointToPoint(p curves.Point, c CurveName) Point {
 			Y: *new(big.Int).SetBytes(yBytes),
 		}
 	}
+}
+
+// TODO test
+func PointToCurvePoint(p Point, c CurveName) (curves.Point, error) {
+	curve := CurveFromName(c)
+	X := p.X
+	Y := p.Y
+	pubKeyPoint, err := curve.NewIdentityPoint().Set(&X, &Y)
+	if err != nil {
+		return nil, err
+	}
+	return pubKeyPoint, nil
 }
 
 func reverse(s []byte) []byte {
@@ -340,10 +352,24 @@ func MapFromNodeList(nodeList []NodeDetails) (res map[NodeDetailsID]NodeDetails)
 
 // Represents the state of the node in the RBC protocol
 type RBCState struct {
-	Phase           phase        // Phase of within the protocol.
-	ReceivedEcho    map[int]bool // Echos received.
-	ReceivedReady   map[int]bool // Ready received.
-	ReceivedMessage []byte       // The actual message as a result of the RBC protocol.
+	Phase               phase            // Phase of within the protocol.
+	ReceivedEcho        map[int]bool     // Echos received.
+	ReceivedReady       map[int]bool     // Ready received.
+	ReceivedMessage     []byte           // The actual message as a result of the RBC protocol.
+	OwnReedSolomonShard infectious.Share // Shard that belongs to the party in the RS error correcting code.
+	IsReadyMsgSent      bool             // Tells whether the ready message was sent by the party.
+	HashMsg             []byte           // Message of the hash received in the propose.
+}
+
+// Counts the ammount of received ECHO messages.
+func (state *RBCState) CountEcho() int {
+	count := 0
+	for _, received := range state.ReceivedEcho {
+		if received {
+			count += 1
+		}
+	}
+	return count
 }
 
 func Stringify(i interface{}) string {
@@ -360,39 +386,4 @@ func Stringify(i interface{}) string {
 		log.WithError(err).Error("Could not fastjsonmarshal")
 	}
 	return string(byt)
-}
-
-type RBCStateMap struct {
-	sync.Mutex
-	Map sync.Map // Key: roundID, Value: RBCState
-}
-
-func (m *RBCStateMap) Get(r RoundID) (keygen *ABAState, found bool) {
-	inter, found := m.Map.Load(r)
-	keygen, _ = inter.(*ABAState)
-	return
-}
-
-func (store *RBCStateMap) GetOrSetIfNotComplete(r RoundID, input *ABAState) (keygen *ABAState, complete bool) {
-	inter, found := store.GetOrSet(r, input)
-	if found {
-		if inter == nil {
-			return inter, true
-		}
-	}
-	return inter, false
-}
-
-func (store *RBCStateMap) GetOrSet(r RoundID, input *ABAState) (keygen *ABAState, found bool) {
-	inter, found := store.Map.LoadOrStore(r, input)
-	keygen, _ = inter.(*ABAState)
-	return
-}
-
-func (store *RBCStateMap) Complete(r RoundID) {
-	store.Map.Store(r, nil)
-}
-
-func (store *RBCStateMap) Delete(r RoundID) {
-	store.Map.Delete(r)
 }

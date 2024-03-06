@@ -1,69 +1,116 @@
 package dacss
 
 import (
-	"encoding/json"
-	"math/big"
+	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	"github.com/arcana-network/dkgnode/keygen/messages"
+	"github.com/torusresearch/bijson"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
 )
 
-var AcssProposeMessageType common.MessageType = "Acss_propose"
+var AcssProposeMessageType string = "Acss_propose"
 
 type AcssProposeMessage struct {
-	RoundID            common.PSSRoundID
-	NewCommittee       bool
-	Kind               common.MessageType
+	ACSSRoundDetails   common.ACSSRoundDetails
+	NewCommittee       bool // Question: shouldn't this be redundant? Should be same as value in self?
+	Kind               string
 	CurveName          common.CurveName
-	Data               messages.MessageData
-	EphemeralPublicKey []byte // the dealer's ephemeral publicKey
-
+	Data               common.AcssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
+	NewCommitteeParams common.CommitteeParams
 }
 
-func NewAcssProposeMessageroundID(roundID common.PSSRoundID, msgData messages.MessageData, curveName common.CurveName, isNewCommittee bool, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
+func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.AcssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
-		RoundID:            roundID,
+		ACSSRoundDetails:   acssRoundDetails,
 		NewCommittee:       isNewCommittee,
 		Kind:               AcssProposeMessageType,
 		CurveName:          curveName,
 		Data:               msgData,
-		EphemeralPublicKey: ephemeralPublicKey,
+		NewCommitteeParams: NewCommitteeParams,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	msg := common.CreatePSSMessage(m.RoundID, string(m.Kind), bytes)
+	msg := common.CreatePSSMessage(m.ACSSRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
 }
 
 func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
-	log.Debugf("Received Propose message from %d on %d", sender.Index, self.Details().Index)
-	log.Debugf("Propose: Node=%d, Value=%v", self.Details().Index, msg.Data)
+	// Retrieve Dealer from PSSRoundID & verify it equals the sender
+	dealerNodeDetails := msg.ACSSRoundDetails.PSSRoundDetails.Dealer
+	if !dealerNodeDetails.IsEqual(sender) {
+		return
+	}
 
-	leader, err := msg.RoundID.Leader()
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
+
+	// Check whether the shares were already received. If so, ignore the message
+	_, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found {
+		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// Immediately: save shares, commitments & dealer's ephemeral pubkey in node's state
+	// This information is also needed for the implicate flow (when received from other nodes)
+	err := self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		state.AcssData = msg.Data
+	})
 	if err != nil {
-		log.Debugf("Cound not get leader from roundID, err=%s", err)
+		log.Errorf("Error updating AcssData in state: %v", err)
 		return
 	}
-	senderId := *new(big.Int).SetInt64(int64(sender.Index))
 
-	// If leader of the round is not sender skip
-	if leader.Cmp(&senderId) != 0 {
-		return
+	// Check whether for this round we are already in Implicate flow, waiting for the shares that just arrived
+	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
+	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found && err == nil && len(acssState.ImplicateInformationSlice) > 0 {
+		// It is possible to have received multiple implicate messages from different nodes
+		// They should all be processed since some could be valid and some not
+		for _, implicate := range acssState.ImplicateInformationSlice {
+			implicateExecuteMessage, err := NewImplicateExecuteMessage(
+				msg.ACSSRoundDetails,
+				msg.CurveName,
+				implicate.SymmetricKey,
+				implicate.Proof,
+				implicate.SenderPubkeyHex)
+			if err != nil {
+				log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+				return
+			}
+			self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
+		}
+
 	}
+
+	//Identified by nodeDetailsId
+	log.Debugf("Received Propose message from %s on %s", sender.GetNodeDetailsID(), self.Details().GetNodeDetailsID())
+	log.Debugf("Propose: Node=%s, Value=%s", self.Details().GetNodeDetailsID(), msg.Data)
 
 	// Generated shared symmetric key
 	n, k, _ := self.Params()
-
+	if msg.NewCommittee {
+		n = msg.NewCommitteeParams.N
+		k = msg.NewCommitteeParams.K
+	}
 	curve := common.CurveFromName(msg.CurveName)
-	dealerKey, err := curve.Point.FromAffineCompressed(msg.EphemeralPublicKey)
+
+	pubkeyBytes, err := hex.DecodeString(msg.Data.DealerEphemeralPubKey)
+	if err != nil {
+		log.Errorf("Error decoding hex string: %v", err)
+		return
+	}
+
+	dealerKey, err := curve.Point.FromAffineCompressed(pubkeyBytes)
+
 	if err != nil {
 		log.Errorf("AcssProposeMessage: error constructing the EphemeralPublicKey: %v", err)
 		return
@@ -77,27 +124,34 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Verify self share against commitments.
-	log.Debugf("Going to verify predicate for node=%d", self.Details().Index)
-	log.Debugf("IMP1: round=%s, node=%d, msg=%v", msg.RoundID, self.Details().Index, msg.Data)
+	//we can identify by node index and whether in old or new committee by self.IsOldNode()
+	log.Debugf("Going to verify predicate for node=%v, %v", self.Details().Index, self.IsOldNode())
+	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
-	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[uint32(self.Details().Index)][:],
+	pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
+
+	if err != nil {
+		log.Errorf("AcssProposeMessage: error calculating pubKeyPoint: %v", err)
+		return
+	}
+
+	hexPubKey := hex.EncodeToString(pubKeyPoint.ToAffineCompressed())
+	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[hexPubKey][:],
 		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
 
 	//If verified, means the share is encrypted correctly and the commitments is also verified
-	// If verified, send echo to each node
+
+	// If verified:
+	// - save in node's state that shares were validated
+	// - send echo to each node
 	if verified {
-
-		// Store dealerPublicKey
-		//TODO: GetSessionStoreFromRoundID is not defined
-		// TODO: The variable s is not being used.
-
-		// s, err := common.GetSessionStoreFromRoundID(msg.RoundID, self)
-		// if err != nil {
-		// 	log.Debugf("Could not get session store for roundID=%s, self=%d", msg.RoundID, self.ID())
-		// 	return
-		// }
-		// s.Lock()
-		// defer s.Unlock()
+		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+			state.SharesValidated = true
+		})
+		if err != nil {
+			log.Errorf("Error updating AcssData in state: %v", err)
+			return
+		}
 
 		// Starts the RBC protocol.
 		// Create Reed-Solomon encoding. This is part of the RBC protocol.
@@ -108,7 +162,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		}
 
 		// Serialize data
-		msg_bytes, err := msg.Data.Serialize()
+		msg_bytes, err := bijson.Marshal(msg.Data)
 
 		if err != nil {
 			log.Debugf("error during data serialization of MsgData, err=%s", err)
@@ -127,24 +181,42 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
-			go func(node common.NodeDetails) {
 
-				//This instruction corresponds to Line 10, Algorithm 4 from
-				//"Asynchronous data disemination and applications."
-				echoMsg, err := NewDacssEchoMessage(msg.RoundID, shares[node.Index-1], msg_hash, common.CurveFromName(msg.CurveName), self.Details().Index, msg.NewCommittee)
-				if err != nil {
-					log.WithField("error", err).Error("NewDacssEchoMessage")
-					return
-				}
-				self.Send(node, *echoMsg)
-			}(n)
+			//TODO: running this go-routine result into error in few cases
+			// Therefore, as of now we are directly sending the the msg
+
+			// go func(node common.NodeDetails) {
+
+			//This instruction corresponds to Line 10, Algorithm 4 from
+			//"Asynchronous data disemination and applications."
+			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, msg.CurveName, self.Details().Index, msg.NewCommittee)
+			if err != nil {
+				log.WithField("error", err).Error("NewDacssEchoMessage")
+				return
+			}
+			self.Send(n, *echoMsg)
+			// }(n)
 		}
 	} else {
 
 		//If verified is false, that means either an error occured while decrypting share or shares not verified.
 		//In that case send implicate with the ephemeral public key of the dealer
-		//TODO: IMPLICATE
 
 		log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
+
+		symmetricKey := key
+		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
+
+		implicateMsg, err := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey)
+
+		if err != nil {
+			log.WithField("error constructing ImplicateMsg", err).Error("ImplicateReceiveMessage")
+			return
+		}
+
+		// TODO broadcast msg / send directly to all. What is the difference?
+		for _, node := range self.Nodes(msg.NewCommittee) {
+			self.Send(node, *implicateMsg)
+		}
 	}
 }
