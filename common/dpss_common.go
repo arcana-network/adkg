@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/coinbase/kryptology/pkg/sharing"
 )
 
 // PSSParticipant is the interface that covers all the participants inside the
@@ -60,8 +61,11 @@ type AccsState struct {
 	AcssData AcssData
 	// Storage for RBC protocol that is executed in this ACSS round
 	RBCState RBCState
+	// TODO do we want to extract ImplicateInformationSlice, VerifiedRecoveryShares & ShareRecoveryOngoing to a separate state field?
 	// Information about all the possible implicate flows that can be in progress
 	ImplicateInformationSlice []ImplicateInformation
+	// Received verified shares from other nodes, needed to recover Node's share in Implicate phase
+	VerifiedRecoveryShares map[int]*sharing.ShamirShare
 	// Indicates per ACSS round whether the Share Recovery is in process
 	ShareRecoveryOngoing bool
 	// Indicates whether the shares for current node for this ACSS round were validated

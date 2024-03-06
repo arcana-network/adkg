@@ -57,9 +57,12 @@ Steps:
 */
 func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
+	if !self.Details().IsEqual(sender) {
+		return
+	}
+
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
-	// TODO check sender == self
 
 	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
@@ -17,7 +16,7 @@ var AcssProposeMessageType string = "Acss_propose"
 
 type AcssProposeMessage struct {
 	ACSSRoundDetails   common.ACSSRoundDetails
-	NewCommittee       bool
+	NewCommittee       bool // Question: shouldn't this be redundant? Should be same as value in self?
 	Kind               string
 	CurveName          common.CurveName
 	Data               common.AcssData // Encrypted shares, commitments & dealer's ephemeral public key for this ACSS round
@@ -71,10 +70,11 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Check whether for this round we are already in Implicate flow, waiting for the shares that just arrived
-	// If so, send ImplicateExecuteMessage
+	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if found && err == nil && len(acssState.ImplicateInformationSlice) > 0 {
-
+		// It is possible to have received multiple implicate messages from different nodes
+		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {
 			implicateExecuteMessage, err := NewImplicateExecuteMessage(
 				msg.ACSSRoundDetails,
@@ -128,9 +128,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	log.Debugf("Going to verify predicate for node=%v, %v", self.Details().Index, self.IsOldNode())
 	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
-	X := self.Details().PubKey.X
-	Y := self.Details().PubKey.Y
-	pubKeyPoint, err := curves.K256().NewIdentityPoint().Set(&X, &Y)
+	pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
 
 	if err != nil {
 		log.Errorf("AcssProposeMessage: error calculating pubKeyPoint: %v", err)

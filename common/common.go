@@ -71,6 +71,18 @@ func CurvePointToPoint(p curves.Point, c CurveName) Point {
 	}
 }
 
+// TODO test
+func PointToCurvePoint(p Point, c CurveName) (curves.Point, error) {
+	curve := CurveFromName(c)
+	X := p.X
+	Y := p.Y
+	pubKeyPoint, err := curve.NewIdentityPoint().Set(&X, &Y)
+	if err != nil {
+		return nil, err
+	}
+	return pubKeyPoint, nil
+}
+
 func reverse(s []byte) []byte {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
