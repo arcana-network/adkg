@@ -1,8 +1,6 @@
 package dacss
 
 import (
-	"encoding/hex"
-
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -78,7 +76,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 		log.Errorf("Error parsing sender's public key in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
-	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
+	senderPubkeyHex := common.PointToHex(PK_i)
 
 	// If there's no state for this round or the shareMap has not yet been stored
 	// we store the symmetric key, proof and sender's public key as hex value

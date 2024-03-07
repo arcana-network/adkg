@@ -64,26 +64,24 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
 
-	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil {
-		// TODO error
-	}
-
-	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
-	if dacssState.ShareRecoveryOngoing {
+	// At this point we should have the sharemap for this acss round
+	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if !found || acssState.AcssData.IsUninitialized() || err != nil {
+		log.Errorf("Couldn't obtain ACSSState in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
 
-	// At this point we should have the sharemap for this acss round
-	if !found || dacssState.AcssData.IsUninitialized() {
-		// TODO error
+	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
+	if acssState.ShareRecoveryOngoing {
+		log.Debugf("Share Recovery is already ongoing for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
 	}
 
 	curve := curves.GetCurveByName(string(msg.CurveName))
 
 	proof, err := sharing.UnpackProof(curve, msg.Proof)
 	if err != nil {
-		log.Errorf("Can't unpack nizk proof in Implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		log.Errorf("Can't unpack nizk proof in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
 
@@ -95,8 +93,13 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// Retrieve all data wrt the specific ACSS round from Node's storage
 	// from this we also get the dealer's ephemeral public key
-	AcssData := dacssState.AcssData
+	AcssData := acssState.AcssData
+
 	share := AcssData.ShareMap[msg.SenderPubkeyHex]
+	if len(share) == 0 {
+		log.Errorf("Length of share is 0 in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
 	commitments := AcssData.Commitments
 
 	// Convert hex of dealer's ephemeral key to a point
@@ -122,7 +125,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	// Verify ZKP
 	symmKeyVerified := sharing.Verify(proof, g, PK_i, PK_d, K_i_d, curve)
 	if !symmKeyVerified {
-		log.Errorf("Verification of ZKP failed in Implicate flow, ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		log.Errorf("Verification of ZKP failed in Implicate flow, ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 
 		return
 	}
@@ -132,7 +135,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// If the Predicate checks out, the Implicate flow was started for no reason
 	if verified {
-		log.Errorf("Predicate doesn't fail for share. Implicate invalid, ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		log.Errorf("Predicate doesn't fail for share. Implicate invalid, ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 
 		return
 	}
@@ -142,5 +145,9 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// send ShareRecoveryMsg to self
 	recoveryMsg, err := NewShareRecoveryMessage(msg.ACSSRoundDetails)
+	if err != nil {
+		log.Errorf("Error in creating ShareRecoveryMsg, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
+	}
 	self.ReceiveMessage(self.Details(), *recoveryMsg)
 }

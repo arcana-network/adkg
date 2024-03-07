@@ -1,7 +1,6 @@
 package dacss
 
 import (
-	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -62,7 +61,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 	msgData := common.AcssData{
 		Commitments:           compressedCommitments,
 		ShareMap:              shareMap,
-		DealerEphemeralPubKey: hex.EncodeToString(ephemeralKeypairDealer.PrivateKey.Bytes()),
+		DealerEphemeralPubKey: common.PointToHex(ephemeralKeypairDealer.PublicKey),
 	}
 
 	// Set the round parameters

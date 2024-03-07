@@ -102,7 +102,10 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte, wg *sync.WaitGroup) {
 
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
-
+	if err != nil {
+		log.Errorf("Error generating shares & commitments, err=%v", err)
+		return
+	}
 	// Compress commitments
 	compressedCommitments := sharing.CompressCommitments(commitments)
 

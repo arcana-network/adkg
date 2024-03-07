@@ -15,7 +15,7 @@ type PssTestNode struct {
 	committeeTestParams common.CommitteeParams
 
 	state       *common.PSSNodeState
-	LongtermKey common.KeyPair
+	LongtermKey common.KeyPair // NOTE this key must coincide with the pubkey in the details
 	isFaulty    bool
 
 	Transport *NoSendMockTransport
@@ -37,6 +37,7 @@ func (n *PssTestNode) IsOldNode() bool {
 	return !n.isNewCommittee
 }
 
+// TODO we should probably flip this bool and have all bools either isOld or fromNew, to prevent confusion
 // This requires the testnode to actually have the new committee/old committee nodes
 func (n *PssTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
 	nodes := n.Nodes(fromNewCommittee)
