@@ -128,6 +128,7 @@ func (v *VerifierService) Start() error {
 		NewSteamProvider(),
 		firebaseProvider,
 		NewGlobalKeyVerifier(v),
+		NewEpicGamesVerifier(),
 		// NewCustomProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
