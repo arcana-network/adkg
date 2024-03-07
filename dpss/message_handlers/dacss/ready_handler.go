@@ -122,6 +122,13 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				return
 			}
 
+			p.State().AcssStore.UpdateAccsState(
+				m.AcssRoundDetails.ToACSSRoundID(),
+				func(state *common.AccsState) {
+					state.RBCState.IsReadyMsgSent = true
+				},
+			)
+
 			go p.Broadcast(p.IsOldNode(), *readyMsg)
 		}
 
