@@ -63,7 +63,6 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 	// Check that the incoming message matches with the share of self (Line 11)
 	// of Algorithm 4, "Asynchronous Data Disemination".
 	if reflect.DeepEqual(ownShare.Data, m.Share.Data) && reflect.DeepEqual(m.Hash, ownHash) {
-		acssState.RBCState.ReceivedEcho[sender.Index] = true
 		self.State().AcssStore.UpdateAccsState(
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
@@ -78,7 +77,7 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 				log.WithField("error", err).Error("DacssEchoMessage - Process()")
 				return
 			}
-			go self.Broadcast(m.NewCommittee, *readyMsg)
+			self.Broadcast(m.NewCommittee, *readyMsg)
 		}
 	}
 }

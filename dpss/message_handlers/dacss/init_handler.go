@@ -67,6 +67,6 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 			return
 		}
 		//NOTE: since the msg is sent to self, we can keep the EmephemeralKeypair in the msg
-		go self.Send(self.Details(), *msg)
+		self.Send(self.Details(), *msg)
 	}
 }

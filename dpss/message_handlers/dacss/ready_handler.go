@@ -13,12 +13,11 @@ var AcssReadyMessageType string = "dacss_ready"
 
 // Stores the information for the READY message in the RBC protocol.
 type DacssReadyMessage struct {
-	AcssRoundDetails common.ACSSRoundDetails // current round details
-	Kind             string                  // Type of msg
-	CurveName        common.CurveName        // curve used for computation
-	Share            infectious.Share        // share of the RS Encoding
-	Hash             []byte                  // hash of the shares (ie AcssData)
-	NewCommittee     bool
+	AcssRoundDetails common.ACSSRoundDetails
+	Kind             string
+	CurveName        common.CurveName
+	Share            infectious.Share
+	Hash             []byte
 }
 
 // ⟨READY, *, h⟩ msg in the RBC protocol
@@ -116,14 +115,14 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		// Since ReceivedEco map is set to true in the echo handler only when the there is a matching RS shares data
 		// so it is sufficient to check the count
 		if state.RBCState.CountEcho() >= t+1 {
-			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, m.Share, m.Hash, m.CurveName, m.NewCommittee)
+			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, m.Share, m.Hash, m.CurveName, p.IsOldNode())
 
 			if err != nil {
 				log.WithField("error", err).Error("DacssReadyMessage - Process()")
 				return
 			}
 
-			go p.Broadcast(m.NewCommittee, *readyMsg)
+			go p.Broadcast(p.IsOldNode(), *readyMsg)
 		}
 
 		//------OLD CODE------

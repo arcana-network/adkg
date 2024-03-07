@@ -122,7 +122,13 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 		}
 	} else {
 		// If not found, create a new AccsState
-		existingState = &AccsState{}
+		existingState = &AccsState{
+			RBCState: RBCState{
+				ReceivedEcho:   make(map[int]bool),
+				ReceivedReady:  make(map[int]bool),
+				IsReadyMsgSent: false,
+			},
+		}
 	}
 
 	// Apply the updater function to the existing or new AccsState

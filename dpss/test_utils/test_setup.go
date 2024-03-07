@@ -9,7 +9,7 @@ import (
 // to make sure the correct ones are being used
 const DefaultN_old = 7
 const DefaultNrFaulty_old = 0
-const DefaultK_old = 3
+const DefaultK_old = 2
 
 const DefaultN_new = 8
 const DefaultNrFaulty_new = 0
@@ -24,7 +24,7 @@ func NewCommitteeParams(N, K int) common.CommitteeParams {
 	}
 }
 
-// a standard old committe has 7 honest nodes and t=3
+// a standard old committe has 7 honest nodes and t=2
 func StandardOldCommitteeParams() common.CommitteeParams {
 	return NewCommitteeParams(DefaultN_old, DefaultK_old)
 }
@@ -128,14 +128,14 @@ func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
 // Returns a receiver node and 2k + 1 nodes in a given committee
 func (setup *TestSetup) GetDealerAnd2kPlusOneNodes(fromOldCommittee bool) (*PssTestNode, []*PssTestNode) {
 	if fromOldCommittee {
-		k := setup.NrFaultyOldCommittee
+		k := setup.OldCommitteeParams.K
 		receiver := setup.oldCommitteeNetwork[0]
-		group := setup.oldCommitteeNetwork[1 : 2*k+1]
+		group := setup.oldCommitteeNetwork[1 : 2*k+2]
 		return receiver, group
 	} else {
-		k := setup.NrFaultyNewCommittee
+		k := setup.NewCommitteeParams.K
 		receiver := setup.newCommitteeNetwork[0]
-		group := setup.newCommitteeNetwork[1 : 2*k+1]
+		group := setup.newCommitteeNetwork[1 : 2*k+2]
 		return receiver, group
 	}
 }
