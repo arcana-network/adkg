@@ -93,9 +93,20 @@ func TestIncrement(test *testing.T) {
 	}
 
 	assert.Equal(test, 0, len(transport.BroadcastedMessages))
+	assert.Equal(test, 1, acssState.RBCState.CountEcho())
 	testRecvr.State().AcssStore.Unlock()
 }
 
+/*
+Function: Process
+
+Testcase: the same party sends 2t + 1 matching ECHO messages. The ECHO count
+should not increment more than 1 message and no READY message should be sent.
+
+Expectations:
+- the node increments the counter of echo messages just once.
+- no READY message is sent.
+*/
 func TestCounterDoesNotIncrement(test *testing.T) {
 	// Setup the parties
 	defaultSetup := testutils.DefaultTestSetup()
@@ -165,6 +176,7 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 	}
 
 	assert.Equal(test, 0, len(transport.BroadcastedMessages))
+	assert.Equal(test, 1, acssState.RBCState.CountEcho())
 	testRecvr.State().AcssStore.Unlock()
 }
 
