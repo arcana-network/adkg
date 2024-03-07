@@ -372,6 +372,17 @@ func (state *RBCState) CountEcho() int {
 	return count
 }
 
+// Counts the ammount of READY messages.
+func (state *RBCState) CountReady() int {
+	count := 0
+	for _, received := range state.ReceivedReady {
+		if received {
+			count += 1
+		}
+	}
+	return count
+}
+
 func Stringify(i interface{}) string {
 	bytArr, ok := i.([]byte)
 	if ok {

@@ -48,6 +48,12 @@ func TestProcessProposeMessage(t *testing.T) {
 	//total length of the transport msg = length of the old msgs + new msgs
 	assert.Equal(t, len(sent_msg), defaultSetup.NewCommitteeParams.N+defaultSetup.OldCommitteeParams.N)
 
+	//check states update correctly
+	acssState, _, _ := SingleOldNode.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
+
+	assert.Equal(t, acssState.SharesValidated, true)
+
+	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
 }
 
 // Test for invalid share
@@ -86,6 +92,13 @@ func TestInvalidShare(t *testing.T) {
 	}
 
 	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
+
+	// check state updates correctly
+	acssState, _, _ := SingleOldNode.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
+
+	assert.Equal(t, acssState.SharesValidated, false)
+
+	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
 
 }
 

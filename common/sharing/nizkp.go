@@ -3,6 +3,7 @@ package sharing
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
@@ -92,6 +93,10 @@ func UnpackProof(curve *curves.Curve, proofBytes []byte) (*Proof, error) {
 
 	if curve.Name == "ed25519" {
 		byteLen = 32
+	}
+
+	if len(proofBytes) != 32+2*byteLen {
+		return nil, errors.New("doesn't have expected length")
 	}
 
 	d, err := curve.Scalar.SetBytes(proofBytes[:32])

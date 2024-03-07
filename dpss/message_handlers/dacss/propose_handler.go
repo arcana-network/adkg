@@ -173,7 +173,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		msg_hash := common.HashByte(msg_bytes)
 
 		// Obtain Reed-Solomon shards.
-		shares, err := acss.Encode(f, msg_hash)
+		shares, err := acss.Encode(f, msg_bytes)
 		if err != nil {
 			log.Debugf("error during fec encoding, err=%s", err)
 			return
