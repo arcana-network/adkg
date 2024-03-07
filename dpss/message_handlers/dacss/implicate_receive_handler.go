@@ -1,17 +1,11 @@
 package dacss
 
 import (
-	"encoding/hex"
-
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
-
-// TODO docs
-// TODO tests
-// TODO error handling
 
 // The message for the first step of Implicate flow
 var ImplicateReceiveMessageType string = "dacss_implicate_receive"
@@ -64,26 +58,30 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 	defer self.State().AcssStore.Unlock()
 
 	// First check whether the sharemap for this acss round has already been stored
-	dacssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
 		log.Errorf("Error retrieving ACSS state in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
 
 	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
-	if dacssState.ShareRecoveryOngoing {
+	if found && acssState.ShareRecoveryOngoing {
 		return
 	}
 
 	curve := curves.GetCurveByName(string(msg.CurveName))
 	// Convert sender's public key to hex
 	PK_i, err := curve.Point.Set(&sender.PubKey.X, &sender.PubKey.Y)
-	senderPubkeyHex := hex.EncodeToString(PK_i.ToAffineCompressed())
+	if err != nil {
+		log.Errorf("Error parsing sender's public key in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
+	}
+	senderPubkeyHex := common.PointToHex(PK_i)
 
 	// If there's no state for this round or the shareMap has not yet been stored
 	// we store the symmetric key, proof and sender's public key as hex value
 	// The implicate flow should be continued as soon as we have the sharemap
-	if !found || dacssState.AcssData.IsUninitialized() {
+	if !found || acssState.AcssData.IsUninitialized() {
 		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,

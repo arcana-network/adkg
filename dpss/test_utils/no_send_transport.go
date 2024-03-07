@@ -17,7 +17,7 @@ type NoSendMockTransport struct {
 	output              chan string
 	BroadcastedMessages []common.PSSMessage
 	sentMessages        []common.PSSMessage
-	receivedMessages    []common.PSSMessage
+	ReceivedMessages    []common.PSSMessage
 }
 
 func NewNoSendMockTransport(nodesOld, nodesNew []*PssTestNode) *NoSendMockTransport {

@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -164,10 +165,12 @@ type ACSSRoundDetails struct {
 	ACSSCount       int             // number of ACSS round this is in the PSS
 }
 
-// FIXME
 func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
-	// TODO implement
-	return "test"
+	// Convert ACSSRoundDetails to a string representation to be used as an ID
+	return ACSSRoundID(strings.Join([]string{
+		string(acssRoundDetails.PSSRoundDetails.Dealer.ToNodeDetailsID()),
+		strconv.Itoa(acssRoundDetails.ACSSCount),
+	}, Delimiter1))
 }
 
 // n -> total number of nodes
