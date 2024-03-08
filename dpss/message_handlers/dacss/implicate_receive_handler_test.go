@@ -68,8 +68,9 @@ func TestAlreadyHasShareMap(t *testing.T) {
 	acssRoundDetails := getTestACSSRoundDetails(dealer)
 
 	// Assume the shareMap for this round was already received and stored in the Node 1's state
+	hash, err := common.HashAcssData(msgData)
 	err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-		state.AcssData = msgData
+		state.AcssDataHash = hash
 	})
 	if err != nil {
 		log.Errorf("Error updating AcssData in state: %v", err)

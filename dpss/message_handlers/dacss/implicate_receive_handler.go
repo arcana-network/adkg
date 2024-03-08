@@ -16,15 +16,17 @@ type ImplicateReceiveMessage struct {
 	CurveName        common.CurveName        // Name (indicator) of curve used in the messages.
 	SymmetricKey     []byte                  // Compressed Affine Point
 	Proof            []byte                  // Contains d, R, S
+	AcssData         common.AcssData
 }
 
-func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte) (*common.PSSMessage, error) {
+func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, acssData common.AcssData) (*common.PSSMessage, error) {
 	m := &ImplicateReceiveMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ImplicateReceiveMessageType,
 		CurveName:        curveName,
 		SymmetricKey:     symmetricKey,
 		Proof:            proof,
+		AcssData:         acssData,
 	}
 
 	// Use bijson because of bigint in ACSSRoundDetails
@@ -81,7 +83,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 	// If there's no state for this round or the shareMap has not yet been stored
 	// we store the symmetric key, proof and sender's public key as hex value
 	// The implicate flow should be continued as soon as we have the sharemap
-	if !found || acssState.AcssData.IsUninitialized() {
+	if !found || len(acssState.AcssDataHash) == 0 {
 		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,
@@ -92,7 +94,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 		})
 	} else {
 		// If the have the shareMap Implicate flow can continue; Send ImplicateExecuteMessage
-		implicateExecuteMessage, err := NewImplicateExecuteMessage(msg.ACSSRoundDetails, msg.CurveName, msg.SymmetricKey, msg.Proof, senderPubkeyHex)
+		implicateExecuteMessage, err := NewImplicateExecuteMessage(msg.ACSSRoundDetails, msg.CurveName, msg.SymmetricKey, msg.Proof, senderPubkeyHex, msg.AcssData)
 		if err != nil {
 			log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return

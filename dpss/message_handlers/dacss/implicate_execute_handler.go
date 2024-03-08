@@ -1,6 +1,8 @@
 package dacss
 
 import (
+	"reflect"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -18,9 +20,10 @@ type ImplicateExecuteMessage struct {
 	SymmetricKey     []byte                  // Compressed Affine Point
 	Proof            []byte                  // Contains d, R, S
 	SenderPubkeyHex  string                  // Hex of Compressed Affine Point
+	AcssData         common.AcssData
 }
 
-func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, senderPubkeyHex string) (*common.PSSMessage, error) {
+func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, senderPubkeyHex string, acssData common.AcssData) (*common.PSSMessage, error) {
 	m := &ImplicateExecuteMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ImplicateExecuteMessageType,
@@ -28,6 +31,7 @@ func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveN
 		SymmetricKey:     symmetricKey,
 		Proof:            proof,
 		SenderPubkeyHex:  senderPubkeyHex,
+		AcssData:         acssData,
 	}
 
 	// Use bijson because of bigint in ACSSRoundDetails
@@ -66,8 +70,20 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// At this point we should have the sharemap for this acss round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if !found || acssState.AcssData.IsUninitialized() || err != nil {
+	if !found || len(acssState.AcssDataHash) == 0 || err != nil {
 		log.Errorf("Couldn't obtain ACSSState in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// Hash the received acssData
+	hash, err := common.HashAcssData(msg.AcssData)
+	if err != nil {
+		// TODO error
+	}
+
+	// Check that the received acssData is correct, according to the received acssData in this acssRound
+	if reflect.DeepEqual(acssState.AcssDataHash, hash) {
+		// TODO error
 		return
 	}
 
@@ -93,17 +109,16 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// Retrieve all data wrt the specific ACSS round from Node's storage
 	// from this we also get the dealer's ephemeral public key
-	AcssData := acssState.AcssData
 
-	share := AcssData.ShareMap[msg.SenderPubkeyHex]
+	share := msg.AcssData.ShareMap[msg.SenderPubkeyHex]
 	if len(share) == 0 {
 		log.Errorf("Length of share is 0 in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
-	commitments := AcssData.Commitments
+	commitments := msg.AcssData.Commitments
 
 	// Convert hex of dealer's ephemeral key to a point
-	dealerPubkey := AcssData.DealerEphemeralPubKey
+	dealerPubkey := msg.AcssData.DealerEphemeralPubKey
 	PK_d, err := common.HexToPoint(msg.CurveName, dealerPubkey)
 	if err != nil {
 		log.Errorf("Hex of dealer's ephemeral key couldn't be transformed to a Point, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
@@ -144,7 +159,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	// we proceed onto share recovery
 
 	// send ShareRecoveryMsg to self
-	recoveryMsg, err := NewShareRecoveryMessage(msg.ACSSRoundDetails)
+	recoveryMsg, err := NewShareRecoveryMessage(msg.ACSSRoundDetails, msg.AcssData)
 	if err != nil {
 		log.Errorf("Error in creating ShareRecoveryMsg, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return

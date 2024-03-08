@@ -59,10 +59,16 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
-	// Immediately: save shares, commitments & dealer's ephemeral pubkey in node's state
-	// This information is also needed for the implicate flow (when received from other nodes)
-	err := self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-		state.AcssData = msg.Data
+	// Immediately: save hash of shares, commitments & dealer's ephemeral pubkey in node's state
+	// in this way we can verify the shares when they arrive in the implicate flow
+	acssDataHash, err := common.HashAcssData(msg.Data)
+	if err != nil {
+		log.Errorf("Couldn't hash acssData: %v", err)
+		return
+	}
+
+	err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		state.AcssDataHash = acssDataHash
 	})
 	if err != nil {
 		log.Errorf("Error updating AcssData in state: %v", err)
@@ -81,7 +87,8 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				msg.CurveName,
 				implicate.SymmetricKey,
 				implicate.Proof,
-				implicate.SenderPubkeyHex)
+				implicate.SenderPubkeyHex,
+				msg.Data)
 			if err != nil {
 				log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 				return
@@ -207,7 +214,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		symmetricKey := key
 		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
 
-		implicateMsg, err := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey)
+		implicateMsg, err := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey, msg.Data)
 
 		if err != nil {
 			log.WithField("error constructing ImplicateMsg", err).Error("ImplicateReceiveMessage")

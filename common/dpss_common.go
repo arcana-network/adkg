@@ -9,6 +9,7 @@ import (
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
+	"github.com/torusresearch/bijson"
 )
 
 // PSSParticipant is the interface that covers all the participants inside the
@@ -57,9 +58,9 @@ type AcssStateMap struct {
 }
 
 type AccsState struct {
-	// Commitments, encrypted shares & ephemeral public key of the dealer
-	// This is being sent around by the nodes as well
-	AcssData AcssData
+	// Hash of Commitments, encrypted shares & ephemeral public key of the dealer
+	// in order to be able to compare it with received data
+	AcssDataHash []byte
 	// Storage for RBC protocol that is executed in this ACSS round
 	RBCState RBCState
 	// TODO do we want to extract ImplicateInformationSlice, VerifiedRecoveryShares & ShareRecoveryOngoing to a separate state field?
@@ -206,4 +207,17 @@ func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte
 // Generates a new PSSRoundID for a given index.
 func NewPssID(index big.Int) string {
 	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
+}
+
+func HashAcssData(data AcssData) ([]byte, error) {
+
+	//TODO: is there a better way to convert it into bytes?
+	// is this conversion unique??
+	bytes, err := bijson.Marshal(data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return HashByte(bytes), nil
 }
