@@ -61,7 +61,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 	// Immediately: save hash of shares, commitments & dealer's ephemeral pubkey in node's state
 	// in this way we can verify the shares when they arrive in the implicate flow
-	acssDataHash, err := HashAcssData(msg.Data)
+	acssDataHash, err := common.HashAcssData(msg.Data)
 	if err != nil {
 		log.Errorf("Couldn't hash acssData: %v", err)
 		return

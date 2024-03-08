@@ -76,7 +76,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	}
 
 	// Hash the received acssData
-	hash, err := HashAcssData(msg.AcssData)
+	hash, err := common.HashAcssData(msg.AcssData)
 	if err != nil {
 		// TODO error
 	}

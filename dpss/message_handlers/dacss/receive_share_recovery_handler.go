@@ -56,7 +56,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, self 
 	}
 
 	// Hash the received acssData
-	hash, err := HashAcssData(msg.AcssData)
+	hash, err := common.HashAcssData(msg.AcssData)
 	if err != nil {
 		// TODO error
 	}
