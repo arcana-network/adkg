@@ -57,9 +57,9 @@ type AcssStateMap struct {
 }
 
 type AccsState struct {
-	// Commitments, encrypted shares & ephemeral public key of the dealer
-	// This is being sent around by the nodes as well
-	AcssData AcssData
+	// Hash of Commitments, encrypted shares & ephemeral public key of the dealer
+	// in order to be able to compare it with received data
+	AcssDataHash []byte
 	// Storage for RBC protocol that is executed in this ACSS round
 	RBCState RBCState
 	// TODO do we want to extract ImplicateInformationSlice, VerifiedRecoveryShares & ShareRecoveryOngoing to a separate state field?

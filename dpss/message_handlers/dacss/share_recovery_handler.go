@@ -13,12 +13,14 @@ type ShareRecoveryMessage struct {
 	Kind             string                  // Type of the message
 	CurveName        common.CurveName        // Name (indicator) of curve used in the messages.
 	SenderPubkeyHex  string                  // Hex of Compressed Affine Point
+	AcssData         common.AcssData
 }
 
-func NewShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails) (*common.PSSMessage, error) {
+func NewShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails, acssData common.AcssData) (*common.PSSMessage, error) {
 	m := &ShareRecoveryMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ShareRecoveryMessageType,
+		AcssData:         acssData,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -72,7 +74,7 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 		pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
 		proof := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerPubKey, symmetricKey, curve.NewGeneratorPoint())
 
-		receiveShareRecoveryMsg, err := NewReceiveShareRecoveryMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), proof)
+		receiveShareRecoveryMsg, err := NewReceiveShareRecoveryMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), proof, msg.AcssData)
 
 		for _, node := range self.Nodes(!self.IsOldNode()) {
 			self.Send(node, *receiveShareRecoveryMsg)

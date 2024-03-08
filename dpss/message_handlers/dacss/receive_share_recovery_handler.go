@@ -1,6 +1,8 @@
 package dacss
 
 import (
+	"reflect"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -16,15 +18,17 @@ type ReceiveShareRecoveryMessage struct {
 	CurveName        common.CurveName // Name (indicator) of curve used in the messages.
 	SymmetricKey     []byte           // Compressed Affine Point
 	Proof            []byte           // Contains d, R, S
+	AcssData         common.AcssData
 }
 
-func NewReceiveShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte) (*common.PSSMessage, error) {
+func NewReceiveShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, acssData common.AcssData) (*common.PSSMessage, error) {
 	m := &ReceiveShareRecoveryMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ReceiveShareRecoveryMessageType,
 		CurveName:        curveName,
 		SymmetricKey:     symmetricKey,
 		Proof:            proof,
+		AcssData:         acssData,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -47,8 +51,19 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, self 
 	defer self.State().AcssStore.Unlock()
 
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found || acssState.AcssData.IsUninitialized() {
+	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
 		// TODO error
+	}
+
+	// Hash the received acssData
+	hash, err := HashAcssData(msg.AcssData)
+	if err != nil {
+		// TODO error
+	}
+
+	if reflect.DeepEqual(acssState.AcssDataHash, hash) {
+		// TODO error
+		return
 	}
 
 	// TODO Ignore if Node already has recovered a share. This connects to how we conclude the ACSS round TBD
@@ -64,7 +79,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, self 
 
 	PK_j, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
 	// Convert hex of dealer's ephemeral key to a point
-	dealerPubkey := acssState.AcssData.DealerEphemeralPubKey
+	dealerPubkey := msg.AcssData.DealerEphemeralPubKey
 	PK_d, err := common.HexToPoint(msg.CurveName, dealerPubkey)
 
 	K_j_d, err := curve.Point.FromAffineCompressed(msg.SymmetricKey)
@@ -81,8 +96,8 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, self 
 		return
 	}
 
-	share_j := acssState.AcssData.ShareMap[common.PointToHex(PK_j)]
-	commitments := acssState.AcssData.Commitments
+	share_j := msg.AcssData.ShareMap[common.PointToHex(PK_j)]
+	commitments := msg.AcssData.Commitments
 
 	// Check Predicate for share
 	shamirShare_j, _, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
