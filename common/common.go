@@ -352,13 +352,14 @@ func MapFromNodeList(nodeList []NodeDetails) (res map[NodeDetailsID]NodeDetails)
 
 // Represents the state of the node in the RBC protocol
 type RBCState struct {
-	Phase               phase            // Phase of within the protocol.
-	ReceivedEcho        map[int]bool     // Echos received.
-	ReceivedReady       map[int]bool     // Ready received.
-	ReceivedMessage     []byte           // The actual message as a result of the RBC protocol.
-	OwnReedSolomonShard infectious.Share // Shard that belongs to the party in the RS error correcting code.
-	IsReadyMsgSent      bool             // Tells whether the ready message was sent by the party.
-	HashMsg             []byte           // Message of the hash received in the propose.
+	Phase               phase              // Phase of within the protocol.
+	ReceivedEcho        map[int]bool       // Echos received.
+	ReceivedReady       map[int]bool       // Ready received.
+	ReceivedMessage     []byte             // The actual message as a result of the RBC protocol.
+	OwnReedSolomonShard infectious.Share   // Shard computed by the party in the RS error correcting code.
+	IsReadyMsgSent      bool               // Tells whether the ready message was sent by the party.
+	HashMsg             []byte             // Message of the hash computed in the propose.
+	ReadyMsgShards      []infectious.Share // Shards received in the READY messages
 }
 
 // Counts the ammount of received ECHO messages.

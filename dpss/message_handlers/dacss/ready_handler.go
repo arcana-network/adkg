@@ -2,8 +2,10 @@ package dacss
 
 import (
 	"encoding/hex"
+	"reflect"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
@@ -82,37 +84,51 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		return
 	}
 
+	// If the ready message from sender was already received, we do an early
+	// return.
+	if state.RBCState.ReceivedReady[sender.Index] {
+		log.Infof(
+			"The party already has a message from the node %d",
+			sender.Index,
+		)
+		return
+	}
+
+	// Adds this share to the list of READY message shards.
+	p.State().AcssStore.UpdateAccsState(
+		m.AcssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.RBCState.ReadyMsgShards = append(
+				state.RBCState.ReadyMsgShards,
+				m.Share,
+			)
+		},
+	)
+
 	p.State().AcssStore.Lock()
 	defer p.State().AcssStore.Unlock()
 
-	// Make sure the ready msg received from a node is set to true
-	defer func() {
-		state.RBCState.ReceivedReady[sender.Index] = true
-	}()
-
-	// returns if RBC ended
+	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
 		return
 	}
 
-	receivedReady, found := state.RBCState.ReceivedReady[sender.Index]
-	if found && receivedReady {
-		log.Debugf("Already received ready for %s from %d on %d", m.AcssRoundDetails.ToACSSRoundID(), sender.Index, p.Details().Index)
-		return
+	// Make sure the ready msg received from a node is set to true. We need to
+	// make sure also that the hashes match to increase the count.
+	ownHash := state.RBCState.HashMsg
+	if reflect.DeepEqual(ownHash, m.Hash) {
+		state.RBCState.ReceivedReady[sender.Index] = true
 	}
-
-	// ownShare := state.RBCState.OwnReedSolomonShard
-	// ownHash := state.RBCState.HashMsg
 
 	readyCount := state.RBCState.CountReady()
 
-	_, t, _ := p.Params()
+	n, t, _ := p.Params()
 
-	//check if t+1 Ready msg received and not send ready msg
+	// Check if t+1 Ready msg received and not send ready msg
 	if readyCount >= t+1 && !state.RBCState.IsReadyMsgSent {
 
 		// TODO: Check this
-		// Since ReceivedEco map is set to true in the echo handler only when the there is a matching RS shares data
+		// Since ReceivedEcho map is set to true in the echo handler only when the there is a matching RS shares data
 		// so it is sufficient to check the count
 		if state.RBCState.CountEcho() >= t+1 {
 			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, m.Share, m.Hash, m.CurveName, p.IsOldNode())
@@ -131,52 +147,35 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 			go p.Broadcast(p.IsOldNode(), *readyMsg)
 		}
+	}
 
-		//------OLD CODE------
-		// if c.RC >= k && !c.ReadySent && c.EC >= k {
-		// 	// Broadcast ready message
-		// 	readyMsg := NewAcssReadyMessage(m.roundID, m.share, m.hash, m.curve, p.ID(), m.newCommittee)
-		// 	go p.Broadcast(m.newCommittee, readyMsg)
-		// }
+	for r := range t + 1 {
+		if len(state.RBCState.ReadyMsgShards) >= 2*t+r+1 {
+			// Creates RC encoding to reconstruct the message
+			fec, err := infectious.NewFEC(t+1, n)
+			if err != nil {
+				log.WithField("error", err).Error("could not create the decoder")
+				return
+			}
 
-		// for i := 0; i < f; i += 1 {
-		// 	log.Debugf("len(readstore)=%d, threshold=%d", len(keygen.ReadyStore), (2*f + 1 + i))
-		// 	if len(keygen.ReadyStore) >= (2*f + 1 + i) {
-		// 		// Create RS encoding
-		// 		f, err := infectious.NewFEC(k, n)
-		// 		if err != nil {
-		// 			log.Debugf("error during creation of fec, err=%s", err)
-		// 			return
-		// 		}
+			rbcMsg, err := acss.Decode(fec, state.RBCState.ReadyMsgShards)
+			if err != nil {
+				log.WithField("error", err).Error("unable to decode the message")
+				return
+			}
 
-		// 		M, err := acss.Decode(f, keygen.ReadyStore)
-		// 		if err != nil {
-		// 			log.Debugf("Decode faced an error, err=%s", err)
-		// 			return
-		// 		}
-		// 		hash := common.Hash(M)
-		// 		log.Debugf("HashCompare, hash=%v, mHash=%v", hash, m.hash)
+			hashReconstMsg := common.HashByte(rbcMsg)
+			if reflect.DeepEqual(rbcMsg, state.RBCState.HashMsg) {
+				// Update the state of the RBC to be ended
+				p.State().AcssStore.UpdateAccsState(
+					m.AcssRoundDetails.ToACSSRoundID(),
+					func(state *common.AccsState) {
+						state.RBCState.Phase = common.Ended
+					},
+				)
 
-		// 		if bytes.Equal(hash, m.hash) {
-		// 			outputMsg := NewAcssOutputMessage(m.roundID, M, m.curve, p.ID(), "ready", m.newCommittee)
-		// 			go p.ReceiveMessage(outputMsg)
-		// 			defer func() { keygen.State.Phase = common.Ended }()
-		// 			// send to other committee
-		// 			msg := messages.MessageData{}
-		// 			err := msg.Deserialize(M)
-		// 			if err != nil {
-		// 				log.Debugf("Could not deserialize message data, err=%s", err)
-		// 				return
-		// 			}
-		// 			for _, n := range p.Nodes(!m.newCommittee) {
-		// 				go func(node common.DkgParticipant) {
-		// 					readyMsg := NewAcssCommitMessage(m.roundID, msg.Commitments, m.curve, p.ID(), m.newCommittee)
-		// 					p.Send(readyMsg, node)
-		// 				}(n)
-		// 			}
-		// 		}
-
-		// 	}
-		// }
+				// TODO: Construct the output message here.
+			}
+		}
 	}
 }
