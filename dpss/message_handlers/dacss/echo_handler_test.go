@@ -58,16 +58,21 @@ func TestIncrement(test *testing.T) {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
-	echoMsg, err := getTestEchoMsg(
-		testSender,
-		testRecvr,
-		acssRoundDetails,
-		shardReceiver,
-		hashMsg,
+	testRecvr.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.AcssDataHash = hashMsg
+			state.RBCState.OwnReedSolomonShard = shardReceiver
+		},
 	)
 
-	if err != nil {
-		test.Errorf("Error creating the echo message: %v", err)
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            shardReceiver,
+		Hash:             hashMsg,
+		NewCommittee:     testRecvr.IsOldNode(),
 	}
 
 	echoMsg.Process(testSender.Details(), testRecvr)
@@ -131,17 +136,27 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 		testRecvr,
 		ephemeralKeypairSender,
 	)
+
+	testRecvr.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.RBCState.OwnReedSolomonShard = shardReceiver
+			state.AcssDataHash = hashMsg
+		},
+	)
+
 	if err != nil {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
-	echoMsg, err := getTestEchoMsg(
-		testSender,
-		testRecvr,
-		acssRoundDetails,
-		shardReceiver,
-		hashMsg,
-	)
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            shardReceiver,
+		Hash:             hashMsg,
+		NewCommittee:     testRecvr.IsOldNode(),
+	}
 
 	if err != nil {
 		test.Errorf("Error creating the echo message: %v", err)
@@ -226,18 +241,24 @@ func TestCounterEchoMessages(test *testing.T) {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
-	for _, senderNode := range senderGroup {
-		echoMsg, err := getTestEchoMsg(
-			dealerNode,
-			receiverNode,
-			acssRoundDetails,
-			shardReceiver,
-			hashMsg,
-		)
-		if err != nil {
-			test.Errorf("Error creating the echo message: %v", err)
-		}
+	receiverNode.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.AcssDataHash = hashMsg
+			state.RBCState.OwnReedSolomonShard = shardReceiver
+		},
+	)
 
+	for _, senderNode := range senderGroup {
+
+		echoMsg := DacssEchoMessage{
+			ACSSRoundDetails: acssRoundDetails,
+			Kind:             DacssEchoMessageType,
+			CurveName:        common.CurveName(curves.K256().Name),
+			Share:            shardReceiver,
+			Hash:             hashMsg,
+			NewCommittee:     receiverNode.IsOldNode(),
+		}
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
 
@@ -316,16 +337,22 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
+	receiverNode.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.AcssDataHash = hashMsg
+			state.RBCState.OwnReedSolomonShard = shardReceiver
+		},
+	)
+
 	for _, senderNode := range senderGroup {
-		echoMsg, err := getTestEchoMsg(
-			dealerNode,
-			receiverNode,
-			acssRoundDetails,
-			shardReceiver,
-			hashMsg,
-		)
-		if err != nil {
-			test.Errorf("Error creating the echo message: %v", err)
+		echoMsg := DacssEchoMessage{
+			ACSSRoundDetails: acssRoundDetails,
+			Kind:             DacssEchoMessageType,
+			CurveName:        common.CurveName(curves.K256().Name),
+			Share:            shardReceiver,
+			Hash:             hashMsg,
+			NewCommittee:     receiverNode.IsOldNode(),
 		}
 
 		echoMsg.Process(senderNode.Details(), receiverNode)
@@ -413,36 +440,6 @@ func generateReedSolomonShards(
 		n,
 		k,
 	)
-}
-
-// Creates an echo message for the RBC protocol for the specified dealer in the
-// RBC protocol.
-func getTestEchoMsg(
-	dealer *testutils.PssTestNode,
-	receiver *testutils.PssTestNode,
-	acssRoundDetails common.ACSSRoundDetails,
-	shardReceiver infectious.Share,
-	hashMsg []byte,
-) (DacssEchoMessage, error) {
-	receiver.State().AcssStore.Lock()
-	defer receiver.State().AcssStore.Unlock()
-	receiver.State().AcssStore.UpdateAccsState(
-		acssRoundDetails.ToACSSRoundID(),
-		func(state *common.AccsState) {
-			state.AcssDataHash = hashMsg
-			state.RBCState.OwnReedSolomonShard = shardReceiver
-		},
-	)
-
-	msg := DacssEchoMessage{
-		ACSSRoundDetails: acssRoundDetails,
-		NewCommittee:     dealer.IsOldNode(),
-		Kind:             DacssEchoMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
-		Share:            shardReceiver,
-		Hash:             hashMsg,
-	}
-	return msg, nil
 }
 
 // Computes the Reed-Solomon shards and hash of the

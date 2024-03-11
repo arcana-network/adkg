@@ -145,7 +145,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				},
 			)
 
-			go p.Broadcast(p.IsOldNode(), *readyMsg)
+			p.Broadcast(p.IsOldNode(), *readyMsg)
 		}
 	}
 
