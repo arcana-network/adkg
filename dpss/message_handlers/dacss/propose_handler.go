@@ -191,16 +191,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.HashMsg = msg_hash
+				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index]
 			},
 		)
 
-		self.State().AcssStore.UpdateAccsState(
-			msg.ACSSRoundDetails.ToACSSRoundID(),
-			func(state *common.AccsState) {
-				state.RBCState.OwnReedSolomonShard.Data = shares[self.Details().Index].Data
-
-			},
-		)
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
 
