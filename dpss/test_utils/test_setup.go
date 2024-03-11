@@ -120,6 +120,15 @@ func (setup *TestSetup) GetThreeOldNodesFromTestSetup() (*PssTestNode, *PssTestN
 	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1], setup.oldCommitteeNetwork[2]
 }
 
+// Returns all nodes in the old committee for a given test setup.
+func (setup *TestSetup) GetAllOldNodesFromTestSetup() []*PssTestNode {
+
+	nodes := make([]*PssTestNode, 0)
+	nodes = append(nodes, setup.newCommitteeNetwork...)
+
+	return nodes
+}
+
 // Returns a node in the new committee from a given test setup.
 func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
 	return setup.newCommitteeNetwork[0]

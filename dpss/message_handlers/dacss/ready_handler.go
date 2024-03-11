@@ -165,7 +165,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			}
 
 			hashReconstMsg := common.HashByte(rbcMsg)
-			if reflect.DeepEqual(rbcMsg, state.RBCState.HashMsg) {
+			if reflect.DeepEqual(hashReconstMsg, state.RBCState.HashMsg) {
 				// Update the state of the RBC to be ended
 				p.State().AcssStore.UpdateAccsState(
 					m.AcssRoundDetails.ToACSSRoundID(),
@@ -174,7 +174,16 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 					},
 				)
 
-				// TODO: Construct the output message here.
+				//create output msg
+				outputMsg, err := NewDacssOutputMessage(m.AcssRoundDetails, rbcMsg, m.CurveName)
+
+				if err != nil {
+					log.WithField("error", err).Error("unable to create DacssOutputMessage")
+					return
+				}
+
+				p.ReceiveMessage(p.Details(), *outputMsg)
+
 			}
 		}
 	}

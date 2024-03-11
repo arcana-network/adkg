@@ -71,13 +71,26 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 		)
 		_, t, _ := self.Params()
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
-			acssState.RBCState.IsReadyMsgSent = true
+
 			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
 			if err != nil {
 				log.WithField("error", err).Error("DacssEchoMessage - Process()")
 				return
 			}
+			acssState.RBCState.IsReadyMsgSent = true
 			self.Broadcast(m.NewCommittee, *readyMsg)
+		}
+
+		if acssState.RBCState.CountReady() >= t+1 && acssState.RBCState.CountEcho() >= t+1 {
+
+			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
+			if err != nil {
+				log.WithField("error", err).Error("DacssEchoMessage - Process()")
+				return
+			}
+			acssState.RBCState.IsReadyMsgSent = true
+			self.Broadcast(m.NewCommittee, *readyMsg)
+
 		}
 	}
 }

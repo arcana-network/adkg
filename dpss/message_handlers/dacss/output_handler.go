@@ -2,31 +2,24 @@ package dacss
 
 import (
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/torusresearch/bijson"
 )
 
-var AcssOutputMessageType common.MessageType = "dacss_output"
+var DacssOutputMessageType common.MessageType = "dacss_output"
 
-type AcssOutputMessage struct {
-	roundID      common.RoundID
-	sender       int
-	kind         common.MessageType
-	curve        *curves.Curve
-	m            []byte
-	newCommittee bool
-	handlerType  string
+type DacssOutputMessage struct {
+	AcssRoundDetails common.ACSSRoundDetails
+	kind             common.MessageType
+	curveName        common.CurveName
+	m                []byte
 }
 
-func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, sender int, handlerType string, newCommittee bool) (*common.DKGMessage, error) {
-	m := AcssOutputMessage{
-		roundID:      id,
-		sender:       sender,
-		newCommittee: newCommittee,
-		kind:         AcssOutputMessageType,
-		curve:        curve,
-		m:            data,
-		handlerType:  handlerType,
+func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, curveName common.CurveName) (*common.PSSMessage, error) {
+	m := DacssOutputMessage{
+		AcssRoundDetails: roundDetails,
+		kind:             DacssOutputMessageType,
+		curveName:        curveName,
+		m:                data,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -34,6 +27,6 @@ func NewAcssOutputMessage(id common.RoundID, data []byte, curve *curves.Curve, s
 		return nil, err
 	}
 
-	msg := common.CreateMessage(m.roundID, string(m.kind), bytes)
+	msg := common.CreatePSSMessage(m.AcssRoundDetails.PSSRoundDetails, string(m.kind), bytes)
 	return &msg, nil
 }
