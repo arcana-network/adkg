@@ -20,7 +20,7 @@ type ImplicateExecuteMessage struct {
 	SymmetricKey     []byte                  // Compressed Affine Point
 	Proof            []byte                  // Contains d, R, S
 	SenderPubkeyHex  string                  // Hex of Compressed Affine Point
-	AcssData         common.AcssData
+	AcssData         common.AcssData         // ShareMap, commitments & dealer's ephemeral pubkey
 }
 
 func NewImplicateExecuteMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, senderPubkeyHex string, acssData common.AcssData) (*common.PSSMessage, error) {
@@ -51,7 +51,7 @@ For this step the Node needs to have the shareMap for the specific ACSS round.
 Steps:
  1. Check self is the sender
     If not: return
- 2. Retrieve the ACSS state for the specific ACSS round
+ 2. Retrieve the ACSS data hash for the specific ACSS round
     If not found: error and return
  3. Check whether we are already in Share Recovery for this ACSS round
     If so: return
@@ -68,28 +68,29 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
 
-	// At this point we should have the sharemap for this acss round
+	// At this point we should have the ACSS data hash for this acss round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if !found || len(acssState.AcssDataHash) == 0 || err != nil {
-		log.Errorf("Couldn't obtain ACSSState in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
-		return
-	}
-
-	// Hash the received acssData
-	hash, err := common.HashAcssData(msg.AcssData)
-	if err != nil {
-		// TODO error
-	}
-
-	// Check that the received acssData is correct, according to the received acssData in this acssRound
-	if reflect.DeepEqual(acssState.AcssDataHash, hash) {
-		// TODO error
+		log.Errorf("Couldn't obtain AcssDataHash in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
 
 	// If for this specific ACSS round, we are already in Share Recovery, ignore msg
 	if acssState.ShareRecoveryOngoing {
 		log.Debugf("Share Recovery is already ongoing for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// Hash the received acssData
+	hash, err := common.HashAcssData(msg.AcssData)
+	if err != nil {
+		log.Errorf("Error in hashing ACSSState in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// Check that the acssData in msg is correct, according to the (previously) received acssData in this acssRound
+	if !reflect.DeepEqual(acssState.AcssDataHash, hash) {
+		log.Errorf("Received shareMap is incorrect for Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
 
@@ -105,16 +106,8 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	_, k, _ := self.Params()
 
-	// Verify ZKP that the symmetric key is actually generated correctly
-
-	// Retrieve all data wrt the specific ACSS round from Node's storage
-	// from this we also get the dealer's ephemeral public key
-
+	// Verify ZKP that the symmetric key is actually generated correctly, using dealer's pubkey and sender's privkey
 	share := msg.AcssData.ShareMap[msg.SenderPubkeyHex]
-	if len(share) == 0 {
-		log.Errorf("Length of share is 0 in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
-		return
-	}
 	commitments := msg.AcssData.Commitments
 
 	// Convert hex of dealer's ephemeral key to a point
@@ -125,12 +118,14 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 		return
 	}
 
+	// Obtain symmetric key as elliptic curve point
 	K_i_d, err := curve.Point.FromAffineCompressed(msg.SymmetricKey)
 	if err != nil {
 		log.Errorf("Can't unpack symmetric key, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
 
+	// Obtain sender's pubkey as elliptic curve point
 	PK_i, err := common.HexToPoint(msg.CurveName, msg.SenderPubkeyHex)
 	if err != nil {
 		log.Errorf("Hex of implicate initiator pubkey couldn't be transformed to a Point, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
