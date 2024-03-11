@@ -53,8 +53,8 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	defer self.State().AcssStore.Unlock()
 
 	// Check whether the shares were already received. If so, ignore the message
-	_, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if found {
+	acssState, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if found && len(acssState.AcssDataHash) != 0 {
 		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
@@ -77,11 +77,14 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 	// Check whether for this round we are already in Implicate flow, waiting for the shares that just arrived
 	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
-	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if found && err == nil && len(acssState.ImplicateInformationSlice) > 0 {
+	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if err == nil && len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes
 		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {
+			// TODO this needs to check hash of msg.Data, and store the hash in the implicate info
+			// otherwise there's no check at all
+			// also add this to testing
 			implicateExecuteMessage, err := NewImplicateExecuteMessage(
 				msg.ACSSRoundDetails,
 				msg.CurveName,
@@ -152,13 +155,6 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// - save in node's state that shares were validated
 	// - send echo to each node
 	if verified {
-		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-			state.SharesValidated = true
-		})
-		if err != nil {
-			log.Errorf("Error updating AcssData in state: %v", err)
-			return
-		}
 
 		// Starts the RBC protocol.
 		// Create Reed-Solomon encoding. This is part of the RBC protocol.

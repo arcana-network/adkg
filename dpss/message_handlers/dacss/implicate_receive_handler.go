@@ -16,7 +16,7 @@ type ImplicateReceiveMessage struct {
 	CurveName        common.CurveName        // Name (indicator) of curve used in the messages.
 	SymmetricKey     []byte                  // Compressed Affine Point
 	Proof            []byte                  // Contains d, R, S
-	AcssData         common.AcssData
+	AcssData         common.AcssData         // ShareMap, commitments & dealer's ephemeral pubkey
 }
 
 func NewImplicateReceiveMessage(acssRoundDetails common.ACSSRoundDetails, curveName common.CurveName, symmetricKey []byte, proof []byte, acssData common.AcssData) (*common.PSSMessage, error) {
@@ -46,12 +46,12 @@ If the Node doesn't yet have the shareMap, the implicate information is added to
 so the follow-up can be done as soon as the shareMap is received (in ProposeHandler)
 
 Steps:
- 1. Check if sharemap for indicated ACSS round has already been stored
+ 1. Check if sharemapHash for indicated ACSS round has already been stored
     If not: return
  2. Check whether we are already in Share Recovery for this ACSS round
     If so: return
  3. If the node has the shareMap, continue the Implicate flow by sending an ImplicateExecute message
- 4. If the node doesnt have the shareMap, store the symmetric key, proof and sender's public key as hex value
+ 4. If the node doesnt have the shareMapHash, store the symmetric key, proof and sender's public key as hex value
     this will be picked up by the ProposeHandler once the shareMap has been received
 */
 func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {

@@ -70,8 +70,8 @@ type AccsState struct {
 	VerifiedRecoveryShares map[int]*sharing.ShamirShare
 	// Indicates per ACSS round whether the Share Recovery is in process
 	ShareRecoveryOngoing bool
-	// Indicates whether the shares for current node for this ACSS round were validated
-	SharesValidated bool
+	// Indicates whether current node output a valid share for the acssData that matches AcssDataHash
+	ValidShareOutput bool
 }
 
 type AccsStateUpdater func(*AccsState)

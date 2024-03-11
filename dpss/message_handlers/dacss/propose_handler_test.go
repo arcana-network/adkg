@@ -50,11 +50,9 @@ func TestProcessProposeMessage(t *testing.T) {
 
 	//check states update correctly
 	acssState, _, _ := SingleOldNode.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
-	assert.Equal(t, acssState.SharesValidated, true)
 	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
 
 	acssState, _, _ = singleNewNode.State().AcssStore.Get(msgNewCommittee.ACSSRoundDetails.ToACSSRoundID())
-	assert.Equal(t, acssState.SharesValidated, true)
 	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
 }
 
@@ -98,8 +96,6 @@ func TestInvalidShare(t *testing.T) {
 	// check state updates correctly
 	acssState, _, _ := SingleOldNode.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
 
-	assert.Equal(t, acssState.SharesValidated, false)
-
 	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
 
 }
@@ -133,10 +129,11 @@ func TestShareAlreadyReceived(t *testing.T) {
 	transport := node0.Transport
 	msgOldCommittee := getTestValidProposeMsg(node0, defaultSetup, false)
 
-	//update the state of sharesValidated to true
+	// The node already received the shares, and thus stored the acssDataHash
 	node1.State().AcssStore.UpdateAccsState(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-		state.SharesValidated = true
+		state.AcssDataHash = []byte("test")
 	})
+
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
 
@@ -150,13 +147,17 @@ func TestShareAlreadyReceived(t *testing.T) {
 
 }
 
-// TODO: since the process functio will trigger an early return in case of shares already received,
-// therefore, it will never go into the ImplicateExecuteMessage handler
-// Test if already in Implicate floe then implicateExecuteMessage should be received
+/*
+Function: Process
+
+Testcase: 2 ImplicateInformations have been stored in Node's state.
+
+Expectation: Node should send itself 2 implicateExecuteMessages
+*/
 func TestAlreadyInImplicateFlow(t *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
-	node0, node1 := defaultSetup.GetTwoOldNodesFromTestSetup()
+	node0, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 	transport := node0.Transport
 	msgOldCommittee := getTestValidProposeMsg(node0, defaultSetup, false)
 
@@ -169,35 +170,38 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 	randomProofBytes := make([]byte, 99)
 	_, _ = rand.Read(randomProofBytes)
 
-	implicateInfo := common.ImplicateInformation{
+	implicateInfo1 := common.ImplicateInformation{
 		SymmetricKey:    randomSymmetricKey,
 		Proof:           randomProofBytes,
 		SenderPubkeyHex: hex.EncodeToString(node0.LongtermKey.PublicKey.ToAffineCompressed()),
 	}
 
-	//update the state of Implicate info
+	implicateInfo2 := common.ImplicateInformation{
+		SymmetricKey:    randomSymmetricKey,
+		Proof:           randomProofBytes,
+		SenderPubkeyHex: hex.EncodeToString(node2.LongtermKey.PublicKey.ToAffineCompressed()),
+	}
+
+	// Add both pieces of implicateInformation to the receiver's node state
 	err := node1.State().AcssStore.UpdateAccsState(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-		state.ImplicateInformationSlice = append(state.ImplicateInformationSlice, implicateInfo)
+		state.ImplicateInformationSlice = []common.ImplicateInformation{implicateInfo1, implicateInfo2}
 	})
 
 	assert.Nil(t, err)
 
-	//update the state of sharesValidated to true
-	node0.State().AcssStore.UpdateAccsState(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-		state.SharesValidated = true
-	})
-
 	// Call the process on the msg
-	msgOldCommittee.Process(node0.Details(), node0)
+	msgOldCommittee.Process(node0.Details(), node1)
 
-	//shold trigger Receiving implicateExecuteMessage
-	sent_msg := transport.GetSentMessages()
-	assert.Equal(t, len(sent_msg), 0)
+	// Check: Node should send itself 2 implicateExecuteMessages
+	sent_msgs := transport.ReceivedMessages
+	implicateExecuteMessages := []common.PSSMessage{}
+	for _, msg := range sent_msgs {
+		if msg.Type == ImplicateExecuteMessageType {
+			implicateExecuteMessages = append(implicateExecuteMessages, msg)
+		}
+	}
 
-	//state should be updated to true
-	_, isPresent, _ := node1.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
-	assert.Equal(t, isPresent, true)
-
+	assert.Equal(t, 2, len(implicateExecuteMessages))
 }
 
 func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
