@@ -115,7 +115,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 	// Make sure the ready msg received from a node is set to true. We need to
 	// make sure also that the hashes match to increase the count.
-	ownHash := state.RBCState.HashMsg
+	ownHash := state.AcssDataHash
 	if reflect.DeepEqual(ownHash, m.Hash) {
 		state.RBCState.ReceivedReady[sender.Index] = true
 	}
@@ -165,7 +165,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			}
 
 			hashReconstMsg := common.HashByte(rbcMsg)
-			if reflect.DeepEqual(hashReconstMsg, state.RBCState.HashMsg) {
+			if reflect.DeepEqual(hashReconstMsg, state.AcssDataHash) {
 				// Update the state of the RBC to be ended
 				p.State().AcssStore.UpdateAccsState(
 					m.AcssRoundDetails.ToACSSRoundID(),

@@ -58,7 +58,7 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 		return
 	}
 	ownShare := acssState.RBCState.OwnReedSolomonShard
-	ownHash := acssState.RBCState.HashMsg
+	ownHash := acssState.AcssDataHash
 
 	// Check that the incoming message matches with the share of self (Line 11)
 	// of Algorithm 4, "Asynchronous Data Disemination".
@@ -70,6 +70,8 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 			},
 		)
 		_, t, _ := self.Params()
+
+		// This deals with Line 11 of the RBC protocol.
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
 			if err != nil {
@@ -80,6 +82,8 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 			self.Broadcast(m.NewCommittee, *readyMsg)
 		}
 
+		// This deals with the waiting for ECHO handler in Line 14 of the RBC
+		// protocol.
 		if acssState.RBCState.CountReady() >= t+1 && acssState.RBCState.CountEcho() >= t+1 {
 			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
 			if err != nil {

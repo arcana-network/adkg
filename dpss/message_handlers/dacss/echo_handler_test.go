@@ -429,7 +429,7 @@ func getTestEchoMsg(
 	receiver.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
-			state.RBCState.HashMsg = hashMsg
+			state.AcssDataHash = hashMsg
 			state.RBCState.OwnReedSolomonShard = shardReceiver
 		},
 	)
