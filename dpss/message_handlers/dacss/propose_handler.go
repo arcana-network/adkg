@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"encoding/hex"
+	"reflect"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -82,9 +83,18 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		// It is possible to have received multiple implicate messages from different nodes
 		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {
-			// TODO this needs to check hash of msg.Data, and store the hash in the implicate info
-			// otherwise there's no check at all
-			// also add this to testing
+			// First verify that the received acssData equals the acssData that was received in the implicate flow
+			hash, err := common.HashAcssData(msg.Data)
+			if err != nil {
+				log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+				return
+			}
+
+			if !reflect.DeepEqual(hash, implicate.AcssDataHash) {
+				log.Errorf("Hash of acssData in implicate flow for ACSS round %s does not match the hash of the stored implicate information", msg.ACSSRoundDetails.ToACSSRoundID())
+				return
+			}
+
 			implicateExecuteMessage, err := NewImplicateExecuteMessage(
 				msg.ACSSRoundDetails,
 				msg.CurveName,

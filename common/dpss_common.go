@@ -148,6 +148,7 @@ type ImplicateInformation struct {
 	SymmetricKey    []byte // Compressed Affine Point
 	Proof           []byte // Contains d, R, S
 	SenderPubkeyHex string // Hex of compressed Affine Point
+	AcssDataHash    []byte // Hash of received AcssData
 }
 
 // Stores the shares that the node receives during the DPSS protocol.

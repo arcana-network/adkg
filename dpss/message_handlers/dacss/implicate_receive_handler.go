@@ -84,11 +84,17 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 	// we store the symmetric key, proof and sender's public key as hex value
 	// The implicate flow should be continued as soon as we have the sharemap
 	if !found || len(acssState.AcssDataHash) == 0 {
+		hash, err := common.HashAcssData(msg.AcssData)
+		if err != nil {
+			log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			return
+		}
 		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,
 				Proof:           msg.Proof,
 				SenderPubkeyHex: senderPubkeyHex,
+				AcssDataHash:    hash,
 			}
 			state.ImplicateInformationSlice = append(state.ImplicateInformationSlice, implicateInformation)
 		})

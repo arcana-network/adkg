@@ -151,8 +151,9 @@ func TestShareAlreadyReceived(t *testing.T) {
 Function: Process
 
 Testcase: 2 ImplicateInformations have been stored in Node's state.
+1 has the correct acssDataHash (as the info that is being proposed to the node), the other doesn't.
 
-Expectation: Node should send itself 2 implicateExecuteMessages
+Expectation: Node should send itself 1 implicateExecuteMessage (only for the matching hash)
 */
 func TestAlreadyInImplicateFlow(t *testing.T) {
 
@@ -170,16 +171,19 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 	randomProofBytes := make([]byte, 99)
 	_, _ = rand.Read(randomProofBytes)
 
+	hash, _ := common.HashAcssData(msgOldCommittee.Data)
 	implicateInfo1 := common.ImplicateInformation{
 		SymmetricKey:    randomSymmetricKey,
 		Proof:           randomProofBytes,
 		SenderPubkeyHex: hex.EncodeToString(node0.LongtermKey.PublicKey.ToAffineCompressed()),
+		AcssDataHash:    hash,
 	}
 
 	implicateInfo2 := common.ImplicateInformation{
 		SymmetricKey:    randomSymmetricKey,
 		Proof:           randomProofBytes,
 		SenderPubkeyHex: hex.EncodeToString(node2.LongtermKey.PublicKey.ToAffineCompressed()),
+		AcssDataHash:    []byte("test"),
 	}
 
 	// Add both pieces of implicateInformation to the receiver's node state
@@ -201,7 +205,7 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, 2, len(implicateExecuteMessages))
+	assert.Equal(t, 1, len(implicateExecuteMessages))
 }
 
 func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup, newCommittee bool) AcssProposeMessage {
