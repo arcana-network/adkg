@@ -137,14 +137,14 @@ func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
 // Returns a receiver node and 2k + 1 nodes in a given committee
 func (setup *TestSetup) GetDealerAnd2kPlusOneNodes(fromOldCommittee bool) (*PssTestNode, []*PssTestNode) {
 	if fromOldCommittee {
-		k := setup.OldCommitteeParams.K
+		t := setup.OldCommitteeParams.T
 		receiver := setup.oldCommitteeNetwork[0]
-		group := setup.oldCommitteeNetwork[1 : 2*k+2]
+		group := setup.oldCommitteeNetwork[1 : 2*t+2]
 		return receiver, group
 	} else {
-		k := setup.NewCommitteeParams.K
+		t := setup.NewCommitteeParams.T
 		receiver := setup.newCommitteeNetwork[0]
-		group := setup.newCommitteeNetwork[1 : 2*k+2]
+		group := setup.newCommitteeNetwork[1 : 2*t+2]
 		return receiver, group
 	}
 }

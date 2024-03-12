@@ -49,15 +49,15 @@ func TestIncrement(test *testing.T) {
 
 	ephemeralKeypairSender := common.GenerateKeyPair(curves.K256())
 
-	shardReceiver, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := createShardAndHash(
 		testSender,
-		testRecvr,
 		ephemeralKeypairSender,
 	)
 	if err != nil {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
+	shardReceiver := shards[testRecvr.Details().Index]
 	testRecvr.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
@@ -131,12 +131,12 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 
 	ephemeralKeypairSender := common.GenerateKeyPair(curves.K256())
 
-	shardReceiver, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := createShardAndHash(
 		testSender,
-		testRecvr,
 		ephemeralKeypairSender,
 	)
 
+	shardReceiver := shards[testRecvr.Details().Index]
 	testRecvr.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
@@ -162,7 +162,7 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 		test.Errorf("Error creating the echo message: %v", err)
 	}
 
-	_, t, _ := testSender.Params()
+	_, _, t := testSender.Params()
 
 	// Executes the process message simulating that the sender node sends the
 	// same matching message 2t + 1 times.
@@ -232,14 +232,15 @@ func TestCounterEchoMessages(test *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	shardReceiver, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := createShardAndHash(
 		dealerNode,
-		receiverNode,
 		ephemeralKeypairDealer,
 	)
 	if err != nil {
 		test.Errorf("Error generating the shard: %v", err)
 	}
+
+	shardReceiver := shards[receiverNode.Details().Index]
 
 	receiverNode.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
@@ -274,7 +275,7 @@ func TestCounterEchoMessages(test *testing.T) {
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
 	}
-	_, t, _ := dealerNode.Params()
+	_, _, t := dealerNode.Params()
 
 	// Tests that the eco count is 2t + 1.
 	assert.Equal(test, 2*t+1, acssState.RBCState.CountEcho())
@@ -328,15 +329,15 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	)
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
-	shardReceiver, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := createShardAndHash(
 		dealerNode,
-		receiverNode,
 		ephemeralKeypairDealer,
 	)
 	if err != nil {
 		test.Errorf("Error generating the shard: %v", err)
 	}
 
+	shardReceiver := shards[receiverNode.Details().Index]
 	receiverNode.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
@@ -370,7 +371,7 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
 	}
-	_, t, _ := dealerNode.Params()
+	_, _, t := dealerNode.Params()
 
 	// Tests that the eco count is 2t + 1.
 	assert.Equal(test, 2*t+1, acssState.RBCState.CountEcho())
@@ -382,79 +383,46 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 
 func createShardAndHash(
 	dealerNode *testutils.PssTestNode,
-	receiverNode *testutils.PssTestNode,
 	ephemeralKeypairDealer common.KeyPair,
-) (infectious.Share, []byte, error) {
+) ([]infectious.Share, []byte, error) {
 	// Creates the Reed-Solomon shards for the message.
 	n, k, _ := dealerNode.Params()
-	commitments, shares, err := generateCommitmentsRandom(
-		curves.K256(),
+	secret := sharing.GenerateSecret(curves.K256())
+	commitments, shares, err := sharing.GenerateCommitmentAndShares(
+		secret,
 		uint32(k),
 		uint32(n),
+		curves.K256(),
 	)
 	if err != nil {
-		return infectious.Share{}, []byte{}, err
+		return []infectious.Share{}, []byte{}, err
 	}
 
-	shards, hashMsg, err := generateReedSolomonShards(
+	shards, hashMsg, err := computeReedSolomonShardsAndHash(
 		commitments,
-		shares,
 		dealerNode,
+		shares,
 		ephemeralKeypairDealer,
 	)
 	if err != nil {
-		return infectious.Share{}, []byte{}, err
+		return []infectious.Share{}, []byte{}, err
 	}
 
-	shardReceiver := shards[receiverNode.Details().Index]
-	return shardReceiver, hashMsg, nil
+	return shards, hashMsg, nil
 }
 
-func generateCommitmentsRandom(
-	curve *curves.Curve,
-	k uint32,
-	n uint32,
-) (*krsharing.FeldmanVerifier, []*krsharing.ShamirShare, error) {
-	secret := sharing.GenerateSecret(curve)
-	return sharing.GenerateCommitmentAndShares(
-		secret,
-		k,
-		n,
-		curves.K256(),
-	)
-}
-
-// Generates the Reed-Solomon shards for a randomly generated secret.
-func generateReedSolomonShards(
-	commitment *krsharing.FeldmanVerifier,
-	shares []*krsharing.ShamirShare,
-	dealer *testutils.PssTestNode,
-	dealerEphemeralKey common.KeyPair,
-) ([]infectious.Share, []byte, error) {
-	n, k, _ := dealer.Params()
-	return computeReedSolomonShardsAndHash(
-		commitment,
-		dealer,
-		shares,
-		dealerEphemeralKey,
-		n,
-		k,
-	)
-}
-
-// Computes the Reed-Solomon shards and hash of the
+// Computes the Reed-Solomon shards and hash of a given commitment and shares.
 func computeReedSolomonShardsAndHash(
 	commitment *krsharing.FeldmanVerifier,
 	dealer *testutils.PssTestNode,
 	shares []*krsharing.ShamirShare,
 	dealerEphemeralKey common.KeyPair,
-	n int,
-	k int,
 ) ([]infectious.Share, []byte, error) {
+	n, _, t := dealer.Params()
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
 		if nodePublicKey == nil {
 			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
 			return []infectious.Share{}, []byte{}, errors.New("Public key is nil")
@@ -488,12 +456,12 @@ func computeReedSolomonShardsAndHash(
 
 	msgHash := common.HashByte(msgBytes)
 
-	fec, err := infectious.NewFEC(k, n)
+	fec, err := infectious.NewFEC(t+1, n)
 	if err != nil {
 		return []infectious.Share{}, []byte{}, err
 	}
 
-	shards, err := acss.Encode(fec, msgHash)
+	shards, err := acss.Encode(fec, msgBytes)
 	if err != nil {
 		return []infectious.Share{}, []byte{}, err
 	}

@@ -122,7 +122,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 	readyCount := state.RBCState.CountReady()
 
-	n, t, _ := p.Params()
+	n, _, t := p.Params()
 
 	// Check if t+1 Ready msg received and not send ready msg
 	if readyCount >= t+1 && !state.RBCState.IsReadyMsgSent {
@@ -158,6 +158,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				return
 			}
 
+			// Reconstruction of the message using RS encoding.
 			rbcMsg, err := acss.Decode(fec, state.RBCState.ReadyMsgShards)
 			if err != nil {
 				log.WithField("error", err).Error("unable to decode the message")
@@ -172,6 +173,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 					func(state *common.AccsState) {
 						state.RBCState.Phase = common.Ended
 						state.ValidShareOutput = true
+						state.RBCState.ReceivedMessage = rbcMsg
 					},
 				)
 
@@ -182,9 +184,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 					log.WithField("error", err).Error("unable to create DacssOutputMessage")
 					return
 				}
-
-				p.ReceiveMessage(p.Details(), *outputMsg)
-
+				p.Send(p.Details(), *outputMsg)
 			}
 		}
 	}

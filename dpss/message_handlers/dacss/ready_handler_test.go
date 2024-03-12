@@ -38,7 +38,7 @@ func TestProcessReadyMessage(test *testing.T) {
 		test.Errorf("Error retrieving the state of the node: %v", err)
 	}
 
-	_, t, _ := receiverNode.Params()
+	_, _, t := receiverNode.Params()
 
 	for i := range t + 1 {
 		echoMsg := DacssEchoMessage{
@@ -112,7 +112,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 		test.Errorf("Error retrieving the state of the node: %v", err)
 	}
 
-	_, t, _ := receiverNode.Params()
+	_, _, t := receiverNode.Params()
 
 	// Simulates the reception of t + 1 READY messages
 	for i := range t + 1 {
@@ -151,6 +151,147 @@ func TestLateEchoAfterReady(test *testing.T) {
 }
 
 /*
+Function: Process
+
+Testcase: happy path to the OUTPUT handler. This test evaluates that if the node
+sends the OUTPUT message after receiving the correct ammount of shards.
+
+Expect:
+  - The OUTPUT message is sent after receiving 2t + 1 correct shards.
+  - The reconstructed message is the same as the dealt message.
+*/
+func TestGoingToOutputHandler(test *testing.T) {
+	receiverNode, senderGroup, acssRoundDetails, err := setupDealerAndGroup()
+	if err != nil {
+		test.Errorf("Error while setting up the nodes: %v", err)
+	}
+
+	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
+		acssRoundDetails.ToACSSRoundID(),
+	)
+	if !found {
+		test.Errorf("State not found")
+	}
+	if err != nil {
+		test.Errorf("Error retrieving the state of the node: %v", err)
+	}
+
+	// Simulates the reception of 2t + 1 READY messages
+	for _, senderNode := range senderGroup {
+		stateSender, found, err := senderNode.State().AcssStore.Get(
+			acssRoundDetails.ToACSSRoundID(),
+		)
+		if !found {
+			test.Errorf("State not found")
+		}
+		if err != nil {
+			test.Errorf("Error retrieving the state of the node: %v", err)
+		}
+
+		readyMsg := DacssReadyMessage{
+			AcssRoundDetails: *acssRoundDetails,
+			Kind:             DacssEchoMessageType,
+			CurveName:        common.CurveName(curves.K256().Name),
+			Share:            stateSender.RBCState.OwnReedSolomonShard,
+			Hash:             stateReceiver.AcssDataHash,
+		}
+		readyMsg.Process(senderNode.Details(), receiverNode)
+	}
+
+	_, _, t := receiverNode.Params()
+	hashOutputRbc := common.HashByte(stateReceiver.RBCState.ReceivedMessage)
+	assert.Equal(test, 2*t+1, len(stateReceiver.RBCState.ReadyMsgShards))
+	assert.Equal(test, 2*t+1, stateReceiver.RBCState.CountReady())
+	assert.Equal(test, stateReceiver.AcssDataHash, hashOutputRbc)
+	assert.Equal(test, stateReceiver.RBCState.Phase, common.Ended)
+}
+
+/*
+Function: Process
+
+Testcase: tests the situation where the same sender node sends a READY message
+multiple times.
+
+Expect:
+  - The ammount of READY shards stored is just one.
+  - The counter of received READY messages is one.
+*/
+func TestRepeatedReadyMessages(test *testing.T) {
+	defaultSetup := testutils.DefaultTestSetup()
+	receiverNode, senderNode := defaultSetup.GetTwoOldNodesFromTestSetup()
+
+	// Creates the details for the ACSS protocol.
+	id := big.NewInt(1)
+	pssRoundDetails := common.PSSRoundDetails{
+		PssID:  common.NewPssID(*id),
+		Dealer: senderNode.Details(),
+	}
+	acssRoundDetails := common.ACSSRoundDetails{
+		PSSRoundDetails: pssRoundDetails,
+		ACSSCount:       1,
+	}
+
+	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+
+	shards, hashMsg, err := createShardAndHash(
+		senderNode,
+		ephemeralKeypairDealer,
+	)
+	if err != nil {
+		test.Errorf("Error computing the shards of the message: %v", err)
+	}
+
+	senderNode.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.AcssDataHash = hashMsg
+			state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index]
+		},
+	)
+	receiverNode.State().AcssStore.UpdateAccsState(
+		acssRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.AcssDataHash = hashMsg
+			state.RBCState.OwnReedSolomonShard = shards[receiverNode.Details().Index]
+		},
+	)
+
+	// Simulates the reception of 2t + 1 READY messages by the same sender.
+	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
+		acssRoundDetails.ToACSSRoundID(),
+	)
+	if !found {
+		test.Errorf("State not found")
+	}
+	if err != nil {
+		test.Errorf("Error retrieving the state of the node: %v", err)
+	}
+	stateSender, found, err := senderNode.State().AcssStore.Get(
+		acssRoundDetails.ToACSSRoundID(),
+	)
+	if !found {
+		test.Errorf("State not found")
+	}
+	if err != nil {
+		test.Errorf("Error retrieving the state of the node: %v", err)
+	}
+	_, _, t := receiverNode.Params()
+	for range 2*t + 1 {
+		readyMsg := DacssReadyMessage{
+			AcssRoundDetails: acssRoundDetails,
+			Kind:             DacssEchoMessageType,
+			CurveName:        common.CurveName(curves.K256().Name),
+			Share:            stateSender.RBCState.OwnReedSolomonShard,
+			Hash:             stateReceiver.AcssDataHash,
+		}
+		readyMsg.Process(senderNode.Details(), receiverNode)
+	}
+
+	assert.Equal(test, 1, len(stateReceiver.RBCState.ReadyMsgShards))
+	assert.Equal(test, 1, stateReceiver.RBCState.CountReady())
+}
+
+/*
 Sets up three types of nodes:
   - A receiver node that will be the one that receives the ECHO/READY
     messages.
@@ -186,14 +327,28 @@ func setupDealerAndGroup() (
 	}
 
 	// Creates the shards and hash for a random secret
-	shardReceiver, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := createShardAndHash(
 		dealerNode,
-		receiverNode,
 		ephemeralKeypairDealer,
 	)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	// Sets the sender own shards
+	for _, senderNode := range senderGroup {
+		senderNode.State().AcssStore.Lock()
+		senderNode.State().AcssStore.UpdateAccsState(
+			acssRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index]
+				state.AcssDataHash = hashMsg
+			},
+		)
+		senderNode.State().AcssStore.Unlock()
+	}
+
+	shardReceiver := shards[receiverNode.Details().Index]
 
 	// Sets up the receivers own local share and hash of the message.
 	receiverNode.State().AcssStore.Lock()

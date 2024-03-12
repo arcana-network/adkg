@@ -69,7 +69,7 @@ func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPar
 				state.RBCState.ReceivedEcho[sender.Index] = true
 			},
 		)
-		_, t, _ := self.Params()
+		_, _, t := self.Params()
 
 		// This deals with Line 11 of the RBC protocol.
 		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
