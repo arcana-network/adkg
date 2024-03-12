@@ -5,6 +5,8 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	kryptology "github.com/coinbase/kryptology/pkg/sharing"
+
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -40,80 +42,149 @@ func NewReceiveShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails, cu
 	return &msg, nil
 }
 
-func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, receiver common.PSSParticipant) {
 
 	// Ignore if message comes from self
-	if self.Details().IsEqual(sender) {
+	if receiver.Details().IsEqual(sender) {
 		return
 	}
 
-	self.State().AcssStore.Lock()
-	defer self.State().AcssStore.Unlock()
+	receiver.State().AcssStore.Lock()
+	defer receiver.State().AcssStore.Unlock()
 
-	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	acssState, found, err := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
-		// TODO error
+		log.Errorf("No acssState found in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
+	}
+
+	// We only care about this message if we are in Share Recovery phase
+	if !acssState.ShareRecoveryOngoing {
+		log.Errorf("Share Recovery not ongoing in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
+	// If the current node already has a valid share, ignore the message
+	if acssState.ValidShareOutput {
+		log.Debugf("Node already has a valid share in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
 	}
 
 	// Hash the received acssData
 	hash, err := common.HashAcssData(msg.AcssData)
 	if err != nil {
-		// TODO error
-	}
-
-	if reflect.DeepEqual(acssState.AcssDataHash, hash) {
-		// TODO error
+		log.Errorf("Error hashing acssData in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
 
-	// TODO Ignore if Node already has recovered a share. This connects to how we conclude the ACSS round TBD
+	// Check that the hash of received acssData matches the stored acssDataHash
+	if !reflect.DeepEqual(acssState.AcssDataHash, hash) {
+		log.Errorf("Received acssDataHash does not match the stored acssDataHash in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
+	}
+
 	curve := curves.GetCurveByName(string(msg.CurveName))
 
 	proof, err := sharing.UnpackProof(curve, msg.Proof)
 	if err != nil {
-		// TODO error
+		log.Errorf("Error unpacking proof in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
 	}
 
 	g := curve.NewGeneratorPoint()
-	_, k, t := self.Params()
+	n, k, t := receiver.Params()
 
-	PK_j, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
+	// Convert sender's public key to a curve point
+	PK_j, err := common.PointToCurvePoint(sender.PubKey, msg.CurveName)
+	if err != nil {
+		log.Errorf("Error converting sender's public key to a curve point in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
+	}
+
 	// Convert hex of dealer's ephemeral key to a point
 	dealerPubkey := msg.AcssData.DealerEphemeralPubKey
 	PK_d, err := common.HexToPoint(msg.CurveName, dealerPubkey)
+	if err != nil {
+		log.Errorf("Error converting dealer's public key to a curve point in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
+	}
 
+	// Convert received symmetric key to a curve point
 	K_j_d, err := curve.Point.FromAffineCompressed(msg.SymmetricKey)
 	if err != nil {
-		// TODO error
+		log.Errorf("Error converting symmetric key to a curve point in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		return
 	}
 
 	// Verify ZKP
 	symmKeyVerified := sharing.Verify(proof, g, PK_j, PK_d, K_j_d, curve)
 
 	if !symmKeyVerified {
-		log.Errorf("Verification of ZKP failed in Implicate flow, ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
-
+		log.Errorf("Verification of ZKP failed in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
 
-	share_j := msg.AcssData.ShareMap[common.PointToHex(PK_j)]
+	// Extract the correct share
+	senderPubkeyHex := common.PointToHex(PK_j)
+	share_j := msg.AcssData.ShareMap[senderPubkeyHex]
 	commitments := msg.AcssData.Commitments
 
 	// Check Predicate for share
 	shamirShare_j, _, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
 
-	// IF ok: store the decrypted share
-	if verified {
-		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-			state.VerifiedRecoveryShares[sender.Index] = shamirShare_j
-		})
+	// If the predicate doesn't check out, we can't store the share
+	if !verified {
+		log.Errorf("Predicate verification failed in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+		return
 	}
+
+	// Store the obtained share
+	receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		state.VerifiedRecoveryShares[sender.Index] = shamirShare_j
+	})
+
 	// If node has received >= t+1 verified shares: interpolate and output
-	// TODO check Do we have to get the state again here?
-	acssState, _, _ = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	// At this point we already know the acssState exists
+	acssState, _, _ = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
-		// TODO interpolate
-		// Not clear what existing functions to use for this
+
+		// TODO interpolate to obtain share for current node
+		shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
+		if err != nil {
+			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			return
+		}
+		values := make([]*kryptology.ShamirShare, 0, len(acssState.VerifiedRecoveryShares))
+
+		for _, v := range acssState.VerifiedRecoveryShares {
+			values = append(values, v)
+		}
+		convertedShares := make([]*sharing.ShamirShare, len(values))
+		for i, share := range values {
+			convertedShares[i] = &sharing.ShamirShare{
+				Id:    share.Id,
+				Value: share.Value,
+			}
+		}
+		// Obtain secret through interpolation
+		evalForNode, err := shamir.ObtainEvalForX(convertedShares, uint32(receiver.Details().Index))
+		if err != nil {
+			log.Errorf("Error obtaining share value for node in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			return
+		}
+		shareForNode := &sharing.ShamirShare{
+			Id:    uint32(receiver.Details().Index),
+			Value: evalForNode.Bytes(),
+		}
+
+		// TODO store share in node state. this will work the same as in OutputHandler (tbd)
+		// for now we just log to avoid compiler warning
+		log.Debugf("shareForNode: %v", shareForNode)
+
+		// When finished set ValidShareOutput to true
+		receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+			state.ValidShareOutput = true
+		})
 	}
 
 }

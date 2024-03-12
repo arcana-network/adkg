@@ -229,6 +229,45 @@ func (s Shamir) interpolate(xs, ys []curves.Scalar) (curves.Scalar, error) {
 	return result, nil
 }
 
+// TODO test
+// interpolateShares interpolates the shares at a given x value and returns the result as curves.Scalar.
+func (s *Shamir) ObtainEvalForX(shares []*ShamirShare, xValue uint32) (curves.Scalar, error) {
+	x := s.curve.Scalar.New(int(xValue))
+	result := s.curve.Scalar.Zero()
+
+	for i, shareI := range shares {
+		xi := s.curve.Scalar.New(int(shareI.Id))
+		num := s.curve.Scalar.One()
+		den := s.curve.Scalar.One()
+
+		for j, shareJ := range shares {
+			if i == j {
+				continue
+			}
+
+			xj := s.curve.Scalar.New(int(shareJ.Id))
+			num = num.Mul(x.Sub(xj))  // (x - xj)
+			den = den.Mul(xi.Sub(xj)) // (xi - xj)
+		}
+
+		if den.IsZero() {
+			return nil, fmt.Errorf("divide by zero in interpolation")
+		}
+
+		// Convert share value to curve's scalar
+		shareValue, err := s.curve.Scalar.SetBytes(shareI.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set share value to curve's scalar: %v", err)
+		}
+
+		// Calculate the term for this share and add it to the result
+		term := shareValue.Mul(num).Div(den)
+		result = result.Add(term)
+	}
+
+	return result, nil
+}
+
 func (s Shamir) interpolatePoint(xs []curves.Scalar, ys []curves.Point) (curves.Point, error) {
 	result := s.curve.NewIdentityPoint()
 	for i, xi := range xs {

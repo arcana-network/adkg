@@ -1,20 +1,10 @@
-package testutils
+package dacss
 
 import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
-func TestCurveName() common.CurveName {
-	return common.SECP256K1
-}
-
-func TestCurve() *curves.Curve {
-	return common.CurveFromName(TestCurveName())
-}
-
-// The default parameters for old & new committee are distinct on purpose,
-// to make sure the correct ones are being used
 const DefaultN_old = 7
 const DefaultNrFaulty_old = 0
 const DefaultK_old = 2
@@ -53,34 +43,35 @@ type TestSetup struct {
 	NewCommitteeParams   common.CommitteeParams
 	NrFaultyNewCommittee int
 
-	oldCommitteeNetwork []*PssTestNode
-	newCommitteeNetwork []*PssTestNode
+	oldCommitteeNetwork []*PssTestNode2
+	newCommitteeNetwork []*PssTestNode2
 }
 
-func DefaultTestSetup() *TestSetup {
+func DefaultTestSetup() (*TestSetup, *MockTransport) {
 	oldCommitteeParams, newCommitteeParams := StandardCommitteesParams()
 	return NewTestSetup(oldCommitteeParams, newCommitteeParams, DefaultNrFaulty_old, DefaultNrFaulty_new)
 }
 
+// build upon the noSend test setup from test_utils
+
 // NewTestSetup creates a complete TestSetup with the given committee parameters.
-// It generates all the nodes necessary and connects them with a standard NoSendMockTransport.
-func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams, nrFaultyOldCommittee, nrFaultyNewCommittee int) *TestSetup {
+// It generates all the nodes necessary and connects them with a standard MockTransport.
+func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams, nrFaultyOldCommittee, nrFaultyNewCommittee int) (*TestSetup, *MockTransport) {
 	setup := &TestSetup{
 		OldCommitteeParams:   oldCommitteeParams,
 		NrFaultyOldCommittee: nrFaultyOldCommittee,
 		NewCommitteeParams:   newCommitteeParams,
 		NrFaultyNewCommittee: nrFaultyNewCommittee,
-		oldCommitteeNetwork:  make([]*PssTestNode, oldCommitteeParams.N),
-		newCommitteeNetwork:  make([]*PssTestNode, newCommitteeParams.N),
+		oldCommitteeNetwork:  make([]*PssTestNode2, oldCommitteeParams.N),
+		newCommitteeNetwork:  make([]*PssTestNode2, newCommitteeParams.N),
 	}
 
-	// This MockTransport doesn't pass on any msg, it only registers what has been sent/broadcasted.
-	sharedTransport := NewNoSendMockTransport(nil, nil)
+	sharedTransport := NewMockTransport(nil, nil)
 
 	// Create the nodes of the Old Committee
 	for i := 0; i < oldCommitteeParams.N; i++ {
 		isFaulty := i < nrFaultyOldCommittee // Mark first 'nrFaulty' nodes as faulty
-		keypair := common.GenerateKeyPair(TestCurve())
+		keypair := common.GenerateKeyPair(curves.K256())
 		// Make sure the index starts at 1
 		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, false)
 		setup.oldCommitteeNetwork[i] = node
@@ -89,7 +80,7 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 	// Create the nodes of the New Committee
 	for i := 0; i < newCommitteeParams.N; i++ {
 		isFaulty := i < nrFaultyNewCommittee // Mark first 'nrFaulty' nodes as faulty
-		keypair := common.GenerateKeyPair(TestCurve())
+		keypair := common.GenerateKeyPair(curves.K256())
 		// Make sure the index starts at 1
 		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, true)
 		setup.newCommitteeNetwork[i] = node
@@ -110,53 +101,5 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 	// Update the transport with the created nodes
 	sharedTransport.Init(setup.oldCommitteeNetwork, setup.newCommitteeNetwork)
 
-	return setup
-}
-
-// Returns just a node in the old committee from the given test setup.
-func (setup *TestSetup) GetSingleOldNodeFromTestSetup() *PssTestNode {
-	return setup.oldCommitteeNetwork[0]
-}
-
-// Returns two nodes in the old committee for a given test setup.
-func (setup *TestSetup) GetTwoOldNodesFromTestSetup() (*PssTestNode, *PssTestNode) {
-	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1]
-}
-
-// Returns three nodes in the old committee for a given test setup.
-func (setup *TestSetup) GetThreeOldNodesFromTestSetup() (*PssTestNode, *PssTestNode, *PssTestNode) {
-	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1], setup.oldCommitteeNetwork[2]
-}
-
-func (setup *TestSetup) GetXOldCommitteeNodes(x int) []*PssTestNode {
-	return setup.oldCommitteeNetwork[:x]
-}
-
-// Returns all nodes in the old committee for a given test setup.
-func (setup *TestSetup) GetAllOldNodesFromTestSetup() []*PssTestNode {
-
-	nodes := make([]*PssTestNode, 0)
-	nodes = append(nodes, setup.newCommitteeNetwork...)
-
-	return nodes
-}
-
-// Returns a node in the new committee from a given test setup.
-func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
-	return setup.newCommitteeNetwork[0]
-}
-
-// Returns a receiver node and 2k + 1 nodes in a given committee
-func (setup *TestSetup) GetDealerAnd2kPlusOneNodes(fromOldCommittee bool) (*PssTestNode, []*PssTestNode) {
-	if fromOldCommittee {
-		t := setup.OldCommitteeParams.T
-		receiver := setup.oldCommitteeNetwork[0]
-		group := setup.oldCommitteeNetwork[1 : 2*t+2]
-		return receiver, group
-	} else {
-		t := setup.NewCommitteeParams.T
-		receiver := setup.newCommitteeNetwork[0]
-		group := setup.newCommitteeNetwork[1 : 2*t+2]
-		return receiver, group
-	}
+	return setup, sharedTransport
 }

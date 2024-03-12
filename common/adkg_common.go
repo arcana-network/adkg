@@ -253,7 +253,8 @@ func GetADKGIDFromRoundID(roundID RoundID) (ADKGID, error) {
 type DkgParticipant interface {
 	// For ADKG state
 	ParticipantState
-	// Get Protocol n (number of nodes), k (threshold) and t (num of malicious nodes)
+	// Get Protocol n (number of nodes), k (reconstruction threshold)
+	// and t (num of max malicious nodes)
 	Params() (n int, k int, t int)
 	// Node Index
 	ID() int

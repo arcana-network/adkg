@@ -23,7 +23,8 @@ type PSSParticipant interface {
 	// committee is defined by the flag fromNewCOmmittee.
 	GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point
 	// Obtains the parameters of the protocols for the committee for which the
-	// current node belongs.
+	// current node belongs. n = number of nodes, k = reconstruction threshold
+	// t = max number of malicious nodes.
 	Params() (n int, k int, t int)
 	// Broadcast a message to the old or new committee. The committee is defined
 	// by the flag toNewCommittee.
@@ -129,6 +130,7 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 				ReceivedReady:  make(map[int]bool),
 				IsReadyMsgSent: false,
 			},
+			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
 		}
 	}
 

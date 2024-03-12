@@ -6,7 +6,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -85,15 +84,15 @@ func TestNoAcssDataInState(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, _ := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	n, k, _ := dealer.Params()
 
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitment, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		log.Errorf("Error generating commitments & shares: %v", err)
@@ -131,7 +130,7 @@ func TestNoAcssDataInState(t *testing.T) {
 	shareRecoveryMessage := ShareRecoveryMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ShareMessageType,
-		CurveName:        common.SECP256K1, // TODO make this flexible and also test ed25119
+		CurveName:        testutils.TestCurveName(),
 		AcssData:         msgData,
 	}
 
@@ -223,15 +222,15 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	n, k, _ := dealer.Params()
 
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitment, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		log.Errorf("Error generating commitments & shares: %v", err)
@@ -275,7 +274,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 	shareRecoveryMessage := ShareRecoveryMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             ShareMessageType,
-		CurveName:        common.SECP256K1, // TODO make this flexible and also test ed25119
+		CurveName:        testutils.TestCurveName(),
 		AcssData:         msgData,
 	}
 	return node1, node2, acssRoundDetails, shareRecoveryMessage

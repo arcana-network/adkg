@@ -43,7 +43,7 @@ func (n *PssTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Poi
 	nodes := n.Nodes(fromNewCommittee)
 	for _, n := range nodes {
 		if n.Index == idx {
-			pk, err := curves.K256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
+			pk, err := TestCurve().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
 			if err != nil {
 				return nil
 			}
@@ -126,7 +126,7 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 func GetSingleNode(isNewCommittee bool, isFaulty bool) (*PssTestNode, *NoSendMockTransport) {
 	nodesOld := []*PssTestNode{}
 	nodesNew := []*PssTestNode{}
-	keypair := common.GenerateKeyPair(curves.K256())
+	keypair := common.GenerateKeyPair(TestCurve())
 	transport := NewNoSendMockTransport(nodesOld, nodesNew)
 
 	node := NewEmptyNode(1, keypair, transport, isFaulty, isNewCommittee)
