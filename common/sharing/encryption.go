@@ -17,7 +17,10 @@ import (
 
 // Combine the keys to create a shared key and encrypt the message (symmetric encryption)
 func EncryptSymmetricCalculateKey(msg []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
-	key, _ := CalculateSharedKey(public, priv)
+	key, err := CalculateSharedKey(public, priv)
+	if err != nil || key == nil {
+		return nil, err
+	}
 	return EncryptSymmetric(msg, key)
 }
 

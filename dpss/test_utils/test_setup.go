@@ -5,6 +5,14 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
 
+func TestCurveName() common.CurveName {
+	return common.SECP256K1
+}
+
+func TestCurve() *curves.Curve {
+	return common.CurveFromName(TestCurveName())
+}
+
 // The default parameters for old & new committee are distinct on purpose,
 // to make sure the correct ones are being used
 const DefaultN_old = 7
@@ -72,7 +80,7 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 	// Create the nodes of the Old Committee
 	for i := 0; i < oldCommitteeParams.N; i++ {
 		isFaulty := i < nrFaultyOldCommittee // Mark first 'nrFaulty' nodes as faulty
-		keypair := common.GenerateKeyPair(curves.K256())
+		keypair := common.GenerateKeyPair(TestCurve())
 		// Make sure the index starts at 1
 		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, false)
 		setup.oldCommitteeNetwork[i] = node
@@ -81,7 +89,7 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 	// Create the nodes of the New Committee
 	for i := 0; i < newCommitteeParams.N; i++ {
 		isFaulty := i < nrFaultyNewCommittee // Mark first 'nrFaulty' nodes as faulty
-		keypair := common.GenerateKeyPair(curves.K256())
+		keypair := common.GenerateKeyPair(TestCurve())
 		// Make sure the index starts at 1
 		node := NewEmptyNode(i+1, keypair, sharedTransport, isFaulty, true)
 		setup.newCommitteeNetwork[i] = node
@@ -118,6 +126,10 @@ func (setup *TestSetup) GetTwoOldNodesFromTestSetup() (*PssTestNode, *PssTestNod
 // Returns three nodes in the old committee for a given test setup.
 func (setup *TestSetup) GetThreeOldNodesFromTestSetup() (*PssTestNode, *PssTestNode, *PssTestNode) {
 	return setup.oldCommitteeNetwork[0], setup.oldCommitteeNetwork[1], setup.oldCommitteeNetwork[2]
+}
+
+func (setup *TestSetup) GetXOldCommitteeNodes(x int) []*PssTestNode {
+	return setup.oldCommitteeNetwork[:x]
 }
 
 // Returns all nodes in the old committee for a given test setup.
