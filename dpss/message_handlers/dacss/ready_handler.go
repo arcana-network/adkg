@@ -1,7 +1,6 @@
 package dacss
 
 import (
-	"encoding/hex"
 	"reflect"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -39,21 +38,6 @@ func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infect
 
 	msg := common.CreatePSSMessage(m.AcssRoundDetails.PSSRoundDetails, string(m.Kind), bytes)
 	return &msg, nil
-}
-
-func (m *DacssReadyMessage) Fingerprint() string {
-	var bytes []byte
-	delimiter := common.Delimiter2
-	bytes = append(bytes, m.Hash...)
-	bytes = append(bytes, delimiter...)
-
-	bytes = append(bytes, m.Share.Data...)
-	bytes = append(bytes, delimiter...)
-
-	bytes = append(bytes, byte(m.Share.Number))
-	bytes = append(bytes, delimiter...)
-	hash := hex.EncodeToString(common.Keccak256(bytes))
-	return hash
 }
 
 // Algorithm 4: https://eprint.iacr.org/2021/777.pdf
