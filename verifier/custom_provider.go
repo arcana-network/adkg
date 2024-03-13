@@ -21,8 +21,8 @@ type CustomProvider struct {
 }
 
 type CustomProviderResponse struct {
-	JWKUrl   string            `json:"jwks_url"`
-	IDParam  string            `json:"id_param"`
+	JWKUrl   string            `json:"jwkUrl"`
+	IDParam  string            `json:"idParam"`
 	Params   map[string]string `json:"params"`
 	Issuer   string            `json:"issuer"`
 	Audience string            `json:"audience"`
@@ -60,8 +60,8 @@ func (t *CustomProvider) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	if err != nil {
 		return false, "", err
 	}
-	u.Path = "/api/v1/provider"
-	u.RawQuery = fmt.Sprintf("provider=%s&appId=%s", p.Provider, p.AppID)
+	u.Path = "/api/v2/provider"
+	u.RawQuery = fmt.Sprintf("provider=%s&appID=%s", p.Provider, p.AppID)
 	customProviderParams := CustomProviderResponse{}
 	_, err = req.R().SetBody(&customProviderParams).Post(u.String())
 	if err != nil {
