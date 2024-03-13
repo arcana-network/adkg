@@ -9,7 +9,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,7 +69,7 @@ func TestInvalidShare(t *testing.T) {
 	//constructing an invalid share for node0
 	X := SingleOldNode.Details().PubKey.X
 	Y := SingleOldNode.Details().PubKey.Y
-	pubKeyPoint, _ := curves.K256().NewIdentityPoint().Set(&X, &Y)
+	pubKeyPoint, _ := testutils.TestCurve().NewIdentityPoint().Set(&X, &Y)
 
 	bytes := make([]byte, 33)
 	_, _ = rand.Read(bytes)
@@ -231,9 +230,9 @@ func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *tes
 		n = defaultSetup.OldCommitteeParams.N
 	}
 
-	DealerEphemeralKey := common.GenerateKeyPair(curves.K256())
-	testSecret := sharing.GenerateSecret(curves.K256())
-	commitments, shares, _ := sharing.GenerateCommitmentAndShares(testSecret, uint32(k), uint32(n), curves.K256())
+	DealerEphemeralKey := common.GenerateKeyPair(testutils.TestCurve())
+	testSecret := sharing.GenerateSecret(testutils.TestCurve())
+	commitments, shares, _ := sharing.GenerateCommitmentAndShares(testSecret, uint32(k), uint32(n), testutils.TestCurve())
 	compressedCommitments := sharing.CompressCommitments(commitments)
 	shareMap := make(map[string][]byte, n)
 
@@ -261,7 +260,7 @@ func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *tes
 	msg := AcssProposeMessage{
 		ACSSRoundDetails:   acssRoundDetails,
 		Kind:               AcssProposeMessageType,
-		CurveName:          common.CurveName(curves.K256().Name),
+		CurveName:          testutils.TestCurveName(),
 		Data:               msgData,
 		NewCommittee:       newCommittee,
 		NewCommitteeParams: defaultSetup.NewCommitteeParams,

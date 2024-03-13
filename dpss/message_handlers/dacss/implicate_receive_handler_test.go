@@ -1,7 +1,6 @@
 package dacss
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -65,7 +64,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 	}
 
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	// Assume the shareMap for this round was already received and stored in the Node 1's state
 	hash, _ := common.HashAcssData(msgData)
@@ -106,7 +105,7 @@ func TestDoesntHaveShareMap(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	// Ephemeral pubkey of dealer
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
@@ -139,7 +138,7 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	// Ephemeral pubkey of dealer
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 	curve := curves.K256()
@@ -164,20 +163,6 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	// Check 2: *NO* ImplicateInformation is added to Node's state
 	acssState, _, _ := node1.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 	assert.True(t, len(acssState.ImplicateInformationSlice) == 0)
-}
-
-// Helpers test functions
-func getTestACSSRoundDetails(dealer *testutils.PssTestNode) common.ACSSRoundDetails {
-	id := big.NewInt(1)
-	pssRoundDetails := common.PSSRoundDetails{
-		PssID:  common.NewPssID(*id),
-		Dealer: dealer.Details(),
-	}
-	acssRoundDetails := common.ACSSRoundDetails{
-		PSSRoundDetails: pssRoundDetails,
-		ACSSCount:       1,
-	}
-	return acssRoundDetails
 }
 
 func createProofAndImplicateMsg(ephemeralKeypairDealer common.KeyPair, node2 *testutils.PssTestNode, curve *curves.Curve, acssRoundDetails common.ACSSRoundDetails) ImplicateReceiveMessage {

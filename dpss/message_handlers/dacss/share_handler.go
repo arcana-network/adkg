@@ -50,7 +50,7 @@ func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDe
 	return &msg, nil
 }
 
-func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	// Only the nodes of the Old Committee should start Dual ACSS.
 	if self.IsNewNode() {
@@ -99,7 +99,7 @@ func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, sel
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
 // defined by the withNewCommittee flag.
 func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSParticipant, privateKey curves.Scalar,
-	curve *curves.Curve, n int, k int, msg *DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte, wg *sync.WaitGroup) {
+	curve *curves.Curve, n int, k int, msg DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte, wg *sync.WaitGroup) {
 
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 	if err != nil {

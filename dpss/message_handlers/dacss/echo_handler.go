@@ -42,7 +42,7 @@ func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infecti
 }
 
 // Process handles the incomming ECHO message.
-func (m *DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
 
 	self.State().AcssStore.Lock()

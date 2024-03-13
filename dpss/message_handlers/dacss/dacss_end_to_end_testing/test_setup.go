@@ -103,3 +103,19 @@ func NewTestSetup(oldCommitteeParams, newCommitteeParams common.CommitteeParams,
 
 	return setup, sharedTransport
 }
+
+func (setup *TestSetup) GetSingleNode(newCommittee bool) *PssTestNode2 {
+	if newCommittee {
+		return setup.newCommitteeNetwork[0]
+	} else {
+		return setup.oldCommitteeNetwork[0]
+	}
+}
+
+func (setup *TestSetup) GetCommittee(newCommittee bool) []*PssTestNode2 {
+	if newCommittee {
+		return setup.newCommitteeNetwork
+	} else {
+		return setup.oldCommitteeNetwork
+	}
+}

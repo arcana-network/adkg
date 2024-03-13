@@ -305,7 +305,7 @@ func TestDealerPubkeyWrongConversion(t *testing.T) {
 		DealerEphemeralPubKey: "0x1234", // Set invalid pubkey, so conversion fails
 	}
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	hash, _ := common.HashAcssData(msgData)
 	receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
@@ -443,7 +443,7 @@ func TestPredicateForShareFails(t *testing.T) {
 		DealerEphemeralPubKey: common.PointToHex(ephemeralKeypairDealer.PublicKey),
 	}
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	hash, _ := common.HashAcssData(msgData)
 	receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
@@ -545,6 +545,6 @@ func getMsgData(dealer *testutils.PssTestNode) (common.KeyPair, common.AcssData,
 		DealerEphemeralPubKey: common.PointToHex(ephemeralKeypairDealer.PublicKey),
 	}
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	return ephemeralKeypairDealer, msgData, acssRoundDetails
 }

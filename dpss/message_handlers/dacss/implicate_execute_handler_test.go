@@ -84,7 +84,7 @@ func TestAcssStateNotFound(t *testing.T) {
 	// The dealer creates the shareMap
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
@@ -108,7 +108,7 @@ func TestAcssDataUninitialized(t *testing.T) {
 	// The dealer creates the shareMap
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
@@ -137,7 +137,7 @@ func TestAcssDataHashMismatch(t *testing.T) {
 	// The dealer creates the shareMap
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 	// Set the round parameters
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
@@ -184,7 +184,7 @@ func TestDealerPubkeyInvalid(t *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 
 	// Set dealer's ephemeral key to invalid value
@@ -239,7 +239,7 @@ func TestSenderPubkeyInvalid(t *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 
 	// Set dealer's ephemeral key to invalid value
@@ -298,7 +298,7 @@ func TestZKPVerificationFails(t *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
@@ -337,7 +337,7 @@ func TestPredicatePasses(t *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 
 	n, k, _ := dealer.Params()
@@ -417,7 +417,7 @@ func happyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNode, Implicate
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	curve := curves.K256()
 
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)

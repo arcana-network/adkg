@@ -207,39 +207,33 @@ func (node *PssTestNode2) ReceiveMessage(sender common.NodeDetails, PssMessage c
 	}
 }
 
+type MessageProcessor interface {
+	Process(sender common.NodeDetails, node common.PSSParticipant)
+}
+
+func processDACSSMessage[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
+	log.Debugf("Got %s", messageType)
+	var msg T
+	err := bijson.Unmarshal(data, &msg)
+	if err != nil {
+		log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", messageType)
+		return
+	}
+	msg.Process(sender, node)
+}
+
 func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMessage common.PSSMessage) {
 	switch PssMessage.Type {
 	case dacss.InitMessageType:
-		log.Debugf("Got %s", dacss.InitMessageType)
-		var msg dacss.InitMessage
-		err := bijson.Unmarshal(PssMessage.Data, &msg)
-		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", PssMessage.Type)
-			return
-		}
-		msg.Process(sender, node)
-
+		processDACSSMessage[dacss.InitMessage](PssMessage.Data, sender, node, dacss.InitMessageType)
+	case dacss.DacssEchoMessageType:
+		processDACSSMessage[dacss.DacssEchoMessage](PssMessage.Data, sender, node, dacss.DacssEchoMessageType)
 	case dacss.DacssOutputMessageType:
-		log.Debugf("Got %s", dacss.DacssOutputMessageType)
-		var msg dacss.DacssOutputMessage
-		err := bijson.Unmarshal(PssMessage.Data, &msg)
-		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", PssMessage.Type)
-			return
-		}
-		msg.Process(sender, node)
-
+		processDACSSMessage[dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
 	case dacss.ShareMessageType:
-		log.Debugf("Got %s", dacss.ShareMessageType)
-		var msg dacss.DualCommitteeACSSShareMessage
-		err := bijson.Unmarshal(PssMessage.Data, &msg)
-		if err != nil {
-			log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", PssMessage.Type)
-			return
-		}
-		msg.Process(sender, node)
-
+		processDACSSMessage[dacss.DualCommitteeACSSShareMessage](PssMessage.Data, sender, node, dacss.ShareMessageType)
 	}
+	// TODO add all dacss msgs
 }
 
 func (t *MockTransport) GetSentMessages() []common.PSSMessage {

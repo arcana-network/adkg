@@ -121,7 +121,7 @@ func TestNoAcssDataInState(t *testing.T) {
 		DealerEphemeralPubKey: common.PointToHex(ephemeralKeypairDealer.PublicKey),
 	}
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	if err != nil {
 		log.Errorf("Error updating AcssData in state: %v", err)
@@ -259,7 +259,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 		DealerEphemeralPubKey: common.PointToHex(ephemeralKeypairDealer.PublicKey),
 	}
 
-	acssRoundDetails := getTestACSSRoundDetails(dealer)
+	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	// The current node already completed the full RBC process and ended up with a valid share (ValidShareOutput = true)
 	hash, _ := common.HashAcssData(msgData)
