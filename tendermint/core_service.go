@@ -129,7 +129,7 @@ func getTendermintNodeKey(tendermintRootPath string) (*tmp2p.NodeKey, error) {
 func (t *TendermintService) startTendermintCore(buildPath string, nodeKey *tmp2p.NodeKey) {
 	chainMethods := common.NewServiceBroker(t.bus, "tendermint").ChainMethods()
 
-	nodeList := chainMethods.AwaitCompleteNodeList(chainMethods.GetCurrentEpoch())
+	nodeList := chainMethods.AwaitCompleteNodeList(chainMethods.GetSelfEpoch())
 
 	peerList, validators := getValidatorsAndPeerFromNodeList(nodeList)
 	log.WithFields(log.Fields{

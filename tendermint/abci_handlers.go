@@ -124,13 +124,12 @@ func getVerifierKey(tx AssignmentTx, partitioned bool) []byte {
 
 func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, senderDetails common.NodeDetails) (bool, *[]abcitypes.EventAttribute, error) {
 	var tags []abcitypes.EventAttribute
-
-	currEpoch := abci.broker.ChainMethods().GetCurrentEpoch()
-	currEpochInfo, err := abci.broker.ChainMethods().GetEpochInfo(currEpoch, false)
+	selfEpoch := abci.broker.ChainMethods().GetSelfEpoch()
+	selfEpochInfo, err := abci.broker.ChainMethods().GetEpochInfo(selfEpoch, false)
 	if err != nil {
 		return false, &tags, fmt.Errorf("could not get current epoch with err: %v", err)
 	}
-	threshold := int(currEpochInfo.K.Int64())
+	threshold := int(selfEpochInfo.K.Int64())
 
 	switch msgType {
 	case byte(1): // Assignment tx

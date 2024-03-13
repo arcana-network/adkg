@@ -24,6 +24,7 @@ type Config struct {
 	IPAddress          string `json:"ipAddress"`
 	EthConnection      string `json:"blockchainRPCURL"`
 	ContractAddress    string `json:"dkgContractAddress"`
+	SelfEpoch          int    `json:"selfEpoch"`
 	HttpServerPort     string `json:"port"`
 	P2PPort            string `json:"p2pPort"`
 	TMP2PPort          string `json:"tmP2PPort"`

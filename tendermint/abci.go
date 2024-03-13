@@ -448,7 +448,7 @@ func authenticateBftTx(tx []byte, broker *common.MessageBroker) (parsedTx Defaul
 		return parsedTx, senderDetails, err
 	}
 
-	curEpoch := broker.ChainMethods().GetCurrentEpoch()
+	curEpoch := broker.ChainMethods().GetSelfEpoch()
 	senderDetails, err = broker.ChainMethods().VerifyDataWithEpoch(parsedTx.PubKey, parsedTx.Signature, parsedTx.GetSerializedBody(), curEpoch)
 	if err != nil {
 		log.Errorf("bfttx not valid: error %v, tx %v", err, parsedTx)

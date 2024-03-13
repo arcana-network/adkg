@@ -464,6 +464,30 @@ func (cm *ChainMethods) GetCurrentEpoch() (epoch int) {
 	return
 }
 
+func (cm *ChainMethods) GetSelfEpoch() (epoch int) {
+	err := retry.Do(func() error {
+		methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_self_epoch")
+		if methodResponse.Error != nil {
+			return methodResponse.Error
+		}
+		var data int
+		log.WithField("GetSelfEpoch", methodResponse.Data).Debug("ServiceMapper")
+		err := CastOrUnmarshal(methodResponse.Data, &data)
+		if err != nil {
+			return err
+		}
+		if data == 0 {
+			return errors.New("could not get self epoch")
+		}
+		epoch = data
+		return nil
+	})
+	if err != nil || epoch == 0 {
+		log.WithError(err).Fatal("could not get self epoch")
+	}
+	return
+}
+
 func (cm *ChainMethods) GetEpochInfo(epoch int, skipCache bool) (eInfo EpochInfo, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_epoch_info", epoch, skipCache)
 	if methodResponse.Error != nil {
@@ -694,22 +718,20 @@ func (cm *ChainMethods) SelfSignData(input []byte) (rawSig []byte) {
 	return
 }
 
-// Retrieve Old Committee or New Committee Nodes (depending on bool oldCommittee)
-func (cm *ChainMethods) GetCommitteeNodes(oldCommittee bool, epoch int) ([]NodeReference, error) {
-	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_old_nodes", oldCommittee, epoch)
+func (cm *ChainMethods) GetPssStatus(oldEpoch int, newEpoch int) (pssRunning bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_pss_status", oldEpoch, newEpoch)
 	if methodResponse.Error != nil {
-		return nil, methodResponse.Error
+		log.WithError(methodResponse.Error).Error("GetPssStatus")
+		err = methodResponse.Error
+		pssRunning = false
+		return
 	}
-	var data []SerializedNodeReference
-	err := CastOrUnmarshal(methodResponse.Data, &data)
+	err = CastOrUnmarshal(methodResponse.Data, &pssRunning)
 	if err != nil {
-		return nil, err
+		pssRunning = false
+		return
 	}
-	var deserializedData []NodeReference
-	for i := 0; i < len(data); i++ {
-		deserializedData = append(deserializedData, NodeReference{}.Deserialize(data[i]))
-	}
-	return deserializedData, nil
+	return
 }
 
 type MethodRequest struct {
