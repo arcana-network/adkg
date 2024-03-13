@@ -33,8 +33,8 @@ func (n *PssTestNode) ID() int {
 	return n.details.Index
 }
 
-func (n *PssTestNode) IsOldNode() bool {
-	return !n.isNewCommittee
+func (n *PssTestNode) IsNewNode() bool {
+	return n.isNewCommittee
 }
 
 // TODO we should probably flip this bool and have all bools either isOld or fromNew, to prevent confusion

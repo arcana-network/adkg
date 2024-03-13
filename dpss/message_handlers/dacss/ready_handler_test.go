@@ -47,7 +47,7 @@ func TestProcessReadyMessage(test *testing.T) {
 			CurveName:        common.CurveName(curves.K256().Name),
 			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 			Hash:             stateReceiver.AcssDataHash,
-			NewCommittee:     receiverNode.IsOldNode(),
+			NewCommittee:     receiverNode.IsNewNode(),
 		}
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
 
@@ -140,7 +140,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 			CurveName:        common.CurveName(curves.K256().Name),
 			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 			Hash:             stateReceiver.AcssDataHash,
-			NewCommittee:     receiverNode.IsOldNode(),
+			NewCommittee:     receiverNode.IsNewNode(),
 		}
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
 	}

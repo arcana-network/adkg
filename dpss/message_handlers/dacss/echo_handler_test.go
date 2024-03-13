@@ -72,7 +72,7 @@ func TestIncrement(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     testRecvr.IsOldNode(),
+		NewCommittee:     testRecvr.IsNewNode(),
 	}
 
 	echoMsg.Process(testSender.Details(), testRecvr)
@@ -155,7 +155,7 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     testRecvr.IsOldNode(),
+		NewCommittee:     testRecvr.IsNewNode(),
 	}
 
 	if err != nil {
@@ -258,7 +258,7 @@ func TestCounterEchoMessages(test *testing.T) {
 			CurveName:        common.CurveName(curves.K256().Name),
 			Share:            shardReceiver,
 			Hash:             hashMsg,
-			NewCommittee:     receiverNode.IsOldNode(),
+			NewCommittee:     receiverNode.IsNewNode(),
 		}
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
@@ -353,7 +353,7 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 			CurveName:        common.CurveName(curves.K256().Name),
 			Share:            shardReceiver,
 			Hash:             hashMsg,
-			NewCommittee:     receiverNode.IsOldNode(),
+			NewCommittee:     receiverNode.IsNewNode(),
 		}
 
 		echoMsg.Process(senderNode.Details(), receiverNode)
@@ -422,7 +422,7 @@ func computeReedSolomonShardsAndHash(
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 		if nodePublicKey == nil {
 			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
 			return []infectious.Share{}, []byte{}, errors.New("Public key is nil")

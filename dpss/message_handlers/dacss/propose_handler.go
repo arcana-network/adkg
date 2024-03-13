@@ -144,8 +144,8 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Verify self share against commitments.
-	//we can identify by node index and whether in old or new committee by self.IsOldNode()
-	log.Debugf("Going to verify predicate for node=%v, %v", self.Details().Index, self.IsOldNode())
+	//we can identify by node index and whether in old or new committee by self.IsNewNode()
+	log.Debugf("Going to verify predicate for node=%v, IsNewNode: %v", self.Details().Index, self.IsNewNode())
 	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
 	pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)

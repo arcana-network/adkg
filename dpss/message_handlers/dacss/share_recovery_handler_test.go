@@ -100,7 +100,7 @@ func TestNoAcssDataInState(t *testing.T) {
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
@@ -238,7 +238,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),

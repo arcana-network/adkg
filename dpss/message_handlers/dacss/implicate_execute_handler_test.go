@@ -354,7 +354,7 @@ func TestPredicatePasses(t *testing.T) {
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, _ := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
@@ -451,7 +451,7 @@ func getCorruptedAcssData(dealer *testutils.PssTestNode, ephemeralKeypairDealer 
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare := []byte{}
 		if share.Id == uint32(nodeOfCorruptShare.Details().Index) {

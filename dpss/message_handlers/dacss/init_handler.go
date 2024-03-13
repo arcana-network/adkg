@@ -44,7 +44,7 @@ func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []sharing.
 func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	curve := common.CurveFromName(*msg.CurveName)
 	// If the node is not an old node, this should not continue.
-	if !self.IsOldNode() {
+	if self.IsNewNode() {
 		return
 	}
 

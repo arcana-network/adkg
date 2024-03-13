@@ -283,7 +283,7 @@ func TestDealerPubkeyWrongConversion(t *testing.T) {
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
@@ -432,7 +432,7 @@ func TestPredicateForShareFails(t *testing.T) {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}
@@ -523,7 +523,7 @@ func getMsgData(dealer *testutils.PssTestNode) (common.KeyPair, common.AcssData,
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), !dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),

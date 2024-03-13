@@ -18,7 +18,7 @@ type PSSParticipant interface {
 	// For PSS state
 	State() *PSSNodeState
 	// Defines if the current node belongs to the old or new committee.
-	IsOldNode() bool
+	IsNewNode() bool
 	// Obtains the public key from a node in the old or new committee. The
 	// committee is defined by the flag fromNewCOmmittee.
 	GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point

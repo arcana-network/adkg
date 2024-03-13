@@ -66,10 +66,10 @@ func getPSSProtocolPrefix(epoch int) ProtocolPrefix {
 	return ProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
 }
 
-// IsOldNode determines if the current node belongs to the old committee.
-func (node *PSSNode) IsOldNode() bool {
+// IsNewNode determines if the current node belongs to the new committee.
+func (node *PSSNode) IsNewNode() bool {
 	nodeDetails := node.details
-	_, found := node.OldCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
+	_, found := node.NewCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
 
@@ -96,7 +96,7 @@ func (node *PSSNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Poin
 //   - k: number of corrupt nodes in the committee.
 //   - t: the reconstruction threshold in that committee.
 func (node *PSSNode) Params() (n, k, t int) {
-	if node.IsOldNode() {
+	if !node.IsNewNode() {
 		n = node.OldCommitteeNodes.N
 		k = node.OldCommitteeNodes.K
 		t = node.OldCommitteeNodes.T
@@ -132,12 +132,12 @@ func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]commo
 	}
 }
 
-// TODO: Implement this as long as we implement the DPSS protocol.
+// FIXME: Implement this as long as we implement the DPSS protocol.
 func (node *PSSNode) ProcessMessage(senderDetails common.NodeDetails, message common.PSSMessage) error {
 	return nil
 }
 
-// TODO: Implement this as long as we implement the DPSS protocol.
+// FIXME: Implement this as long as we implement the DPSS protocol.
 func (node *PSSNode) ProcessBroadcastMessage(message common.PSSMessage) error {
 	return nil
 }
@@ -157,3 +157,9 @@ func (node *PSSNode) Details() common.NodeDetails {
 func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	return node.PssNodeTransport.Send(n, msg)
 }
+
+func (node *PSSNode) State() *common.PSSNodeState {
+	return &node.state
+}
+
+// TODO implement other functions of PSSParticipant interface

@@ -54,7 +54,7 @@ func (n *PssTestNode2) ID() int {
 	return n.details.Index
 }
 
-func (n *PssTestNode2) IsOldNode() bool {
+func (n *PssTestNode2) IsNewNode() bool {
 	return !n.isNewCommittee
 }
 func (n *PssTestNode2) Details() common.NodeDetails {

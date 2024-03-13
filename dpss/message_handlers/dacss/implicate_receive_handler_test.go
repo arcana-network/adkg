@@ -43,7 +43,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsOldNode())
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),

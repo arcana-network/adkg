@@ -53,7 +53,7 @@ func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDe
 func (msg *DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	// Only the nodes of the Old Committee should start Dual ACSS.
-	if !self.IsOldNode() {
+	if self.IsNewNode() {
 		log.Infof("DualCommitteeACSSShareMessage: Only Old nodes should start Dual ACSS. Not taking action.")
 		return
 	}
