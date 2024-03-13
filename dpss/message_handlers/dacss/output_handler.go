@@ -111,6 +111,25 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	if verified {
 		log.Debugf("acss_verified: share=%v", *share)
 
+		pubKey := m.AcssRoundDetails.PSSRoundDetails.Dealer.PubKey
+		pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, m.curveName)
+		if err != nil {
+			log.WithField("error constructing PointToCurvePoint", err).Error("DacssOutputMessage")
+			return
+		}
+		pubKeyHex := common.PointToHex(pubKeyCurvePoint)
+
+		self.State().AcssStore.UpdateAccsState(
+			m.AcssRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RBCState.Phase = common.Ended
+				state.ValidShareOutput = true
+
+				//store the shares against the dealer from which it received the valid share
+				state.ReceivedShares[pubKeyHex] = share
+			},
+		)
+
 	} else {
 		log.Errorf("didnt pass acss_predicate")
 	}

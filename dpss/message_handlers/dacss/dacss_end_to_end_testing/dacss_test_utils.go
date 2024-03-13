@@ -228,16 +228,33 @@ func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMes
 		processDACSSMessage[dacss.InitMessage](PssMessage.Data, sender, node, dacss.InitMessageType)
 	case dacss.DacssEchoMessageType:
 		processDACSSMessage[dacss.DacssEchoMessage](PssMessage.Data, sender, node, dacss.DacssEchoMessageType)
-	case dacss.DacssOutputMessageType:
-		processDACSSMessage[dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
 	case dacss.ShareMessageType:
 		processDACSSMessage[dacss.DualCommitteeACSSShareMessage](PssMessage.Data, sender, node, dacss.ShareMessageType)
+	case dacss.AcssProposeMessageType:
+		processDACSSMessage[*dacss.AcssProposeMessage](PssMessage.Data, sender, node, dacss.AcssProposeMessageType)
+	case dacss.AcssReadyMessageType:
+		processDACSSMessage[*dacss.DacssReadyMessage](PssMessage.Data, sender, node, dacss.AcssReadyMessageType)
+	case dacss.ImplicateExecuteMessageType:
+		processDACSSMessage[*dacss.ImplicateExecuteMessage](PssMessage.Data, sender, node, dacss.ImplicateExecuteMessageType)
+	case dacss.ImplicateReceiveMessageType:
+		processDACSSMessage[*dacss.ImplicateReceiveMessage](PssMessage.Data, sender, node, dacss.ImplicateReceiveMessageType)
+	case dacss.ShareRecoveryMessageType:
+		processDACSSMessage[*dacss.ShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ShareRecoveryMessageType)
+	case dacss.ReceiveShareRecoveryMessageType:
+		processDACSSMessage[*dacss.ReceiveShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ReceiveShareRecoveryMessageType)
+	case dacss.DacssOutputMessageType:
+		processDACSSMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
+
 	}
-	// TODO add all dacss msgs
+
 }
 
 func (t *MockTransport) GetSentMessages() []common.PSSMessage {
 	return t.sentMessages
+}
+
+func (t *MockTransport) GetReceivedMessages() []common.PSSMessage {
+	return t.receivedMessages
 }
 
 func (node *PssTestNode2) CountReceivedMessages(msgType string) int {

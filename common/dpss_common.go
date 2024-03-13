@@ -73,6 +73,8 @@ type AccsState struct {
 	ShareRecoveryOngoing bool
 	// Indicates whether current node output a valid share for the acssData that matches AcssDataHash
 	ValidShareOutput bool
+	//shares received from each dealer
+	ReceivedShares map[string]*sharing.ShamirShare
 }
 
 type AccsStateUpdater func(*AccsState)

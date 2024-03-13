@@ -15,12 +15,12 @@ import (
 )
 
 // TODO: Incomplete
-func TestDpss(t *testing.T) {
+func TestDacss(t *testing.T) {
 	// timeout := time.After(30 * time.Second)
 	// done := make(chan bool)
 
-	curve := curves.ED25519()
-	log.SetLevel(log.InfoLevel)
+	curve := curves.K256()
+	log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
 	TestSetUp, _ := DefaultTestSetup()
@@ -67,29 +67,29 @@ func TestDpss(t *testing.T) {
 	id := common.NewPssID(*big.NewInt(int64(1)))
 
 	for _, n := range nodesOld {
-		go func(node *PssTestNode2) {
-			round := common.PSSRoundDetails{
-				PssID:  id,
-				Dealer: node.Details(),
-			}
+		// go func(node *PssTestNode2) {
+		round := common.PSSRoundDetails{
+			PssID:  id,
+			Dealer: n.Details(),
+		}
 
-			var OldSharesArray []sharing.ShamirShare
-			OldShares := OldSharesOfNodes[node.details.GetNodeDetailsID()]
+		var OldSharesArray []sharing.ShamirShare
+		OldShares := OldSharesOfNodes[n.details.GetNodeDetailsID()]
 
-			OldSharesArray = append(OldSharesArray, *OldShares)
+		OldSharesArray = append(OldSharesArray, *OldShares)
 
-			msg, err := dacss.NewInitMessage(
-				round,
-				OldSharesArray,
-				common.CurveName(curve.Name),
-				*ephemeralKeyOfNodes[node.details.GetNodeDetailsID()],
-			)
+		msg, err := dacss.NewInitMessage(
+			round,
+			OldSharesArray,
+			common.CurveName(curve.Name),
+			*ephemeralKeyOfNodes[n.details.GetNodeDetailsID()],
+		)
 
-			if err != nil {
-				log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
-			}
+		if err != nil {
+			log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
+		}
 
-			node.ReceiveMessage(node.Details(), *msg)
-		}(n)
+		n.ReceiveMessage(n.Details(), *msg)
+		// }(n)
 	}
 }
