@@ -13,7 +13,7 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssProposeMessageType string = "Acss_propose"
+var AcssProposeMessageType string = "dacss_propose"
 
 type AcssProposeMessage struct {
 	ACSSRoundDetails   common.ACSSRoundDetails

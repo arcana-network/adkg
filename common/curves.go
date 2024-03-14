@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"github.com/torusresearch/bijson"
 )
 
 // This code comes directly from kryptology and will have a different implementation when this lib is replaced
@@ -44,13 +45,13 @@ func ScalarMarshalJson(scalar curves.Scalar) ([]byte, error) {
 	m := make(map[string]string, 2)
 	m["type"] = scalar.Point().CurveName()
 	m["value"] = hex.EncodeToString(scalar.Bytes())
-	return json.Marshal(m)
+	return bijson.Marshal(m)
 }
 
 func ScalarUnmarshalJson(input []byte) (curves.Scalar, error) {
 	var m map[string]string
 
-	err := json.Unmarshal(input, &m)
+	err := bijson.Unmarshal(input, &m)
 	if err != nil {
 		return nil, err
 	}

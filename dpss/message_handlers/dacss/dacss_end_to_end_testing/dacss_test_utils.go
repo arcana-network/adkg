@@ -55,7 +55,7 @@ func (n *PssTestNode2) ID() int {
 }
 
 func (n *PssTestNode2) IsNewNode() bool {
-	return !n.isNewCommittee
+	return n.isNewCommittee
 }
 func (n *PssTestNode2) Details() common.NodeDetails {
 	return n.details
@@ -245,6 +245,8 @@ func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMes
 	case dacss.DacssOutputMessageType:
 		processDACSSMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
 
+	default:
+		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
 	}
 
 }
