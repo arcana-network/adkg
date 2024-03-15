@@ -133,6 +133,7 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 				IsReadyMsgSent: false,
 			},
 			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
+			ReceivedShares:         make(map[string]*sharing.ShamirShare),
 		}
 	}
 

@@ -54,7 +54,10 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, recThreshold, _ := self.Params()
-	nGenerations := len(msg.OldShares) / (nNodes - 2*recThreshold)
+
+	//TODO: nGenerations calculation needs to be fixed
+	// testing is done for 1 share(+1 added)
+	nGenerations := len(msg.OldShares)/(nNodes-2*recThreshold) + 1
 	for i := range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
 		acssRoundDetails := common.ACSSRoundDetails{
@@ -67,6 +70,6 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 			return
 		}
 		//NOTE: since the msg is sent to self, we can keep the EmephemeralKeypair in the msg
-		self.Send(self.Details(), *msg)
+		go self.Send(self.Details(), *msg)
 	}
 }

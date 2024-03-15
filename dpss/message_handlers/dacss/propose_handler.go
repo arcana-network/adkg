@@ -196,7 +196,9 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		self.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
-				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index]
+
+				//since index starts from 1
+				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index-1]
 			},
 		)
 
