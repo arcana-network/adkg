@@ -46,7 +46,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	_, isStored, err := self.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
+	state, isStored, err := self.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
 		log.WithField("error", err).Error("NewDacssOutputMessage - Process()")
@@ -65,10 +65,14 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	priv := self.PrivateKey()
 
-	msgData := common.AcssData{}
+	var msgData common.AcssData
 
+	// TODO:
+	// If trying to Unmarshall DacssOutputMessage.m
+	// It result into error, therefore takes the msgData from the state
+	mt := state.RBCState.ReceivedMessage
 	// retrive the ACSSData
-	err = bijson.Unmarshal(m.m, msgData)
+	err = bijson.Unmarshal(mt, &msgData)
 
 	if err != nil {
 		log.Errorf("Could not deserialize message data, err=%s", err)
@@ -129,6 +133,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShares[pubKeyHex] = share
 			},
 		)
+		log.Debugf("Done: share=%v", *share)
 
 	} else {
 		log.Errorf("didnt pass acss_predicate")

@@ -13,7 +13,7 @@ import (
 	"github.com/vivint/infectious"
 )
 
-var AcssProposeMessageType string = "Acss_propose"
+var AcssProposeMessageType string = "dacss_propose"
 
 type AcssProposeMessage struct {
 	ACSSRoundDetails   common.ACSSRoundDetails
@@ -196,7 +196,9 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		self.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
-				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index]
+
+				//since index starts from 1
+				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index-1]
 			},
 		)
 
