@@ -21,7 +21,7 @@ func TestDacss(t *testing.T) {
 	// timeout := time.After(30 * time.Second)
 	// done := make(chan bool)
 
-	// curve := curves.K256()
+	curve := curves.K256()
 	log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
@@ -33,22 +33,25 @@ func TestDacss(t *testing.T) {
 	nOld := TestSetUp.OldCommitteeParams.N
 	kOld := TestSetUp.OldCommitteeParams.K
 
-	//generating random old secrets of old nodes which will be re-shared
-	// secret := curve.Scalar.Random(rand.Reader)
-	// _, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(kOld), uint32(nOld), curve)
-
 	InitMsgs := make(map[common.NodeDetailsID]*dacss.InitMessage, nOld)
+
+	//testing for only one share from nodesOld[0]
+	var Shares sharing.ShamirShare
 
 	for _, n := range nodesOld {
 		ephemeralKeypair := common.GenerateKeyPair(curves.K256())
-		InitMsg, err := createTestMsg(n, 1, nOld, kOld, ephemeralKeypair)
+		InitMsg, shares, err := createTestMsg(n, 1, nOld, kOld, ephemeralKeypair)
+
+		//storing only one share for old node0
+		if n == nodesOld[0] {
+			Shares = shares[0]
+		}
+
 		assert.Nil(t, err)
 
 		//save the init msg against the nodes
 		InitMsgs[n.details.GetNodeDetailsID()] = InitMsg
 	}
-
-	// id := common.NewPssID(*big.NewInt(int64(1)))
 
 	for _, n := range nodesOld {
 		go func(node *PssTestNode2) {
@@ -67,39 +70,52 @@ func TestDacss(t *testing.T) {
 		}(n)
 	}
 
-	time.Sleep(12 * time.Second)
+	time.Sleep(8 * time.Second)
 
 	//Reconstructing the share for testing
 
-	//shares of oldNodes
-	// Shares := make(map[common.NodeDetailsID]*sharing.ShamirShare, nOld)
-	// for _, node := range nodesNew {
+	//shares received from oldNodes[0] to all the old nodes
+	var sharesReceived []*sharing.ShamirShare
+	for _, node := range nodesOld {
 
-	// 	roundDetail := InitMsgs[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails
+		roundDetail := InitMsgs[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails
 
-	// 	// since only one share is considered,
-	// 	// acss count is 0
-	// 	acssRound := common.ACSSRoundDetails{
-	// 		PSSRoundDetails: roundDetail,
-	// 		ACSSCount:       0,
-	// 	}
+		// since only one share is considered,
+		// acss count is 0
+		acssRound := common.ACSSRoundDetails{
+			PSSRoundDetails: roundDetail,
+			ACSSCount:       0,
+		}
 
-	// 	state, _, _ := node.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		state, _, _ := node.State().AcssStore.Get(acssRound.ToACSSRoundID())
 
-	// 	pubKey := acssRound.PSSRoundDetails.Dealer.PubKey
-	// 	pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, "secp256k1")
-	// 	if err != nil {
-	// 		log.WithField("error constructing PointToCurvePoint", err).Error("DacssOutputMessage")
-	// 		return
-	// 	}
-	// 	pubKeyHex := common.PointToHex(pubKeyCurvePoint)
+		pubKey := nodesOld[0].details.PubKey
+		pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, "secp256k1")
+		if err != nil {
+			log.WithField("error constructing PointToCurvePoint", err).Error("DacssOutputMessage")
+			return
+		}
+		pubKeyHex := common.PointToHex(pubKeyCurvePoint)
 
-	// 	// storing all the shares received from oldNode0
-	// 	shareFromNodeOld0 := state.ReceivedShares[pubKeyHex]
+		// storing all the shares received from oldNode0
+		shareFromNodeOld0 := state.ReceivedShares[pubKeyHex]
 
-	// 	Shares[node.details.GetNodeDetailsID()] = (*sharing.ShamirShare)(shareFromNodeOld0)
+		sharesReceived = append(sharesReceived, (*sharing.ShamirShare)(shareFromNodeOld0))
 
-	// }
+	}
+
+	shamir, err := sharing.NewShamir(uint32(TestSetUp.OldCommitteeParams.K), uint32(TestSetUp.OldCommitteeParams.N), curve)
+	assert.Nil(t, err)
+
+	reconstructedValue, err := shamir.Combine(sharesReceived...)
+	assert.Nil(t, err)
+
+	secret, err := curve.Scalar.SetBytes(Shares.Value)
+	assert.Nil(t, err)
+
+	//expected to be equal
+	//TODO: failing
+	assert.Equal(t, reconstructedValue, secret)
 }
 
 // taken from the dacss init handler test
@@ -123,7 +139,7 @@ func generateOldShares(nSecrets, n, k int, curveName common.CurveName) ([]sharin
 
 // taken from the dacss init handler test
 // Creates an init message for testing with a given ammount of old shares.
-func createTestMsg(testDealer *PssTestNode2, nSecrets, n, k int, ephemeralKeypair common.KeyPair) (*dacss.InitMessage, error) {
+func createTestMsg(testDealer *PssTestNode2, nSecrets, n, k int, ephemeralKeypair common.KeyPair) (*dacss.InitMessage, []sharing.ShamirShare, error) {
 	id := big.NewInt(1)
 	roundDetails := common.PSSRoundDetails{
 		PssID:  common.NewPssID(*id),
@@ -132,7 +148,7 @@ func createTestMsg(testDealer *PssTestNode2, nSecrets, n, k int, ephemeralKeypai
 
 	shares, err := generateOldShares(nSecrets, n, k, common.SECP256K1)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	msg := &dacss.InitMessage{
@@ -143,5 +159,5 @@ func createTestMsg(testDealer *PssTestNode2, nSecrets, n, k int, ephemeralKeypai
 		Kind:               dacss.InitMessageType,
 		CurveName:          &common.SECP256K1,
 	}
-	return msg, nil
+	return msg, shares, nil
 }

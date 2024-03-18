@@ -54,7 +54,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	}
 
 	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssEchoMessage - Process()")
+		log.WithField("error", "ACSS state not stored yet").Error("DacssOutputMessage - Process()")
 		return
 	}
 
@@ -126,6 +126,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
+				//TODO: if the RBC phase gets ended then it cannot receive from shares from other dealers
 				state.RBCState.Phase = common.Ended
 				state.ValidShareOutput = true
 
@@ -133,7 +134,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShares[pubKeyHex] = share
 			},
 		)
-		log.Debugf("Done: share=%v", *share)
+		log.Debugf("Done: Node_id%v, is_New: %v:  share=%v", self.Details().Index, self.IsNewNode(), *share)
 
 	} else {
 		log.Errorf("didnt pass acss_predicate")

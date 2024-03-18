@@ -3,6 +3,8 @@ package dacss
 import (
 	"crypto/rand"
 
+	"math"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/torusresearch/bijson"
@@ -57,7 +59,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	//TODO: nGenerations calculation needs to be fixed
 	// testing is done for 1 share(+1 added)
-	nGenerations := len(msg.OldShares)/(nNodes-2*recThreshold) + 1
+	nGenerations := int(math.Ceil(float64(len(msg.OldShares)) / float64((nNodes - 2*recThreshold))))
 	for i := range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
 		acssRoundDetails := common.ACSSRoundDetails{
