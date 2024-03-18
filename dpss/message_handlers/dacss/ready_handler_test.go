@@ -233,7 +233,7 @@ func TestRepeatedReadyMessages(test *testing.T) {
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
 
-	shards, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := testutils.CreateShardAndHash(
 		senderNode,
 		ephemeralKeypairDealer,
 	)
@@ -245,14 +245,14 @@ func TestRepeatedReadyMessages(test *testing.T) {
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.AcssDataHash = hashMsg
-			state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index]
+			state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index-1]
 		},
 	)
 	receiverNode.State().AcssStore.UpdateAccsState(
 		acssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.AcssDataHash = hashMsg
-			state.RBCState.OwnReedSolomonShard = shards[receiverNode.Details().Index]
+			state.RBCState.OwnReedSolomonShard = shards[receiverNode.Details().Index-1]
 		},
 	)
 
@@ -327,7 +327,7 @@ func setupDealerAndGroup() (
 	}
 
 	// Creates the shards and hash for a random secret
-	shards, hashMsg, err := createShardAndHash(
+	shards, hashMsg, err := testutils.CreateShardAndHash(
 		dealerNode,
 		ephemeralKeypairDealer,
 	)
@@ -341,14 +341,14 @@ func setupDealerAndGroup() (
 		senderNode.State().AcssStore.UpdateAccsState(
 			acssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
-				state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index]
+				state.RBCState.OwnReedSolomonShard = shards[senderNode.Details().Index-1]
 				state.AcssDataHash = hashMsg
 			},
 		)
 		senderNode.State().AcssStore.Unlock()
 	}
 
-	shardReceiver := shards[receiverNode.Details().Index]
+	shardReceiver := shards[receiverNode.Details().Index-1]
 
 	// Sets up the receivers own local share and hash of the message.
 	receiverNode.State().AcssStore.Lock()
