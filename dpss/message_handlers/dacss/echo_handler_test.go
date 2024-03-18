@@ -80,17 +80,21 @@ func TestIncrement(test *testing.T) {
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
 	}
-	echoDatabase := acssState.RBCState.ReceivedEcho
-	for id, received := range echoDatabase {
-		if id == testSender.Details().Index {
+	for idParty, received := range acssState.RBCState.ReceivedEcho {
+		if idParty == testSender.Details().Index {
 			assert.Equal(test, true, received)
 		} else {
 			assert.Equal(test, false, received)
 		}
 	}
 
+	msgInfo := acssState.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		hashMsg,
+		shardReceiver,
+	)
 	assert.Equal(test, 0, len(transport.BroadcastedMessages))
-	assert.Equal(test, 1, acssState.RBCState.CountEcho())
+	assert.Equal(test, 1, msgInfo.Count)
 	testRecvr.State().AcssStore.Unlock()
 }
 
@@ -174,16 +178,21 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 		test.Errorf("Error retrieving the state: %v", err)
 	}
 	echoDatabase := acssState.RBCState.ReceivedEcho
-	for id, received := range echoDatabase {
-		if id == testSender.Details().Index {
+	for idParty, received := range echoDatabase {
+		if idParty == testSender.Details().Index {
 			assert.Equal(test, true, received)
 		} else {
 			assert.Equal(test, false, received)
 		}
 	}
 
+	msgInfo := acssState.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		hashMsg,
+		shardReceiver,
+	)
 	assert.Equal(test, 0, len(transport.BroadcastedMessages))
-	assert.Equal(test, 1, acssState.RBCState.CountEcho())
+	assert.Equal(test, 1, msgInfo.Count)
 	testRecvr.State().AcssStore.Unlock()
 }
 
@@ -242,16 +251,15 @@ func TestCounterEchoMessages(test *testing.T) {
 		},
 	)
 
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            shardReceiver,
+		Hash:             hashMsg,
+		NewCommittee:     receiverNode.IsNewNode(),
+	}
 	for _, senderNode := range senderGroup {
-
-		echoMsg := DacssEchoMessage{
-			ACSSRoundDetails: acssRoundDetails,
-			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
-			Share:            shardReceiver,
-			Hash:             hashMsg,
-			NewCommittee:     receiverNode.IsNewNode(),
-		}
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
 
@@ -270,7 +278,12 @@ func TestCounterEchoMessages(test *testing.T) {
 	_, _, t := dealerNode.Params()
 
 	// Tests that the eco count is 2t + 1.
-	assert.Equal(test, 2*t+1, acssState.RBCState.CountEcho())
+	msgInfo := acssState.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		hashMsg,
+		shardReceiver,
+	)
+	assert.Equal(test, 2*t+1, msgInfo.Count)
 
 	// Test that a ready message was sent.
 	broadcastedMsgs := transport.BroadcastedMessages
@@ -338,16 +351,15 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 		},
 	)
 
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            shardReceiver,
+		Hash:             hashMsg,
+		NewCommittee:     receiverNode.IsNewNode(),
+	}
 	for _, senderNode := range senderGroup {
-		echoMsg := DacssEchoMessage{
-			ACSSRoundDetails: acssRoundDetails,
-			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
-			Share:            shardReceiver,
-			Hash:             hashMsg,
-			NewCommittee:     receiverNode.IsNewNode(),
-		}
-
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
 
@@ -366,7 +378,12 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	_, _, t := dealerNode.Params()
 
 	// Tests that the eco count is 2t + 1.
-	assert.Equal(test, 2*t+1, acssState.RBCState.CountEcho())
+	msgInfo := acssState.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		hashMsg,
+		shardReceiver,
+	)
+	assert.Equal(test, 2*t+1, msgInfo.Count)
 
 	// Test that a ready message was sent.
 	broadcastedMsgs := transport.BroadcastedMessages

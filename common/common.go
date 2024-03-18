@@ -352,24 +352,47 @@ func MapFromNodeList(nodeList []NodeDetails) (res map[NodeDetailsID]NodeDetails)
 
 // Represents the state of the node in the RBC protocol
 type RBCState struct {
-	Phase               phase              // Phase of within the protocol.
-	ReceivedEcho        map[int]bool       // Matching echos received.
-	ReceivedReady       map[int]bool       // Ready received.
-	ReceivedMessage     []byte             // The actual message as a result of the RBC protocol.
-	OwnReedSolomonShard infectious.Share   // Shard computed by the party in the RS error correcting code.
-	IsReadyMsgSent      bool               // Tells whether the ready message was sent by the party.
-	ReadyMsgShards      []infectious.Share // Shards received in the READY messages
+	Phase               phase                 // Phase of within the protocol.
+	ReceivedEcho        map[int]bool          // Echos received by the parties.
+	EchoDatabase        map[string]*EchoStore // Received echos and their count
+	ReceivedReady       map[int]bool          // Ready received.
+	ReceivedMessage     []byte                // The actual message as a result of the RBC protocol.
+	OwnReedSolomonShard infectious.Share      // Shard computed by the party in the RS error correcting code.
+	IsReadyMsgSent      bool                  // Tells whether the ready message was sent by the party.
+	ReadyMsgShards      []infectious.Share    // Shards received in the READY messages
 }
 
-// Counts the ammount of received ECHO messages.
-func (state *RBCState) CountEcho() int {
-	count := 0
-	for _, received := range state.ReceivedEcho {
-		if received {
-			count += 1
+type EchoStore struct {
+	HashMessage []byte
+	Shard       infectious.Share
+	Count       int
+}
+
+func (state *RBCState) GetEchoStore(
+	fingerprint string,
+	hashMsg []byte,
+	shard infectious.Share,
+) *EchoStore {
+	_, found := state.EchoDatabase[fingerprint]
+	if !found {
+		state.EchoDatabase[fingerprint] = &EchoStore{
+			HashMessage: hashMsg,
+			Shard:       shard,
+			Count:       0,
 		}
 	}
-	return count
+	return state.EchoDatabase[fingerprint]
+}
+
+func (state *RBCState) FindThresholdEchoMsg(
+	threshold int,
+) *EchoStore {
+	for _, echoStore := range state.EchoDatabase {
+		if echoStore.Count >= threshold {
+			return echoStore
+		}
+	}
+	return nil
 }
 
 // Counts the ammount of READY messages.

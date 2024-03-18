@@ -130,6 +130,7 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 			RBCState: RBCState{
 				ReceivedEcho:   make(map[int]bool),
 				ReceivedReady:  make(map[int]bool),
+				EchoDatabase:   make(map[string]*EchoStore),
 				IsReadyMsgSent: false,
 			},
 			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),

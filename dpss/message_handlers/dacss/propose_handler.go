@@ -212,7 +212,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 			//This instruction corresponds to Line 10, Algorithm 4 from
 			//"Asynchronous data disemination and applications."
-			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, msg.CurveName, self.Details().Index, msg.NewCommittee)
+			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, msg.CurveName, msg.NewCommittee)
 			if err != nil {
 				log.WithField("error", err).Error("NewDacssEchoMessage")
 				return

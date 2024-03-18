@@ -114,8 +114,9 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		// TODO: Check this
 		// Since ReceivedEcho map is set to true in the echo handler only when the there is a matching RS shares data
 		// so it is sufficient to check the count
-		if state.RBCState.CountEcho() >= t+1 {
-			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, m.Share, m.Hash, m.CurveName, p.IsNewNode())
+		echoInfo := state.RBCState.FindThresholdEchoMsg(t + 1)
+		if echoInfo != nil {
+			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, echoInfo.Shard, echoInfo.HashMessage, m.CurveName, p.IsNewNode())
 
 			if err != nil {
 				log.WithField("error", err).Error("DacssReadyMessage - Process()")
