@@ -158,7 +158,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.PSS
 		log.Debugf("msg=%s, sender=%d, receiver=%d, roundID=%s", msg.Type, n.ID(), receiver.Index, msg.PSSRoundDetails.PssID)
 		if receiver.IsEqual(n.Details()) {
 			flag = 1
-			go n.ReceiveMessage(sender, msg)
+			n.ReceiveMessage(sender, msg)
 			break
 		}
 	}
@@ -170,7 +170,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.PSS
 
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Type, n.ID(), receiver.Index, msg.PSSRoundDetails.PssID)
 		if receiver.IsEqual(n.Details()) {
-			go n.ReceiveMessage(sender, msg)
+			n.ReceiveMessage(sender, msg)
 			break
 		}
 	}
@@ -255,6 +255,10 @@ func (t *MockTransport) GetSentMessages() []common.PSSMessage {
 
 func (t *MockTransport) GetReceivedMessages() []common.PSSMessage {
 	return t.receivedMessages
+}
+
+func (t *MockTransport) GetBroadcastedMessages() []common.PSSMessage {
+	return t.broadcastedMessages
 }
 
 func (node *PssTestNode2) CountReceivedMessages(msgType string) int {

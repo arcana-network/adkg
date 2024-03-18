@@ -1,9 +1,18 @@
 package testutils
 
 import (
+	"encoding/hex"
+	"errors"
 	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/keygen/common/acss"
+	"github.com/coinbase/kryptology/pkg/core/curves"
+	krsharing "github.com/coinbase/kryptology/pkg/sharing"
+	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
+	"github.com/vivint/infectious"
 )
 
 // Helpers test functions
@@ -18,4 +27,92 @@ func GetTestACSSRoundDetails(dealer common.PSSParticipant) common.ACSSRoundDetai
 		ACSSCount:       1,
 	}
 	return acssRoundDetails
+}
+
+func CreateShardAndHash(
+	dealerNode common.PSSParticipant,
+	ephemeralKeypairDealer common.KeyPair,
+) ([]infectious.Share, []byte, error) {
+	// Creates the Reed-Solomon shards for the message.
+	n, k, _ := dealerNode.Params()
+	secret := sharing.GenerateSecret(curves.K256())
+	commitments, shares, err := sharing.GenerateCommitmentAndShares(
+		secret,
+		uint32(k),
+		uint32(n),
+		curves.K256(),
+	)
+	if err != nil {
+		return []infectious.Share{}, []byte{}, err
+	}
+
+	shards, hashMsg, err := ComputeReedSolomonShardsAndHash(
+		commitments,
+		dealerNode,
+		shares,
+		ephemeralKeypairDealer,
+	)
+	if err != nil {
+		return []infectious.Share{}, []byte{}, err
+	}
+
+	return shards, hashMsg, nil
+}
+
+// Computes the Reed-Solomon shards and hash of a given commitment and shares.
+func ComputeReedSolomonShardsAndHash(
+	commitment *krsharing.FeldmanVerifier,
+	dealer common.PSSParticipant,
+	shares []*krsharing.ShamirShare,
+	dealerEphemeralKey common.KeyPair,
+) ([]infectious.Share, []byte, error) {
+	n, _, t := dealer.Params()
+	compressedCommitments := sharing.CompressCommitments(commitment)
+	shareMap := make(map[string][]byte, n)
+	for _, share := range shares {
+		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
+		if nodePublicKey == nil {
+			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
+			return []infectious.Share{}, []byte{}, errors.New("Public key is nil")
+		}
+
+		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+			share.Bytes(),
+			nodePublicKey,
+			dealerEphemeralKey.PrivateKey,
+		)
+
+		if err != nil {
+			log.Errorf("Error while encrypting secret share, err=%v", err)
+			return []infectious.Share{}, []byte{}, errors.New("Can't been able to encrypt the shares")
+		}
+		log.Debugf("CIPHER_SHARE=%v", cipherShare)
+		pubkeyHex := common.PointToHex(nodePublicKey)
+		shareMap[pubkeyHex] = cipherShare
+	}
+
+	msgData := common.AcssData{
+		Commitments:           compressedCommitments,
+		ShareMap:              shareMap,
+		DealerEphemeralPubKey: hex.EncodeToString(dealerEphemeralKey.PrivateKey.Bytes()),
+	}
+
+	msgBytes, err := bijson.Marshal(msgData)
+	if err != nil {
+		return []infectious.Share{}, []byte{}, err
+	}
+
+	msgHash := common.HashByte(msgBytes)
+
+	fec, err := infectious.NewFEC(t+1, n)
+	if err != nil {
+		return []infectious.Share{}, []byte{}, err
+	}
+
+	shards, err := acss.Encode(fec, msgBytes)
+	if err != nil {
+		return []infectious.Share{}, []byte{}, err
+	}
+
+	return shards, msgHash, nil
 }
