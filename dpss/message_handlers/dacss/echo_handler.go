@@ -59,6 +59,9 @@ func (msg *DacssEchoMessage) Fingerprint() string {
 // Process handles the incomming ECHO message.
 func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
+	if sender.Index == self.Details().Index {
+		return // TODO check
+	}
 
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
@@ -111,7 +114,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			return
 		}
 		acssState.RBCState.IsReadyMsgSent = true
-		self.Broadcast(m.NewCommittee, *readyMsg)
+		go self.Broadcast(m.NewCommittee, *readyMsg)
 	}
 
 	// This deals with the waiting for ECHO handler in Line 14 of the RBC
@@ -124,6 +127,6 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			return
 		}
 		acssState.RBCState.IsReadyMsgSent = true
-		self.Broadcast(m.NewCommittee, *readyMsg)
+		go self.Broadcast(m.NewCommittee, *readyMsg)
 	}
 }

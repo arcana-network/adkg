@@ -3,6 +3,7 @@ package dacss
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,7 @@ func TestIncrement(test *testing.T) {
 	}
 
 	echoMsg.Process(testSender.Details(), testRecvr)
+	time.Sleep(100 * time.Millisecond)
 
 	testRecvr.State().AcssStore.Lock()
 
@@ -165,6 +167,7 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 	for range 2*t + 1 {
 		echoMsg.Process(testSender.Details(), testRecvr)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	testRecvr.State().AcssStore.Lock()
 
@@ -262,6 +265,7 @@ func TestCounterEchoMessages(test *testing.T) {
 	for _, senderNode := range senderGroup {
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	receiverNode.State().AcssStore.Lock()
 	defer receiverNode.State().AcssStore.Unlock()
@@ -362,6 +366,7 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	for _, senderNode := range senderGroup {
 		echoMsg.Process(senderNode.Details(), receiverNode)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	receiverNode.State().AcssStore.Lock()
 	defer receiverNode.State().AcssStore.Unlock()

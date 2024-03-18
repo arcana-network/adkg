@@ -158,7 +158,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.PSS
 		log.Debugf("msg=%s, sender=%d, receiver=%d, roundID=%s", msg.Type, n.ID(), receiver.Index, msg.PSSRoundDetails.PssID)
 		if receiver.IsEqual(n.Details()) {
 			flag = 1
-			n.ReceiveMessage(sender, msg)
+			go n.ReceiveMessage(sender, msg)
 			break
 		}
 	}
@@ -170,7 +170,7 @@ func (t *MockTransport) Send(sender, receiver common.NodeDetails, msg common.PSS
 
 		log.Debugf("msg=%s, sender=%d, receiver=%d, round=%s", msg.Type, n.ID(), receiver.Index, msg.PSSRoundDetails.PssID)
 		if receiver.IsEqual(n.Details()) {
-			n.ReceiveMessage(sender, msg)
+			go n.ReceiveMessage(sender, msg)
 			break
 		}
 	}

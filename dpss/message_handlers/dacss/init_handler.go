@@ -20,10 +20,11 @@ type InitMessage struct {
 	EphemeralPublicKey []byte                 // the dealer's ephemeral public key.
 	Kind               string                 // Phase in which we are.
 	CurveName          *common.CurveName      // Curve that we will use for the protocol.
+	NewCommitteeParams common.CommitteeParams // n, k & t parameters of the new committee
 }
 
 // Creates a new initialization message for DPSS.
-func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []sharing.ShamirShare, curve common.CurveName, ephemeralKeypair common.KeyPair) (*common.PSSMessage, error) {
+func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []sharing.ShamirShare, curve common.CurveName, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := InitMessage{
 		pssRoundDetails,
 		oldShares,
@@ -31,6 +32,7 @@ func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []sharing.
 		ephemeralKeypair.PublicKey.ToAffineCompressed(),
 		InitMessageType,
 		&curve,
+		newCommitteeParams,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -67,7 +69,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 			ACSSCount:       i,
 		}
 
-		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), acssRoundDetails, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey)
+		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), acssRoundDetails, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey, msg.NewCommitteeParams)
 		if err != nil {
 			return
 		}

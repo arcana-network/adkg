@@ -8,6 +8,7 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
+	log "github.com/sirupsen/logrus"
 )
 
 // Dealer sends some wrong shares to the nodes, which triggers the Implicate flow
@@ -20,6 +21,8 @@ import (
 
 // WIP
 func TestTriggerImplicateFlow(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
 	testSetUp, _ := DefaultTestSetup()
 	nNew := testSetUp.OldCommitteeParams.N
 	kNew := testSetUp.OldCommitteeParams.K
@@ -65,7 +68,9 @@ func TestTriggerImplicateFlow(t *testing.T) {
 
 	// Send the ProposeMsg to each node in new committee
 	for _, node := range testSetUp.newCommitteeNetwork {
-		msg.Process(dealer.Details(), node)
+		go func(node *PssTestNode2) {
+			msg.Process(dealer.Details(), node)
+		}(node)
 	}
 	time.Sleep(2 * time.Second)
 }

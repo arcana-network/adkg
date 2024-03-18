@@ -39,7 +39,7 @@ func TestProcessInitMessage(test *testing.T) {
 		test.Error("Error creating the init message.")
 	}
 
-	msg.Process(testDealer.Details(), testDealer)
+	go msg.Process(testDealer.Details(), testDealer)
 
 	// Wait a bit until all the goroutines are finished.
 	time.Sleep(time.Second)
@@ -67,6 +67,7 @@ func TestNewInitMessage(test *testing.T) {
 		msg.OldShares,
 		*msg.CurveName,
 		ephemeralKeypair,
+		defaultSetup.NewCommitteeParams,
 	)
 	if err != nil {
 		test.Errorf("Error creating the message using the function: %v", err)
@@ -101,7 +102,7 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 		test.Error("Error creating the init message.")
 	}
 
-	msg.Process(testDealer.Details(), testDealer)
+	go msg.Process(testDealer.Details(), testDealer)
 
 	// Wait a bit until all the goroutines are finished.
 	time.Sleep(time.Second)

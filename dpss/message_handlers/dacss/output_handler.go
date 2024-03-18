@@ -58,6 +58,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
+	// TODO should a check be added to see if the state has already passed this phase?
+
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
 
@@ -113,7 +115,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	share, _, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
 
 	if verified {
-		log.Debugf("acss_verified: share=%v", *share)
+		log.Debugf("acss_verified by %v (newCommitee %v): share=%v", self.Details().Index, self.IsNewNode(), *share)
 
 		pubKey := m.AcssRoundDetails.PSSRoundDetails.Dealer.PubKey
 		pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, m.curveName)
@@ -134,7 +136,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShares[pubKeyHex] = share
 			},
 		)
-		log.Debugf("Done: Node_id%v, is_New: %v:  share=%v", self.Details().Index, self.IsNewNode(), *share)
+		log.Infof("Done: Node_id%v, is_New: %v:  share=%v", self.Details().Index, self.IsNewNode(), *share)
 
 	} else {
 		log.Errorf("didnt pass acss_predicate")

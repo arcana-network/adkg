@@ -3,6 +3,7 @@ package dacss
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -81,8 +82,9 @@ func TestEchoReadyInteraction(test *testing.T) {
 			test.Errorf("error creating the ECHO message: %v", err)
 		}
 
-		senderNode.Send(receiverNode.Details(), *readyMsg)
+		go senderNode.Send(receiverNode.Details(), *readyMsg)
 	}
+	time.Sleep(time.Second)
 
 	// Test that the received messages so far are all ECHO messages.
 	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
@@ -113,8 +115,9 @@ func TestEchoReadyInteraction(test *testing.T) {
 		test.Errorf("error creating the ECHO message: %v", err)
 	}
 	for _, senderNode := range echoSenderGroup {
-		senderNode.Send(receiverNode.Details(), *echoMsg)
+		go senderNode.Send(receiverNode.Details(), *echoMsg)
 	}
+	time.Sleep(time.Second)
 
 	// Test that we have received 2t + 2 messages, and they are either READY
 	// messages or ECHO messages.

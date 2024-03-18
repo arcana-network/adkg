@@ -217,7 +217,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				log.WithField("error", err).Error("NewDacssEchoMessage")
 				return
 			}
-			self.Send(n, *echoMsg)
+			go self.Send(n, *echoMsg)
 			// }(n)
 		}
 	} else {
@@ -239,7 +239,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		// TODO broadcast msg / send directly to all. What is the difference?
 		for _, node := range self.Nodes(msg.NewCommittee) {
-			self.Send(node, *implicateMsg)
+			go self.Send(node, *implicateMsg)
 		}
 	}
 }

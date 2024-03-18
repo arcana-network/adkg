@@ -75,7 +75,7 @@ func (m *DualCommitteeACSSShareMessage) MarshalJSON() ([]byte, error) {
 
 // NewDualCommitteeACSSShareMessage creates a new share message from the provided ID and
 // curve.
-func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, acssRoundDetails common.ACSSRoundDetails, curve *curves.Curve, ephemeralSecretKey []byte, ephemeralPublicKey []byte) (*common.PSSMessage, error) {
+func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDetails, acssRoundDetails common.ACSSRoundDetails, curve *curves.Curve, ephemeralSecretKey []byte, ephemeralPublicKey []byte, newCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := &DualCommitteeACSSShareMessage{
 		ACSSRoundDetails:   acssRoundDetails,
 		Kind:               ShareMessageType,
@@ -84,6 +84,7 @@ func NewDualCommitteeACSSShareMessage(secret curves.Scalar, dealer common.NodeDe
 		EphemeralSecretKey: ephemeralSecretKey,
 		EphemeralPublicKey: ephemeralPublicKey,
 		Dealer:             dealer,
+		NewCommitteeParams: newCommitteeParams,
 	}
 	bytes, err := bijson.Marshal(m)
 	if err != nil {

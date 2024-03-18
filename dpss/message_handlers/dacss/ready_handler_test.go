@@ -3,6 +3,7 @@ package dacss
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
@@ -59,6 +60,8 @@ func TestProcessReadyMessage(test *testing.T) {
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
 		readyMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
+
+	time.Sleep(100 * time.Millisecond)
 
 	broadcastedMsg := receiverNode.Transport.BroadcastedMessages
 
@@ -129,6 +132,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 		}
 		readyMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	// Test that no broadcast has been sent because there are t + 1 ECHO
 	// messages left.
@@ -152,6 +156,8 @@ func TestLateEchoAfterReady(test *testing.T) {
 		echoMsg.Hash,
 		echoMsg.Share,
 	)
+	time.Sleep(100 * time.Millisecond)
+
 	assert.Equal(test, 1, len(receiverNode.Transport.BroadcastedMessages))
 	assert.Equal(test, t+1, msgInfo.Count)
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
@@ -204,6 +210,7 @@ func TestGoingToOutputHandler(test *testing.T) {
 		}
 		readyMsg.Process(senderNode.Details(), receiverNode)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	_, _, t := receiverNode.Params()
 	hashOutputRbc := common.HashByte(stateReceiver.RBCState.ReceivedMessage)
@@ -293,6 +300,7 @@ func TestRepeatedReadyMessages(test *testing.T) {
 		}
 		readyMsg.Process(senderNode.Details(), receiverNode)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	assert.Equal(test, 1, len(stateReceiver.RBCState.ReadyMsgShards))
 	assert.Equal(test, 1, stateReceiver.RBCState.CountReady())

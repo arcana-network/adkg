@@ -51,9 +51,14 @@ upon receiving 𝑡 + 1 ⟨READY, ∗, ℎ⟩ messages and not having sent a REA
 */
 
 func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParticipant) {
-
+	if sender.Index == p.Details().Index {
+		return // TODO check
+	}
 	//TODO: cannot identlfy the old/new nodes just by index
 	log.Debugf("Received Ready message from sender=%d on %d", sender.Index, p.Details().Index)
+
+	p.State().AcssStore.Lock()
+	defer p.State().AcssStore.Unlock()
 
 	// Get state from node
 	state, isStored, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
@@ -71,7 +76,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	// If the ready message from sender was already received, we do an early
 	// return.
 	if state.RBCState.ReceivedReady[sender.Index] {
-		log.Infof(
+		log.Debugf(
 			"The party already has a message from the node %d",
 			sender.Index,
 		)
@@ -88,9 +93,6 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			)
 		},
 	)
-
-	p.State().AcssStore.Lock()
-	defer p.State().AcssStore.Unlock()
 
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
@@ -130,7 +132,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				},
 			)
 
-			p.Broadcast(p.IsNewNode(), *readyMsg)
+			go p.Broadcast(p.IsNewNode(), *readyMsg)
 		}
 	}
 
@@ -169,7 +171,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 					log.WithField("error", err).Error("unable to create DacssOutputMessage")
 					return
 				}
-				p.Send(p.Details(), *outputMsg)
+				go p.Send(p.Details(), *outputMsg)
 			}
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -30,18 +31,20 @@ func TestProcessProposeMessage(t *testing.T) {
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
 	// Call the process on the msg
-	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
+	go msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
+	time.Sleep(time.Second)
 
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
 
 	msgNewCommittee := getTestValidProposeMsg(singleNewNode, defaultSetup, true)
-	msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
+	go msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
+	time.Sleep(time.Second)
 
 	sent_msg = transport.GetSentMessages()
 
 	for i := 0; i < defaultSetup.NewCommitteeParams.N+defaultSetup.OldCommitteeParams.N; i++ {
-		assert.Equal(t, sent_msg[i].Type, DacssEchoMessageType)
+		assert.Equal(t, DacssEchoMessageType, sent_msg[i].Type)
 
 	}
 	//total length of the transport msg = length of the old msgs + new msgs
@@ -82,7 +85,7 @@ func TestInvalidShare(t *testing.T) {
 	// Call the process on the msg
 	// should send an implicate
 	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
-
+	time.Sleep(100 * time.Millisecond)
 	sent_msg := transport.GetSentMessages()
 
 	for i := 0; i < defaultSetup.OldCommitteeParams.N; i++ {
@@ -110,7 +113,7 @@ func TestSenderNotEqualToDealer(t *testing.T) {
 	// Call the process on the msg
 	// should trigger an early return since dealer != sender
 	msgOldCommittee.Process(node1.Details(), node0)
-
+	time.Sleep(100 * time.Millisecond)
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), 0)
 
@@ -135,7 +138,7 @@ func TestShareAlreadyReceived(t *testing.T) {
 
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	//shold trigger an early return
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), 0)
@@ -194,7 +197,7 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check: Node should send itself 2 implicateExecuteMessages
 	sent_msgs := transport.ReceivedMessages
 	implicateExecuteMessages := []common.PSSMessage{}
