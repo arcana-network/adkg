@@ -1,7 +1,7 @@
 package dacss
 
 import (
-	"reflect"
+	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +22,7 @@ type DacssEchoMessage struct {
 }
 
 // NewDacssEchoMessage creates an ECHO message in the RBC protocol.
-func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName, sender int, newCommittee bool) (*common.PSSMessage, error) {
+func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		NewCommittee:     newCommittee,
@@ -41,6 +41,21 @@ func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infecti
 	return &msg, nil
 }
 
+func (msg *DacssEchoMessage) Fingerprint() string {
+	var bytes []byte
+	delimiter := common.Delimiter2
+	bytes = append(bytes, msg.Hash...)
+	bytes = append(bytes, delimiter...)
+
+	bytes = append(bytes, msg.Share.Data...)
+	bytes = append(bytes, delimiter...)
+
+	bytes = append(bytes, byte(msg.Share.Number))
+	bytes = append(bytes, delimiter...)
+	hash := hex.EncodeToString(common.Keccak256(bytes))
+	return hash
+}
+
 // Process handles the incomming ECHO message.
 func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
@@ -57,41 +72,58 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 		log.WithField("error", err).Error("DacssEchoMessage - Process()")
 		return
 	}
-	ownShare := acssState.RBCState.OwnReedSolomonShard
-	ownHash := acssState.AcssDataHash
 
 	// Check that the incoming message matches with the share of self (Line 11)
 	// of Algorithm 4, "Asynchronous Data Disemination".
-	if reflect.DeepEqual(ownShare.Data, m.Share.Data) && reflect.DeepEqual(m.Hash, ownHash) {
-		self.State().AcssStore.UpdateAccsState(
-			m.ACSSRoundDetails.ToACSSRoundID(),
-			func(state *common.AccsState) {
-				state.RBCState.ReceivedEcho[sender.Index] = true
-			},
-		)
-		_, _, t := self.Params()
+	receivedEcho, echoFound := acssState.RBCState.ReceivedEcho[sender.Index]
+	if echoFound && receivedEcho {
+		log.Debugf("Already received echo from %d", sender.Index)
+		return
+	}
 
-		// This deals with Line 11 of the RBC protocol.
-		if acssState.RBCState.CountEcho() >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
-			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
-			if err != nil {
-				log.WithField("error", err).Error("DacssEchoMessage - Process()")
-				return
-			}
-			acssState.RBCState.IsReadyMsgSent = true
-			self.Broadcast(m.NewCommittee, *readyMsg)
-		}
+	self.State().AcssStore.UpdateAccsState(
+		m.ACSSRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.RBCState.ReceivedEcho[sender.Index] = true
 
-		// This deals with the waiting for ECHO handler in Line 14 of the RBC
-		// protocol.
-		if acssState.RBCState.CountReady() >= t+1 && acssState.RBCState.CountEcho() >= t+1 {
-			readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, ownShare, m.Hash, m.CurveName, m.NewCommittee)
-			if err != nil {
-				log.WithField("error", err).Error("DacssEchoMessage - Process()")
-				return
-			}
-			acssState.RBCState.IsReadyMsgSent = true
-			self.Broadcast(m.NewCommittee, *readyMsg)
+			echoStore := state.RBCState.GetEchoStore(
+				m.Fingerprint(),
+				m.Hash,
+				m.Share,
+			)
+			echoStore.Count++
+		},
+	)
+
+	_, _, t := self.Params()
+
+	// This deals with Line 11 of the RBC protocol.
+	msgRegistry := acssState.RBCState.GetEchoStore(
+		m.Fingerprint(),
+		m.Hash,
+		m.Share,
+	)
+
+	if msgRegistry.Count >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
+		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, m.Share, m.Hash, m.CurveName, m.NewCommittee)
+		if err != nil {
+			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			return
 		}
+		acssState.RBCState.IsReadyMsgSent = true
+		self.Broadcast(m.NewCommittee, *readyMsg)
+	}
+
+	// This deals with the waiting for ECHO handler in Line 14 of the RBC
+	// protocol.
+	msgInfo := acssState.RBCState.FindThresholdEchoMsg(t + 1)
+	if acssState.RBCState.CountReady() >= t+1 && msgInfo != nil {
+		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgInfo.Shard, m.Hash, m.CurveName, m.NewCommittee)
+		if err != nil {
+			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			return
+		}
+		acssState.RBCState.IsReadyMsgSent = true
+		self.Broadcast(m.NewCommittee, *readyMsg)
 	}
 }

@@ -40,24 +40,23 @@ func TestProcessReadyMessage(test *testing.T) {
 
 	_, _, t := receiverNode.Params()
 
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: *acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
+		Hash:             stateReceiver.AcssDataHash,
+		NewCommittee:     receiverNode.IsNewNode(),
+	}
+	readyMsg := DacssReadyMessage{
+		AcssRoundDetails: *acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
+		Hash:             stateReceiver.AcssDataHash,
+	}
 	for i := range t + 1 {
-		echoMsg := DacssEchoMessage{
-			ACSSRoundDetails: *acssRoundDetails,
-			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
-			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
-			Hash:             stateReceiver.AcssDataHash,
-			NewCommittee:     receiverNode.IsNewNode(),
-		}
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
-
-		readyMsg := DacssReadyMessage{
-			AcssRoundDetails: *acssRoundDetails,
-			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
-			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
-			Hash:             stateReceiver.AcssDataHash,
-		}
 		readyMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
 
@@ -67,7 +66,7 @@ func TestProcessReadyMessage(test *testing.T) {
 	assert.Equal(test, 1, len(broadcastedMsg))
 
 	// The ECHO and READY counts should be t + 1.
-	rbcState, found, err := receiverNode.State().AcssStore.Get(
+	state, found, err := receiverNode.State().AcssStore.Get(
 		acssRoundDetails.ToACSSRoundID(),
 	)
 	if !found {
@@ -76,8 +75,13 @@ func TestProcessReadyMessage(test *testing.T) {
 	if err != nil {
 		test.Errorf("Error retrieving the RBC state: %v", err)
 	}
-	assert.Equal(test, t+1, rbcState.RBCState.CountEcho())
-	assert.Equal(test, t+1, rbcState.RBCState.CountReady())
+	msgInfo := state.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		stateReceiver.AcssDataHash,
+		stateReceiver.RBCState.OwnReedSolomonShard,
+	)
+	assert.Equal(test, t+1, msgInfo.Count)
+	assert.Equal(test, t+1, state.RBCState.CountReady())
 }
 
 /*
@@ -129,24 +133,27 @@ func TestLateEchoAfterReady(test *testing.T) {
 	// Test that no broadcast has been sent because there are t + 1 ECHO
 	// messages left.
 	assert.Equal(test, 0, len(receiverNode.Transport.BroadcastedMessages))
-	assert.Equal(test, 0, stateReceiver.RBCState.CountEcho())
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
 
 	// Simulates the reception of t + 1 ECHO messages
+	echoMsg := DacssEchoMessage{
+		ACSSRoundDetails: *acssRoundDetails,
+		Kind:             DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
+		Hash:             stateReceiver.AcssDataHash,
+		NewCommittee:     receiverNode.IsNewNode(),
+	}
 	for i := range t + 1 {
-		echoMsg := DacssEchoMessage{
-			ACSSRoundDetails: *acssRoundDetails,
-			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
-			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
-			Hash:             stateReceiver.AcssDataHash,
-			NewCommittee:     receiverNode.IsNewNode(),
-		}
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
-
+	msgInfo := stateReceiver.RBCState.GetEchoStore(
+		echoMsg.Fingerprint(),
+		echoMsg.Hash,
+		echoMsg.Share,
+	)
 	assert.Equal(test, 1, len(receiverNode.Transport.BroadcastedMessages))
-	assert.Equal(test, t+1, stateReceiver.RBCState.CountEcho())
+	assert.Equal(test, t+1, msgInfo.Count)
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
 }
 

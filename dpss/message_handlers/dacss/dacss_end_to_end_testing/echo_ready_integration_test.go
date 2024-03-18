@@ -99,23 +99,20 @@ func TestEchoReadyInteraction(test *testing.T) {
 	for _, message := range transport.GetSentMessages() {
 		assert.Equal(test, dacss.AcssReadyMessageType, message.Type)
 	}
-	assert.Equal(test, 0, stateReceiver.RBCState.CountEcho())
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
 
 	// Sends t + 1 ECHO messages to the receiver node.
+	echoMsg, err := dacss.NewDacssEchoMessage(
+		acssRoundDetails,
+		shardReceiver,
+		hashMsg,
+		common.CurveName(curves.K256().Name),
+		receiverNode.IsNewNode(),
+	)
+	if err != nil {
+		test.Errorf("error creating the ECHO message: %v", err)
+	}
 	for _, senderNode := range echoSenderGroup {
-		echoMsg, err := dacss.NewDacssEchoMessage(
-			acssRoundDetails,
-			shardReceiver,
-			hashMsg,
-			common.CurveName(curves.K256().Name),
-			senderNode.Details().Index,
-			senderNode.IsNewNode(),
-		)
-		if err != nil {
-			test.Errorf("error creating the ECHO message: %v", err)
-		}
-
 		senderNode.Send(receiverNode.Details(), *echoMsg)
 	}
 
@@ -131,7 +128,21 @@ func TestEchoReadyInteraction(test *testing.T) {
 			},
 		)
 	}
-	assert.Equal(test, t+1, stateReceiver.RBCState.CountEcho())
+
+	echoMsgTemp := dacss.DacssEchoMessage{
+		ACSSRoundDetails: acssRoundDetails,
+		Kind:             dacss.DacssEchoMessageType,
+		CurveName:        common.CurveName(curves.K256().Name),
+		Share:            shardReceiver,
+		Hash:             hashMsg,
+		NewCommittee:     receiverNode.IsNewNode(),
+	}
+	msgInfo := stateReceiver.RBCState.GetEchoStore(
+		echoMsgTemp.Fingerprint(),
+		hashMsg,
+		shardReceiver,
+	)
+	assert.Equal(test, t+1, msgInfo.Count)
 	assert.Equal(test, 1, len(transport.GetBroadcastedMessages()))
 	assert.Equal(
 		test,
