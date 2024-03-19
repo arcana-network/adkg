@@ -15,7 +15,7 @@ type DacssOutputMessage struct {
 	AcssRoundDetails common.ACSSRoundDetails
 	kind             string
 	curveName        common.CurveName
-	m                []byte
+	Data             []byte
 }
 
 func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, curveName common.CurveName) (*common.PSSMessage, error) {
@@ -23,7 +23,7 @@ func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, cu
 		AcssRoundDetails: roundDetails,
 		kind:             DacssOutputMessageType,
 		curveName:        curveName,
-		m:                data,
+		Data:             data,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -46,7 +46,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	state, isStored, err := self.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
+	_, isStored, err := self.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
 		log.WithField("error", err).Error("NewDacssOutputMessage - Process()")
@@ -54,11 +54,9 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	}
 
 	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssOutputMessage - Process()")
+		log.WithField("error", "ACSS state not stored yet").Error("DacssEchoMessage - Process()")
 		return
 	}
-
-	// TODO should a check be added to see if the state has already passed this phase?
 
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
@@ -67,14 +65,10 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	priv := self.PrivateKey()
 
-	var msgData common.AcssData
+	msgData := common.AcssData{}
 
-	// TODO:
-	// If trying to Unmarshall DacssOutputMessage.m
-	// It result into error, therefore takes the msgData from the state
-	mt := state.RBCState.ReceivedMessage
 	// retrive the ACSSData
-	err = bijson.Unmarshal(mt, &msgData)
+	err = bijson.Unmarshal(m.Data, msgData)
 
 	if err != nil {
 		log.Errorf("Could not deserialize message data, err=%s", err)
@@ -112,31 +106,31 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	share, _, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
+	share, verifier, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
 
 	if verified {
-		log.Debugf("acss_verified by %v (newCommitee %v): share=%v", self.Details().Index, self.IsNewNode(), *share)
+		log.Debugf("acss_verified: share=%v", *share)
 
-		pubKey := m.AcssRoundDetails.PSSRoundDetails.Dealer.PubKey
-		pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, m.curveName)
-		if err != nil {
-			log.WithField("error constructing PointToCurvePoint", err).Error("DacssOutputMessage")
-			return
-		}
-		pubKeyHex := common.PointToHex(pubKeyCurvePoint)
-
+		// Set the state to reflect that RBC has ended.
 		self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
-				//TODO: if the RBC phase gets ended then it cannot receive from shares from other dealers
 				state.RBCState.Phase = common.Ended
 				state.ValidShareOutput = true
-
-				//store the shares against the dealer from which it received the valid share
-				state.ReceivedShares[pubKeyHex] = share
 			},
 		)
-		log.Infof("Done: Node_id%v, is_New: %v:  share=%v", self.Details().Index, self.IsNewNode(), *share)
+
+		commitmentMsg, err := NewDacssCommitmentMessage(
+			m.AcssRoundDetails,
+			m.curveName,
+			verifier,
+		)
+		if err != nil {
+			log.Errorf("Error creating the Commitment message: %v", err)
+			return
+		}
+
+		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
 
 	} else {
 		log.Errorf("didnt pass acss_predicate")
