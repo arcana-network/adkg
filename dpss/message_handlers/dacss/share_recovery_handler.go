@@ -97,7 +97,7 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 
 		// Send the information to all other nodes
 		for _, node := range self.Nodes(self.IsNewNode()) {
-			self.Send(node, *receiveShareRecoveryMsg)
+			go self.Send(node, *receiveShareRecoveryMsg)
 		}
 	}
 

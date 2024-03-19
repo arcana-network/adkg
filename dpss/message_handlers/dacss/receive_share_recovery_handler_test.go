@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -45,7 +46,7 @@ func TestReceiveFirstShareRecovery(t *testing.T) {
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 
 	msg.Process(node1.Details(), node2)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ = node2.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 
 	assert.False(t, acssState.ValidShareOutput)
@@ -98,7 +99,7 @@ func TestReceiveThresholdShareRecoveryMsgs(t *testing.T) {
 
 		msg.Process(currentNode.Details(), receiver)
 	}
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 
 	// Check: bool ValidShareOutput should be valid & len VerifiedRecoveryShares should t+1
@@ -120,7 +121,7 @@ func TestReceiverEqualsSelf(t *testing.T) {
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 
 	msg.Process(node2.Details(), node2)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ = node2.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }
@@ -152,7 +153,7 @@ func TestNoAcssState(t *testing.T) {
 	}
 
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	_, found, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, found)
 }
@@ -172,7 +173,7 @@ func TestShareRecoveryOngoingFalse(t *testing.T) {
 	})
 
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.True(t, len(acssState.VerifiedRecoveryShares) == 0)
 }
@@ -195,7 +196,7 @@ func TestValidShareOutputTrue(t *testing.T) {
 	})
 
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.True(t, len(acssState.VerifiedRecoveryShares) == 0)
 }
@@ -234,7 +235,7 @@ func TestIncorrectProofFormat(t *testing.T) {
 	}
 
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.True(t, len(acssState.VerifiedRecoveryShares) == 0)
 }
@@ -252,7 +253,7 @@ func TestAcssRecoveryDataHashMismatch(t *testing.T) {
 	msg.AcssData.DealerEphemeralPubKey = "0x123"
 
 	msg.Process(node1.Details(), node2)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := node2.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }
@@ -329,7 +330,7 @@ func TestDealerPubkeyWrongConversion(t *testing.T) {
 		AcssData:         msgData,
 	}
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }
@@ -350,7 +351,7 @@ func TestSymmetricKeyWrongConversion(t *testing.T) {
 	msg.SymmetricKey = []byte("invalid key")
 
 	msg.Process(node1.Details(), node2)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ = node2.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }
@@ -387,7 +388,7 @@ func TestProofVerficationFails(t *testing.T) {
 		AcssData:         msgData,
 	}
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }
@@ -462,7 +463,7 @@ func TestPredicateForShareFails(t *testing.T) {
 		AcssData:         msgData,
 	}
 	msg.Process(node1.Details(), receiver)
-
+	time.Sleep(100 * time.Millisecond)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	assert.False(t, len(acssState.VerifiedRecoveryShares) > 0)
 }

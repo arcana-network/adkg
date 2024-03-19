@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -80,6 +81,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 
 	// Node 1 receives Implicate msg
 	implicateMsg.Process(node2.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	// In this part we don't actually check whether the Predicate indeed fails, that happens in the ImplicateExecute
 	// Check 1: the node itself receives the implicateExecuteMessage
@@ -119,6 +121,7 @@ func TestDoesntHaveShareMap(t *testing.T) {
 
 	// Check 1: no ImplicateExecute message is sent
 	implicateMsg.Process(node2.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 	receivedMsgNode1 := node1.Transport.ReceivedMessages
 	assert.Equal(t, 0, len(receivedMsgNode1))
 
@@ -157,6 +160,7 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	// Does not have the shareMap stored. So it shouldn't send an ImplicateExecute message
 	// Check 1: no ImplicateExecute message is sent
 	implicateMsg.Process(node2.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 	receivedMsgNode1 := node1.Transport.ReceivedMessages
 	assert.Equal(t, 0, len(receivedMsgNode1))
 

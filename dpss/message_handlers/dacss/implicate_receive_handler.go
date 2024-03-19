@@ -105,7 +105,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
+		go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
 	}
 
 }

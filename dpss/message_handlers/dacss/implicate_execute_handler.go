@@ -159,5 +159,5 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 		log.Errorf("Error in creating ShareRecoveryMsg, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 		return
 	}
-	self.ReceiveMessage(self.Details(), *recoveryMsg)
+	go self.ReceiveMessage(self.Details(), *recoveryMsg)
 }

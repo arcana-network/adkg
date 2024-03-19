@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -36,6 +37,7 @@ func TestSendReceiveShareRecoveryMsg(t *testing.T) {
 	node1, _, acssRoundDetails, shareRecoveryMessage := shareRecoveryHappyPathSetup()
 
 	shareRecoveryMessage.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check 1: ReceiveShareRecoveryMessage was sent to all other nodes from committee
 	sentMsgs := node1.Transport.GetSentMessages()
@@ -61,7 +63,7 @@ func TestSenderNotSelfShareRecovery(t *testing.T) {
 	node1, node2, acssRoundDetails, shareRecoveryMessage := shareRecoveryHappyPathSetup()
 
 	shareRecoveryMessage.Process(node2.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check 1: No message was sent
 	sentMsgs := node1.Transport.GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
@@ -135,7 +137,7 @@ func TestNoAcssDataInState(t *testing.T) {
 	}
 
 	shareRecoveryMessage.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check 1: No message was sent
 	sentMsgs := node1.Transport.GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
@@ -161,7 +163,7 @@ func TestAcssDataHashLenZero(t *testing.T) {
 		state.AcssDataHash = []byte{}
 	})
 	shareRecoveryMessage.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check 1: shareRecoveryOngoing is set to true
 	acssState, _, _ := node1.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 	assert.True(t, acssState.ShareRecoveryOngoing)
@@ -186,7 +188,7 @@ func TestShareRecoveryAlreadyTrue(t *testing.T) {
 		state.ShareRecoveryOngoing = true
 	})
 	shareRecoveryMessage.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check No message was sent
 	sentMsgs := node1.Transport.GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
@@ -208,7 +210,7 @@ func TestValidShareOutputFalse(t *testing.T) {
 		state.ValidShareOutput = false
 	})
 	shareRecoveryMessage.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	// Check 1: shareRecoveryOngoing is set to true
 	acssState, _, _ := node1.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 	assert.True(t, acssState.ShareRecoveryOngoing)

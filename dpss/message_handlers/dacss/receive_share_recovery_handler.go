@@ -179,7 +179,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 		// TODO store share in node state. this will work the same as in OutputHandler (tbd)
 		// for now we just log to avoid compiler warning
-		log.Debugf("shareForNode: %v", shareForNode)
+		log.Infof("shareForNode: %v", shareForNode)
 
 		// When finished set ValidShareOutput to true
 		receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {

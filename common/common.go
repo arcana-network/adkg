@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"math/big"
 	"os"
 	"strconv"
@@ -93,6 +94,14 @@ func reverse(s []byte) []byte {
 type NodeDetails struct {
 	Index  int
 	PubKey Point
+}
+
+func (n NodeDetails) ToHexString(curveName CurveName) (string, error) {
+	curvePoint, err := PointToCurvePoint(n.PubKey, curveName)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(curvePoint.ToAffineCompressed()), nil
 }
 
 type NodeDetailsID string

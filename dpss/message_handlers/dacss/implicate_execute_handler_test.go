@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -46,6 +47,7 @@ func TestExecuteHandlerHappyFlow(t *testing.T) {
 	node1, _, executeMsg, _ := happyPathSetup()
 
 	executeMsg.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	// Check that the node received a ShareRecoveryMsg from itself
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 1)
@@ -65,6 +67,7 @@ func TestExecuteImplicateSenderNotSelf(t *testing.T) {
 	// The execute message is sent by node2 to node1
 	// while is should be sent by node1 to node1
 	executeMsg.Process(node2.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	// That's why nothing happens
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
@@ -90,6 +93,7 @@ func TestAcssStateNotFound(t *testing.T) {
 
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, acssData)
 	executeMsg.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
@@ -119,6 +123,7 @@ func TestAcssDataUninitialized(t *testing.T) {
 
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, acssData)
 	executeMsg.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
@@ -148,6 +153,7 @@ func TestAcssDataHashMismatch(t *testing.T) {
 
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, acssData)
 	executeMsg.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
@@ -167,6 +173,7 @@ func TestExecuteImplicateAlreadyInShareRecovery(t *testing.T) {
 		state.ShareRecoveryOngoing = true
 	})
 	executeMsg.Process(node1.Details(), node1)
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -203,7 +210,7 @@ func TestDealerPubkeyInvalid(t *testing.T) {
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, acssData)
 
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -221,7 +228,7 @@ func TestSymmKeyInvalid(t *testing.T) {
 	executeMsg.SymmetricKey = []byte("invalid")
 
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -260,7 +267,7 @@ func TestSenderPubkeyInvalid(t *testing.T) {
 	executeMsg.SenderPubkeyHex = "invalid"
 
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -280,7 +287,7 @@ func TestCantUnpackProof(t *testing.T) {
 	executeMsg.Proof = bytes
 
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -319,7 +326,7 @@ func TestZKPVerificationFails(t *testing.T) {
 
 	executeMsg := createExecuteMsg(acssRoundDetails, symmKey, proof, node2.LongtermKey, acssData)
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -385,7 +392,7 @@ func TestPredicatePasses(t *testing.T) {
 	}
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, msgData)
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 
@@ -407,7 +414,7 @@ func TestShareHashLenZero(t *testing.T) {
 	})
 
 	executeMsg.Process(node1.Details(), node1)
-
+	time.Sleep(100 * time.Millisecond)
 	assert.True(t, len(node1.Transport.ReceivedMessages) == 0)
 }
 

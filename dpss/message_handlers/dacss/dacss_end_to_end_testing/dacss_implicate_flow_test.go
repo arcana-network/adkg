@@ -21,21 +21,21 @@ import (
 
 // WIP
 func TestTriggerImplicateFlow(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	testSetUp, _ := DefaultTestSetup()
-	nNew := testSetUp.OldCommitteeParams.N
-	kNew := testSetUp.OldCommitteeParams.K
+	nOld := testSetUp.OldCommitteeParams.N
+	kOld := testSetUp.OldCommitteeParams.K
 	// Dealer is a single node from Old committee
 	dealer := testSetUp.GetSingleNode(false)
 
 	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	secret := sharing.GenerateSecret(testutils.TestCurve())
-	commitment, shares, _ := sharing.GenerateCommitmentAndShares(secret, uint32(kNew), uint32(nNew), testutils.TestCurve())
+	commitment, shares, _ := sharing.GenerateCommitmentAndShares(secret, uint32(kOld), uint32(nOld), testutils.TestCurve())
 
 	compressedCommitments := sharing.CompressCommitments(commitment)
-	shareMap := make(map[string][]byte, nNew)
+	shareMap := make(map[string][]byte, nOld)
 	for _, share := range shares {
 		// The receiving nodes are in new committee
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), true)
@@ -49,6 +49,19 @@ func TestTriggerImplicateFlow(t *testing.T) {
 		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}
+
+	// Corrupting the shareMap, 3 nodes will get the same encrypted shares
+	// This will trigger the Implicate flow for 2 of those 3 nodes
+	pubkey0Hex, err := testSetUp.newCommitteeNetwork[0].Details().ToHexString(testutils.TestCurveName())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubkey1Hex, _ := testSetUp.newCommitteeNetwork[1].Details().ToHexString(testutils.TestCurveName())
+	pubkey2Hex, _ := testSetUp.newCommitteeNetwork[2].Details().ToHexString(testutils.TestCurveName())
+
+	shareNode0 := shareMap[pubkey0Hex]
+	shareMap[pubkey1Hex] = shareNode0
+	shareMap[pubkey2Hex] = shareNode0
 
 	msgData := common.AcssData{
 		Commitments:           compressedCommitments,
@@ -72,5 +85,7 @@ func TestTriggerImplicateFlow(t *testing.T) {
 			msg.Process(dealer.Details(), node)
 		}(node)
 	}
-	time.Sleep(2 * time.Second)
+
+	// TODO verify if this works & add assertions
+	time.Sleep(15 * time.Second)
 }
