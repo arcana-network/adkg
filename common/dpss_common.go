@@ -47,8 +47,7 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	AcssStore       *AcssStateMap // State for the separate ACSS rounds
-	DualAcssStarted bool          // Flag whether the DualAcss part of the protocol has started.
+	AcssStore *AcssStateMap // State for the separate ACSS rounds
 }
 
 // Stores the information of the shares for a given ACSS Round

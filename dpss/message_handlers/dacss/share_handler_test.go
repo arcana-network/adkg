@@ -22,7 +22,6 @@ and proceeds to send shares to both old & new comittee
 
 Expectations:
 - node broadcasts 2 msgs: 1 to old comittee, 1 to new comittee
-- in the node's state DualAcssStarted is set to true
 - the broadcasted msgs contain the correct amount of shares & commitments for the old & new committee parameters respectively
 - shares are correctly encrypted, using the ephemeral key
 - for both comittee, predicate verifies for the sent information
@@ -38,9 +37,6 @@ func TestStartDualAcss(t *testing.T) {
 
 	// Create a DualCommitteeACSSShareMessage
 	msg := getTestMsg(testDealer, defaultSetup, ephemeralKeypair)
-
-	// Pre-check: in the node's state DualAcssStarted is false
-	assert.False(t, testDealer.State().DualAcssStarted)
 
 	// Call the process on the msg
 	msg.Process(testDealer.Details(), testDealer)
@@ -96,10 +92,6 @@ func TestStartDualAcss(t *testing.T) {
 	symm_key3, _ := sharing.CalculateSharedKey(pubkeyNewNode3, ephemeralKeypair.PrivateKey)
 	_, _, verified_new := sharing.Predicate(symm_key3, share_node3, sentCommitments_new, defaultSetup.NewCommitteeParams.K, curves.K256())
 	assert.True(t, verified_new)
-
-	// 6. Check DualAcssStarted is true in the node's state
-	assert.True(t, testDealer.State().DualAcssStarted)
-
 }
 
 func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestSetup, ephemeralKeypair common.KeyPair) DualCommitteeACSSShareMessage {
@@ -175,37 +167,6 @@ func TestSenderNotSelf(t *testing.T) {
 	// Call the process on the msg
 	// The sender is not equal to the "self"(receiver)
 	msg.Process(oldNode2.Details(), oldNode1)
-
-	// CHECKS
-	// 1. Check No msg were broadcasted; early return expected
-	transport.AssertNoMsgsBroadcast(t)
-}
-
-/*
-Function: Process
-
-Testcase: DualAcssStarted in the node's state is true (meaning the process has already started)
-
-Expectations:
-- early return. In particular no messages are broadcast
-*/
-func TestDualACSSAlreadyStarted(t *testing.T) {
-	defaultSetup := testutils.DefaultTestSetup()
-	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
-	transport := testDealer.Transport
-
-	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
-
-	// Create a DualCommitteeACSSShareMessage
-	msg := getTestMsg(testDealer, defaultSetup, ephemeralKeypair)
-
-	testDealer.State().DualAcssStarted = true
-
-	// Manually set DualAcssStarted to true
-	assert.True(t, testDealer.State().DualAcssStarted)
-
-	// Call the process on the msg
-	msg.Process(testDealer.Details(), testDealer)
 
 	// CHECKS
 	// 1. Check No msg were broadcasted; early return expected

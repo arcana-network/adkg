@@ -108,14 +108,6 @@ func (msg DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self
 		return
 	}
 
-	// Check that Dual ACSS has not started yet for this node.
-	if self.State().DualAcssStarted {
-		log.Infof("DualCommitteeACSSShareMessage: DualAcss already started. Not taking action.")
-		return
-	}
-
-	self.State().DualAcssStarted = true
-
 	curve := common.CurveFromName(msg.CurveName)
 
 	// Ephemeral Private key of the dealer

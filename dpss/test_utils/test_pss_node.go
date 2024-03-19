@@ -107,8 +107,7 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 		isNewCommittee:      isNewCommittee,
 		committeeTestParams: params,
 		state: &common.PSSNodeState{
-			AcssStore:       &common.AcssStateMap{},
-			DualAcssStarted: false,
+			AcssStore: &common.AcssStateMap{},
 		},
 		Transport:   noSendTransport,
 		LongtermKey: keypair,
