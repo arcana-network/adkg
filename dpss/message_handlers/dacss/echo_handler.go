@@ -18,14 +18,12 @@ type DacssEchoMessage struct {
 	CurveName        common.CurveName        // Curve used for the computation
 	Share            infectious.Share        // Shard comming from the RS Encoding.
 	Hash             []byte                  // Hash of the shares.
-	NewCommittee     bool                    // Tells if this message was sent to an old or new committee.
 }
 
 // NewDacssEchoMessage creates an ECHO message in the RBC protocol.
 func NewDacssEchoMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName, newCommittee bool) (*common.PSSMessage, error) {
 	m := DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
-		NewCommittee:     newCommittee,
 		Kind:             DacssEchoMessageType,
 		CurveName:        curve,
 		Share:            share,
@@ -113,25 +111,25 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	)
 
 	if msgRegistry.Count >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
-		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, m.Share, m.Hash, m.CurveName, m.NewCommittee)
+		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, m.Share, m.Hash, m.CurveName)
 		if err != nil {
 			log.WithField("error", err).Error("DacssEchoMessage - Process()")
 			return
 		}
 		acssState.RBCState.IsReadyMsgSent = true
-		go self.Broadcast(m.NewCommittee, *readyMsg)
+		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 
 	// This deals with the waiting for ECHO handler in Line 14 of the RBC
 	// protocol.
 	msgInfo := acssState.RBCState.FindThresholdEchoMsg(t + 1)
 	if acssState.RBCState.CountReady() >= t+1 && msgInfo != nil {
-		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgInfo.Shard, m.Hash, m.CurveName, m.NewCommittee)
+		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgInfo.Shard, m.Hash, m.CurveName)
 		if err != nil {
 			log.WithField("error", err).Error("DacssEchoMessage - Process()")
 			return
 		}
 		acssState.RBCState.IsReadyMsgSent = true
-		go self.Broadcast(m.NewCommittee, *readyMsg)
+		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 }

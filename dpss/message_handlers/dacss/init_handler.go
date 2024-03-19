@@ -50,10 +50,19 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	curve := common.CurveFromName(*msg.CurveName)
 	// If the node is not an old node, this should not continue.
 	if self.IsNewNode() {
+		log.WithFields(log.Fields{
+			"IsNewNode": self.IsNewNode(),
+			"Message":   "Self is expected to be of the other committee.",
+		}).Error("DACSSInitMessage: Process")
 		return
 	}
 
 	if !sender.IsEqual(self.Details()) {
+		log.WithFields(log.Fields{
+			"Sender.Index": sender.Index,
+			"Self.Index":   self.Details().Index,
+			"Message":      "Not equal. Expected to be equal",
+		}).Error("DACSSInitMessage: Process")
 		return
 	}
 

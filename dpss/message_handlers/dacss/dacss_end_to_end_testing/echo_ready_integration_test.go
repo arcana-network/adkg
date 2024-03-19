@@ -76,7 +76,6 @@ func TestEchoReadyInteraction(test *testing.T) {
 			shardReceiver,
 			hashMsg,
 			common.CurveName(curves.K256().Name),
-			senderNode.IsNewNode(),
 		)
 		if err != nil {
 			test.Errorf("error creating the ECHO message: %v", err)
@@ -138,7 +137,6 @@ func TestEchoReadyInteraction(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     receiverNode.IsNewNode(),
 	}
 	msgInfo := stateReceiver.RBCState.GetEchoStore(
 		echoMsgTemp.Fingerprint(),

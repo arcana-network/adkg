@@ -71,13 +71,47 @@ type AccsState struct {
 	VerifiedRecoveryShares map[int]*sharing.ShamirShare
 	// Indicates per ACSS round whether the Share Recovery is in process
 	ShareRecoveryOngoing bool
-	// Indicates whether current node output a valid share for the acssData that matches AcssDataHash
+	// Indicates wether the shares held by the current party are valid at the end of the ACSS protocol.
 	ValidShareOutput bool
-	//shares received from each dealer
+	// Shares received from each dealer
 	ReceivedShares map[string]*sharing.ShamirShare
 	//random secret shared by the dealers in the start of the protocol
 	//only to be stored by the dealer
 	RandomSecretShared map[ACSSRoundID]*curves.Scalar
+	// Own commitment received in the RBC (see Line 203, DACSS protocol)
+	OwnCommitments *sharing.FeldmanVerifier
+	// Received commitments
+	ReceivedCommitments map[int]bool
+	// Commitment database that counts how many times a commitment has been received.
+	CommitmentDatabase map[string]*CommitmentStore
+}
+
+func (state *AccsState) GetStoreForCommitment(
+	fingerprint string,
+	commitments []Point,
+) *CommitmentStore {
+	_, found := state.CommitmentDatabase[fingerprint]
+	if !found {
+		return &CommitmentStore{
+			Commitments: commitments,
+			Count:       0,
+		}
+	}
+	return state.CommitmentDatabase[fingerprint]
+}
+
+func (state *AccsState) FindThresholdCommitment(threshold int) *CommitmentStore {
+	for _, commitment := range state.CommitmentDatabase {
+		if commitment.Count >= threshold {
+			return commitment
+		}
+	}
+	return nil
+}
+
+type CommitmentStore struct {
+	Commitments []Point
+	Count       int
 }
 
 type AccsStateUpdater func(*AccsState)
