@@ -7,6 +7,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
 
@@ -67,6 +68,18 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 		acssRoundDetails := common.ACSSRoundDetails{
 			PSSRoundDetails: msg.PSSRoundDetails,
 			ACSSCount:       i,
+		}
+
+		// store the random secret
+		err := self.State().AcssStore.UpdateAccsState(
+			acssRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RandomSecretShared[acssRoundDetails.ToACSSRoundID()] = &r
+			},
+		)
+		if err != nil {
+			log.Errorf("initMsg: error getting state: %v", err)
+			return
 		}
 
 		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), acssRoundDetails, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey, msg.NewCommitteeParams)

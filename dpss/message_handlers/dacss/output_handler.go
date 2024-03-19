@@ -128,7 +128,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
-				//TODO: if the RBC phase gets ended then it cannot receive from shares from other dealers
+
 				state.RBCState.Phase = common.Ended
 				state.ValidShareOutput = true
 

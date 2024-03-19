@@ -10,10 +10,10 @@ import (
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/torusresearch/bijson"
 )
 
 // TODO: add assertions
@@ -24,6 +24,7 @@ func TestDacss(t *testing.T) {
 	TestSetUp, _ := DefaultTestSetup()
 
 	nodesOld := TestSetUp.oldCommitteeNetwork
+	nodesNew := TestSetUp.newCommitteeNetwork
 
 	nOld := TestSetUp.OldCommitteeParams.N
 	kOld := TestSetUp.OldCommitteeParams.K
@@ -31,6 +32,9 @@ func TestDacss(t *testing.T) {
 	// The old committee has shares of a single secret
 	testSecret := sharing.GenerateSecret(curves.K256())
 	_, shares, _ := sharing.GenerateCommitmentAndShares(testSecret, uint32(kOld), uint32(nOld), testutils.TestCurve())
+
+	//store the init msgs for testing
+	initMessages := make(map[common.NodeDetailsID]*dacss.InitMessage)
 
 	// Each node in old committee starts dACSS
 	// That means that for the single share each node has,
@@ -51,13 +55,79 @@ func TestDacss(t *testing.T) {
 				Type:            initMsg.Kind,
 				Data:            pssMsgData,
 			}
+
+			//store the init msg for testing
+			initMessages[node.details.GetNodeDetailsID()] = initMsg
+
 			node.ReceiveMessage(node.Details(), InitPssMessage)
 		}(index, n)
 	}
 
 	time.Sleep(10 * time.Second)
 
-	// TODO add assertions when the initial sampled values in InitHandler get stored and they can be checked
+	// round details for oldNode0 being the dealer
+	//since only one secret is shared, the ACSSCount = 0
+	acssRound := common.ACSSRoundDetails{
+		PSSRoundDetails: initMessages[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails,
+		ACSSCount:       0,
+	}
+
+	// hex pubkey of the dealer aka oldnode0
+	pubKey := initMessages[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails.Dealer.PubKey
+	pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, "secp256k1")
+	assert.Nil(t, err)
+	pubKeyHex := common.PointToHex(pubKeyCurvePoint)
+
+	// getting the random secret shared
+	state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
+	assert.Nil(t, err)
+	randomSecretShared := state.RandomSecretShared[acssRound.ToACSSRoundID()]
+
+	//storing shares received from the oldnode0 for old committee
+	var OldCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
+
+	for _, n := range nodesOld {
+
+		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		assert.Nil(t, err)
+		share := state.ReceivedShares[pubKeyHex]
+		OldCommitteReceivedShareFromNodeOld0 = append(OldCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
+
+	}
+
+	//For Old Committee
+
+	//reconstructing the random secret
+	shamir, err := sharing.NewShamir(testutils.DefaultK_old, testutils.DefaultN_old, curves.K256())
+	assert.Nil(t, err)
+
+	reconstructedSecret, err := shamir.Combine(OldCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
+
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
+
+	//For New Committee
+
+	//storing shares received from the oldnode0 for New committee
+	var NewCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
+
+	for _, n := range nodesNew {
+
+		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		assert.Nil(t, err)
+		share := state.ReceivedShares[pubKeyHex]
+		NewCommitteReceivedShareFromNodeOld0 = append(NewCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
+
+	}
+
+	//reconstructing the random secret
+	shamir, err = sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
+	assert.Nil(t, err)
+
+	reconstructedSecret, err = shamir.Combine(NewCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
+
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 }
 
 func getTestInitMsgSingleShare(testDealer *PssTestNode2, pssRoundIndex big.Int, share *sharing.ShamirShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
