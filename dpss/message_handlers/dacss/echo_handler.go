@@ -78,12 +78,16 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	// Check that the incoming message matches with the share of self (Line 11)
 	// of Algorithm 4, "Asynchronous Data Disemination".
+
+	// If the ECHO was already received, do nothing.
 	receivedEcho, echoFound := acssState.RBCState.ReceivedEcho[sender.Index]
 	if echoFound && receivedEcho {
 		log.Debugf("Already received echo from %d", sender.Index)
 		return
 	}
 
+	// If the ECHO message has been not received, then update the received ECHO
+	// and increase the counter.
 	self.State().AcssStore.UpdateAccsState(
 		m.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
@@ -100,7 +104,8 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	_, _, t := self.Params()
 
-	// This deals with Line 11 of the RBC protocol.
+	// This deals with Line 11 of the RBC protocol. If the ECHO count for the
+	// received message is 2t + 1, then send the READY message.
 	msgRegistry := acssState.RBCState.GetEchoStore(
 		m.Fingerprint(),
 		m.Hash,

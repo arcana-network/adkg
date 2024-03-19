@@ -371,12 +371,16 @@ type RBCState struct {
 	ReadyMsgShards      []infectious.Share    // Shards received in the READY messages
 }
 
+// Represents a record of a received ECHO message.
 type EchoStore struct {
-	HashMessage []byte
-	Shard       infectious.Share
-	Count       int
+	HashMessage []byte           // Hash in the received ECHO message.
+	Shard       infectious.Share // Shard in the received ECHO message.
+	Count       int              // Number of times that this ECHO message with the same hash and shard has been received.
 }
 
+// Returns an ECHO record given a fingerprint. If the record does not exist yet,
+// it creates a new record with the shard and hash provided as arguments and
+// sets the counter to zero.
 func (state *RBCState) GetEchoStore(
 	fingerprint string,
 	hashMsg []byte,
@@ -393,6 +397,8 @@ func (state *RBCState) GetEchoStore(
 	return state.EchoDatabase[fingerprint]
 }
 
+// Returns an ECHO message record that has a count greater or equal than the
+// provided threshold.
 func (state *RBCState) FindThresholdEchoMsg(
 	threshold int,
 ) *EchoStore {
