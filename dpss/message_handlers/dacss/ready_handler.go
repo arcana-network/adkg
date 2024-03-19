@@ -22,7 +22,7 @@ type DacssReadyMessage struct {
 }
 
 // ⟨READY, *, h⟩ msg in the RBC protocol
-func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName, newCommittee bool) (*common.PSSMessage, error) {
+func NewDacssReadyMessage(acssRoundDetails common.ACSSRoundDetails, share infectious.Share, hash []byte, curve common.CurveName) (*common.PSSMessage, error) {
 	m := DacssReadyMessage{
 		Kind:             AcssReadyMessageType,
 		CurveName:        curve,
@@ -61,15 +61,10 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	defer p.State().AcssStore.Unlock()
 
 	// Get state from node
-	state, isStored, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
+	state, _, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
 		log.WithField("error", err).Error("DacssReadyMessage - Process()")
-		return
-	}
-
-	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssEchoMessage - Process()")
 		return
 	}
 
@@ -118,7 +113,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		// so it is sufficient to check the count
 		echoInfo := state.RBCState.FindThresholdEchoMsg(t + 1)
 		if echoInfo != nil {
-			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, echoInfo.Shard, echoInfo.HashMessage, m.CurveName, p.IsNewNode())
+			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, echoInfo.Shard, echoInfo.HashMessage, m.CurveName)
 
 			if err != nil {
 				log.WithField("error", err).Error("DacssReadyMessage - Process()")
@@ -159,8 +154,6 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 					m.AcssRoundDetails.ToACSSRoundID(),
 					func(state *common.AccsState) {
 						state.RBCState.Phase = common.Ended
-						state.ValidShareOutput = true
-						state.RBCState.ReceivedMessage = rbcMsg
 					},
 				)
 

@@ -65,7 +65,6 @@ func TestIncrement(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     testRecvr.IsNewNode(),
 	}
 
 	echoMsg.Process(testSender.Details(), testRecvr)
@@ -153,7 +152,6 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     testRecvr.IsNewNode(),
 	}
 
 	if err != nil {
@@ -260,7 +258,6 @@ func TestCounterEchoMessages(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     receiverNode.IsNewNode(),
 	}
 	for _, senderNode := range senderGroup {
 		echoMsg.Process(senderNode.Details(), receiverNode)
@@ -361,7 +358,6 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
-		NewCommittee:     receiverNode.IsNewNode(),
 	}
 	for _, senderNode := range senderGroup {
 		echoMsg.Process(senderNode.Details(), receiverNode)

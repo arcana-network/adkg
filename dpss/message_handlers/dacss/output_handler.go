@@ -42,7 +42,14 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	log.Debugf("Received output message on %d", self.Details().Index)
 
 	// Ignore if not received by self
-	if sender.Index != self.Details().Index {
+	if sender.IsEqual(self.Details()) {
+		log.WithFields(
+			log.Fields{
+				"Sender.Index": sender.Index,
+				"Self.Index":   self.Details().Index,
+				"Message":      "Not equal. Expected to be equal.",
+			},
+		).Error("DACSSCommitmentMessage: Process")
 		return
 	}
 
@@ -116,7 +123,12 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.Phase = common.Ended
-				state.ValidShareOutput = true
+
+				// Store the shares received at the end of the RBC.
+				state.ReceivedShares[hexPubKey] = share
+
+				// Line 203, Algorithm 4, DPS paper.
+				state.OwnCommitments = verifier
 			},
 		)
 

@@ -45,11 +45,19 @@ func (p HexPoint) ToPoint() Point {
 	}
 }
 
+func (p HexPoint) Serialize() string {
+	return p.X + Delimiter6 + p.Y
+}
+
 func (p Point) ToHex() HexPoint {
 	return HexPoint{
 		X: p.X.Text(16),
 		Y: p.Y.Text(16),
 	}
+}
+
+func (point Point) Equal(other Point) bool {
+	return point.X.Cmp(&other.X) == 0 && point.Y.Cmp(&other.Y) == 0
 }
 
 // curves.Point is transformed to the internally defined Point type
@@ -70,6 +78,14 @@ func CurvePointToPoint(p curves.Point, c CurveName) Point {
 			Y: *new(big.Int).SetBytes(yBytes),
 		}
 	}
+}
+
+func SerializePointCommitments(commitments []Point) string {
+	serialization := ""
+	for _, commitment := range commitments {
+		serialization += commitment.ToHex().Serialize()
+	}
+	return serialization
 }
 
 // TODO test

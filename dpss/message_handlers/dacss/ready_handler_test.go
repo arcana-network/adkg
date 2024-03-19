@@ -47,7 +47,6 @@ func TestProcessReadyMessage(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 		Hash:             stateReceiver.AcssDataHash,
-		NewCommittee:     receiverNode.IsNewNode(),
 	}
 	readyMsg := DacssReadyMessage{
 		AcssRoundDetails: *acssRoundDetails,
@@ -146,7 +145,6 @@ func TestLateEchoAfterReady(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 		Hash:             stateReceiver.AcssDataHash,
-		NewCommittee:     receiverNode.IsNewNode(),
 	}
 	for i := range t + 1 {
 		echoMsg.Process(senderGroup[i].Details(), receiverNode)
