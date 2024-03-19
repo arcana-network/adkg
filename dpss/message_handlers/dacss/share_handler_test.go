@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -40,6 +41,7 @@ func TestStartDualAcss(t *testing.T) {
 
 	// Call the process on the msg
 	msg.Process(testDealer.Details(), testDealer)
+	time.Sleep(1 * time.Second)
 
 	// CHECKS
 
@@ -140,6 +142,7 @@ func TestNodeInNewCommittee(t *testing.T) {
 
 	// Call the process on the msg
 	msg.Process(nodeNewCommittee.Details(), nodeNewCommittee)
+	time.Sleep(1 * time.Second)
 
 	// CHECKS
 	// 1. Check No msg were broadcasted; early return expected
@@ -167,6 +170,7 @@ func TestSenderNotSelf(t *testing.T) {
 	// Call the process on the msg
 	// The sender is not equal to the "self"(receiver)
 	msg.Process(oldNode2.Details(), oldNode1)
+	time.Sleep(1 * time.Second)
 
 	// CHECKS
 	// 1. Check No msg were broadcasted; early return expected

@@ -2,7 +2,6 @@ package dacss
 
 import (
 	"encoding/hex"
-	"sync"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -121,22 +120,15 @@ func (msg DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self
 	n_new := msg.NewCommitteeParams.N
 	k_new := msg.NewCommitteeParams.K
 
-	// This is to make sure both runs of ACCS are done
-	var wg sync.WaitGroup
-	wg.Add(1)
-
 	// Initiate ACSS for both old and new Committe
-	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n_old, k_old, msg, msg.EphemeralPublicKey, &wg)
-	wg.Add(1)
-	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n_new, k_new, msg, msg.EphemeralPublicKey, &wg)
-
-	wg.Wait()
+	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n_old, k_old, msg, msg.EphemeralPublicKey)
+	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n_new, k_new, msg, msg.EphemeralPublicKey)
 }
 
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
 // defined by the withNewCommittee flag.
 func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSParticipant, privateKey curves.Scalar,
-	curve *curves.Curve, n int, k int, msg DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte, wg *sync.WaitGroup) {
+	curve *curves.Curve, n int, k int, msg DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte) {
 
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(secret, uint32(k), uint32(n), curve)
 	if err != nil {
@@ -189,9 +181,5 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 	}
 
 	// ReliableBroadcast(C)
-	go func() {
-		sender.Broadcast(withNewCommittee, *proposeMsg)
-		defer wg.Done()
-	}()
-
+	go sender.Broadcast(withNewCommittee, *proposeMsg)
 }
