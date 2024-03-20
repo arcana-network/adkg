@@ -124,6 +124,7 @@ func (msg DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self
 
 	// Node can receive this msg only from themselves. Compare pubkeys to be sure.
 	if !self.Details().IsEqual(sender) {
+		log.Infof("DualCommitteeACSSShareMessage: Received message from another node. Not taking action.")
 		return
 	}
 
@@ -141,12 +142,14 @@ func (msg DualCommitteeACSSShareMessage) Process(sender common.NodeDetails, self
 	k_new := msg.NewCommitteeParams.K
 
 	// Initiate ACSS for both old and new Committe
+	// DPSS paper Algorithm 4, line 102. Reference https://eprint.iacr.org/2022/971.pdf
 	ExecuteACSS(false, msg.Secret, self, privateKey, curve, n_old, k_old, msg, msg.EphemeralPublicKey)
 	ExecuteACSS(true, msg.Secret, self, privateKey, curve, n_new, k_new, msg, msg.EphemeralPublicKey)
 }
 
 // ExecuteACSS starts the execution of the ACSS protocol with a given committee
 // defined by the withNewCommittee flag.
+// Implements ADD paper Algorithm 5 line 101-105, combined with section 5.3. Reference https://eprint.iacr.org/2021/777.pdf
 func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSParticipant, privateKey curves.Scalar,
 	curve *curves.Curve, n int, k int, msg DualCommitteeACSSShareMessage, dealerEphemeralPubkey []byte) {
 
@@ -158,11 +161,11 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 	// Compress commitments
 	compressedCommitments := sharing.CompressCommitments(commitments)
 
-	// Init share map
-	// a share gets stored for the pubkey of the receiving node
+	// Init share map, key: pubkey receiver node, value: share
 	shareMap := make(map[string][]byte, n)
 
-	// encrypt each share with node respective generated symmetric key using Ephemeral Private key and add to share map
+	// Encrypt each share with node respective generated symmetric key using Ephemeral Private key and add to share map
+	// ADD paper Section 5.3 of https://eprint.iacr.org/2021/777.pdf (making AVSS algorithm ACSS)
 	for _, share := range shares {
 
 		nodePublicKey := sender.GetPublicKeyFor(int(share.Id), withNewCommittee)
@@ -171,15 +174,13 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 			return
 		}
 
-		// This Encrypt will be a symmetric key encryption Ki = PKi ^ SKd
-		// TODO does this need encoding?
+		// Encryption is done with symmetric key Ki = PKi ^ SKd (pubkey of receiver, secret key of sender)
 		// TODO this encryption doesn't do MAC, is that needed
 		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 			return
 		}
-		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}
@@ -200,6 +201,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 		return
 	}
 
-	// ReliableBroadcast(C)
+	// Initiating RBC
+	// ADD paper Algorithm 5 line 105, combined with section 5.3. Reference https://eprint.iacr.org/2021/777.pdf
 	go sender.Broadcast(withNewCommittee, *proposeMsg)
 }

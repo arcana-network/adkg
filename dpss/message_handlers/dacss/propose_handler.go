@@ -78,19 +78,16 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 	// Check whether for this round we are already in Implicate flow, waiting for the shares that just arrived
 	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
+	// hbACSS Algorithm 1, line 401 (continued, upon initially receive IMPLICATE, couldn't proceed because of missing data).
+	// Reference https://eprint.iacr.org/2021/159.pdf
 	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err == nil && len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes
 		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {
 			// First verify that the received acssData equals the acssData that was received in the implicate flow
-			hash, err := common.HashAcssData(msg.Data)
-			if err != nil {
-				log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
-				return
-			}
 
-			if !reflect.DeepEqual(hash, implicate.AcssDataHash) {
+			if !reflect.DeepEqual(acssDataHash, implicate.AcssDataHash) {
 				log.Errorf("Hash of acssData in implicate flow for ACSS round %s does not match the hash of the stored implicate information", msg.ACSSRoundDetails.ToACSSRoundID())
 				return
 			}
@@ -103,10 +100,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				implicate.SenderPubkeyHex,
 				msg.Data)
 			if err != nil {
-				log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+				log.Errorf("Error creating implicate execute msg in proposeHandler for implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 				return
 			}
-			self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
+			go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
 		}
 
 	}
@@ -144,12 +141,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	// Verify self share against commitments.
-	//we can identify by node index and whether in old or new committee by self.IsNewNode()
 	log.Debugf("Going to verify predicate for node=%v, IsNewNode: %v", self.Details().Index, self.IsNewNode())
 	log.Debugf("IMP1: round=%s, node=%s, msg=%v", msg.ACSSRoundDetails.ToACSSRoundID(), self.Details().GetNodeDetailsID(), msg.Data)
 
 	pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, msg.CurveName)
-
 	if err != nil {
 		log.Errorf("AcssProposeMessage: error calculating pubKeyPoint: %v", err)
 		return
@@ -159,7 +154,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[hexPubKey][:],
 		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
 
-	//If verified, means the share is encrypted correctly and the commitments is also verified
+	//If verified, means the share is encrypted correctly and is valid wrt commitments
 
 	// If verified:
 	// - save in node's state that shares were validated
@@ -197,7 +192,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 
-				//since index starts from 1
+				// node index starts from 1, so have to correct here by subtracting 1
 				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index-1]
 			},
 		)
@@ -205,25 +200,20 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
 
-			//TODO: running this go-routine result into error in few cases
-			// Therefore, as of now we are directly sending the the msg
-
-			// go func(node common.NodeDetails) {
-
 			//This instruction corresponds to Line 10, Algorithm 4 from
-			//"Asynchronous data disemination and applications."
+			//"Asynchronous data disemination and applications." Reference https://eprint.iacr.org/2021/777.pdf
 			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, msg.CurveName, msg.NewCommittee)
 			if err != nil {
 				log.WithField("error", err).Error("NewDacssEchoMessage")
 				return
 			}
 			go self.Send(n, *echoMsg)
-			// }(n)
 		}
 	} else {
 
-		//If verified is false, that means either an error occured while decrypting share or shares not verified.
-		//In that case send implicate with the ephemeral public key of the dealer
+		//If verified is false, that means either an error occured while decrypting share or shares not verified wrt commitments.
+		//In that case send implicate with the ephemeral public key of the dealer to all other nodes in the same committee
+		// hbACSS Algorihtm 1, line 206. Reference https://eprint.iacr.org/2021/159.pdf
 
 		log.Debugf("Predicate failed on %d for propose message by %d", self.Details().Index, sender.Index)
 
@@ -237,7 +227,6 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 			return
 		}
 
-		// TODO broadcast msg / send directly to all. What is the difference?
 		for _, node := range self.Nodes(msg.NewCommittee) {
 			go self.Send(node, *implicateMsg)
 		}
