@@ -24,7 +24,7 @@ type AcssProposeMessage struct {
 	NewCommitteeParams common.CommitteeParams
 }
 
-func NewAcssProposeMessageroundID(acssRoundDetails common.ACSSRoundDetails, msgData common.AcssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
+func NewAcssProposeMessageround(acssRoundDetails common.ACSSRoundDetails, msgData common.AcssData, curveName common.CurveName, isNewCommittee bool, NewCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := AcssProposeMessage{
 		ACSSRoundDetails:   acssRoundDetails,
 		NewCommittee:       isNewCommittee,

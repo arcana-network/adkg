@@ -194,7 +194,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 
 	// Create propose message & broadcast
 	// NOTE: This proposeMsg should NOT have Emephemeral Private key of the dealer but only the public key.
-	proposeMsg, err := NewAcssProposeMessageroundID(msg.ACSSRoundDetails, msgData, msg.CurveName, withNewCommittee, msg.NewCommitteeParams)
+	proposeMsg, err := NewAcssProposeMessageround(msg.ACSSRoundDetails, msgData, msg.CurveName, withNewCommittee, msg.NewCommitteeParams)
 
 	if err != nil {
 		log.Errorf("Error while creating new AcssProposeMessage, err=%v", err)
