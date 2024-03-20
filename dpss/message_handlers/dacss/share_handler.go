@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"encoding/hex"
+	"fmt"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -52,12 +53,31 @@ func (m *DualCommitteeACSSShareMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// convert DualCommitteeACSSShareMessage to json
 func (m *DualCommitteeACSSShareMessage) MarshalJSON() ([]byte, error) {
-	// Convert Secret to a suitable JSON representation
-	scalarJSON, err := common.ScalarMarshalJson(m.Secret)
-	if err != nil {
-		return nil, err
+	var scalarJSON []byte
+	var err error
+
+	switch m.CurveName {
+	case common.SECP256K1:
+		if k256Scalar, ok := m.Secret.(*curves.ScalarK256); ok {
+			scalarJSON, err = k256Scalar.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("failed to cast Secret to ScalarK256")
+		}
+	case common.ED25519:
+		if ed25519Scalar, ok := m.Secret.(*curves.ScalarEd25519); ok {
+			scalarJSON, err = ed25519Scalar.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("failed to cast Secret to ScalarEd25519")
+		}
+	default:
+		return nil, fmt.Errorf("unsupported curve name: %s", m.CurveName)
 	}
 
 	// Marshal the rest of DualCommitteeACSSShareMessage as usual, but replace
