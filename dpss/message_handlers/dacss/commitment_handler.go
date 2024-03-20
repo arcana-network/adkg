@@ -1,19 +1,23 @@
 package dacss
 
 import (
+	"encoding/hex"
+
 	"github.com/arcana-network/dkgnode/common"
+	arcanasharing "github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
 
-type DacssCommitmentMessageType string
+var DacssCommitmentMessageType string = "dacss_commitment"
 
+// Represents a COMMITMENT message as in Line 204, Algorithm 4, DPS paper.
 type DacssCommitmentMessage struct {
-	ACSSRoundDetails common.ACSSRoundDetails
-	Commitments      []common.Point
-	Kind             string
-	CurveName        common.CurveName
+	ACSSRoundDetails common.ACSSRoundDetails // Details of the current round.
+	CommitmentsHash  []byte                  // Hash of the commitments.
+	Kind             string                  // Type of the message.
+	CurveName        common.CurveName        // Curve that is being used.
 }
 
 func NewDacssCommitmentMessage(
@@ -21,20 +25,24 @@ func NewDacssCommitmentMessage(
 	curve common.CurveName,
 	commitments *sharing.FeldmanVerifier,
 ) (*common.PSSMessage, error) {
-	commitmentsPoint := make([]common.Point, 0)
-	for _, commitment := range commitments.Commitments {
-		point := common.CurvePointToPoint(commitment, curve)
-		commitmentsPoint = append(commitmentsPoint, point)
-	}
+
+	// Concatenate all the commitments in a big list to compute the hash.
+	concatCommitments := arcanasharing.ConcatenateCommitments(commitments)
+	commitmentsHash := common.HashByte(concatCommitments)
+	log.WithFields(
+		log.Fields{
+			"ConcatCommitments": concatCommitments,
+			"HashCommitments":   commitmentsHash,
+		},
+	).Info("NewDACSSCommitmentMessage")
 
 	m := DacssCommitmentMessage{
 		ACSSRoundDetails: acssRoundDetails,
-		Kind:             DacssEchoMessageType,
+		Kind:             DacssCommitmentMessageType,
 		CurveName:        curve,
-		Commitments:      commitmentsPoint,
+		CommitmentsHash:  commitmentsHash,
 	}
 
-	// TODO: Check if bijison serializes []common.Point correctly.
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -48,7 +56,15 @@ func NewDacssCommitmentMessage(
 	return &msg, nil
 }
 
+// Processes the reception of a COMMITMENT message. See Line 204, Algorithm 4, DPS paper.
 func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	log.WithFields(
+		log.Fields{
+			"Sender":   sender.Index,
+			"Receiver": self.Details().Index,
+			"Message":  "Received Commitment message",
+		},
+	).Info("DACSSCommitmentMessage: Process")
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if !found {
@@ -87,25 +103,15 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 
 	// Mark that the sender already sent its commitments and increase the count
 	// for the received commitment.
-	commitmentSerialization := common.SerializePointCommitments(msg.Commitments)
-	commitmentDb := state.GetStoreForCommitment(
-		commitmentSerialization,
-		msg.Commitments,
-	)
 	state.ReceivedCommitments[sender.Index] = true
-	commitmentDb.Count++
+	commitmentStrEncoding := hex.EncodeToString(msg.CommitmentsHash)
+	state.CommitmentCount[commitmentStrEncoding]++
 
 	_, _, t := self.Params()
-	commitmentInfo := state.FindThresholdCommitment(t + 1)
-	if commitmentInfo != nil {
-		commitmentsMatch := true
-		for i, receivedCommitment := range msg.Commitments {
-			if !receivedCommitment.Equal(commitmentInfo.Commitments[i]) {
-				commitmentsMatch = false
-			}
-		}
-
-		if commitmentsMatch {
+	commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
+	if found {
+		// Computes the hash of the own commitment
+		if commitmentHexHash == state.OwnCommitmentsHash {
 			self.State().AcssStore.UpdateAccsState(
 				msg.ACSSRoundDetails.ToACSSRoundID(),
 				func(state *common.AccsState) {

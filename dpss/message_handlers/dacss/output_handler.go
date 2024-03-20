@@ -42,7 +42,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	log.Debugf("Received output message on %d", self.Details().Index)
 
 	// Ignore if not received by self
-	if sender.IsEqual(self.Details()) {
+	if !sender.IsEqual(self.Details()) {
 		log.WithFields(
 			log.Fields{
 				"Sender.Index": sender.Index,
@@ -127,8 +127,10 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				// Store the shares received at the end of the RBC.
 				state.ReceivedShares[hexPubKey] = share
 
-				// Line 203, Algorithm 4, DPS paper.
-				state.OwnCommitments = verifier
+				// Line 203, Algorithm 4, DPS paper. Stores the commitment
+				concatCommitments := sharing.ConcatenateCommitments(verifier)
+				hashCommitments := common.HashByte(concatCommitments)
+				state.OwnCommitmentsHash = hex.EncodeToString(hashCommitments)
 			},
 		)
 

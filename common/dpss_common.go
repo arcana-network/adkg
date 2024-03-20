@@ -77,40 +77,21 @@ type AccsState struct {
 	//random secret shared by the dealers in the start of the protocol
 	//only to be stored by the dealer
 	RandomSecretShared map[ACSSRoundID]*curves.Scalar
-	// Own commitment received in the RBC (see Line 203, DACSS protocol)
-	OwnCommitments *sharing.FeldmanVerifier
+	// Hex representation of the has of the own commitment computed in the RBC (see Line 203, DACSS protocol)
+	OwnCommitmentsHash string
 	// Received commitments
 	ReceivedCommitments map[int]bool
 	// Commitment database that counts how many times a commitment has been received.
-	CommitmentDatabase map[string]*CommitmentStore
+	CommitmentCount map[string]int
 }
 
-func (state *AccsState) GetStoreForCommitment(
-	fingerprint string,
-	commitments []Point,
-) *CommitmentStore {
-	_, found := state.CommitmentDatabase[fingerprint]
-	if !found {
-		return &CommitmentStore{
-			Commitments: commitments,
-			Count:       0,
+func (state *AccsState) FindThresholdCommitment(threshold int) (string, bool) {
+	for hash, count := range state.CommitmentCount {
+		if count >= threshold {
+			return hash, true
 		}
 	}
-	return state.CommitmentDatabase[fingerprint]
-}
-
-func (state *AccsState) FindThresholdCommitment(threshold int) *CommitmentStore {
-	for _, commitment := range state.CommitmentDatabase {
-		if commitment.Count >= threshold {
-			return commitment
-		}
-	}
-	return nil
-}
-
-type CommitmentStore struct {
-	Commitments []Point
-	Count       int
+	return "", false
 }
 
 type AccsStateUpdater func(*AccsState)
@@ -172,6 +153,8 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
 			ReceivedShares:         make(map[string]*sharing.ShamirShare),
 			RandomSecretShared:     make(map[ACSSRoundID]*curves.Scalar),
+			ReceivedCommitments:    make(map[int]bool),
+			CommitmentCount:        make(map[string]int),
 		}
 	}
 

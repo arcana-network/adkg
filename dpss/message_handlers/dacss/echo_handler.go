@@ -122,9 +122,8 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	// This deals with the waiting for ECHO handler in Line 14 of the RBC
 	// protocol.
-	msgInfo := acssState.RBCState.FindThresholdEchoMsg(t + 1)
-	if acssState.RBCState.CountReady() >= t+1 && msgInfo != nil {
-		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgInfo.Shard, m.Hash, m.CurveName)
+	if acssState.RBCState.CountReady() >= t+1 && msgRegistry.Count >= t+1 {
+		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgRegistry.Shard, m.Hash, m.CurveName)
 		if err != nil {
 			log.WithField("error", err).Error("DacssEchoMessage - Process()")
 			return

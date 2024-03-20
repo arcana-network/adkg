@@ -80,14 +80,6 @@ func CurvePointToPoint(p curves.Point, c CurveName) Point {
 	}
 }
 
-func SerializePointCommitments(commitments []Point) string {
-	serialization := ""
-	for _, commitment := range commitments {
-		serialization += commitment.ToHex().Serialize()
-	}
-	return serialization
-}
-
 // TODO test
 func PointToCurvePoint(p Point, c CurveName) (curves.Point, error) {
 	curve := CurveFromName(c)

@@ -141,6 +141,10 @@ func (setup *TestSetup) GetAllOldNodesFromTestSetup() []*PssTestNode {
 	return nodes
 }
 
+func (setup *TestSetup) GetAllNewNodesFromTestSetup() []*PssTestNode {
+	return setup.newCommitteeNetwork
+}
+
 // Returns a node in the new committee from a given test setup.
 func (setup *TestSetup) GetSingleNewNodeFromTestSetup() *PssTestNode {
 	return setup.newCommitteeNetwork[0]
