@@ -373,7 +373,6 @@ type RBCState struct {
 	ReceivedEcho        map[int]bool          // Echos received by the parties.
 	EchoDatabase        map[string]*EchoStore // Received echos and their count
 	ReceivedReady       map[int]bool          // Ready received.
-	ReceivedMessage     []byte                // The actual message as a result of the RBC protocol.
 	OwnReedSolomonShard infectious.Share      // Shard computed by the party in the RS error correcting code.
 	IsReadyMsgSent      bool                  // Tells whether the ready message was sent by the party.
 	ReadyMsgShards      []infectious.Share    // Shards received in the READY messages

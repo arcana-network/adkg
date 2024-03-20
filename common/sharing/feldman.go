@@ -11,7 +11,6 @@ import (
 	"io"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	kryptsharing "github.com/coinbase/kryptology/pkg/sharing"
 )
 
 type FeldmanVerifier struct {
@@ -113,14 +112,4 @@ func (f Feldman) CombinePoints(shares ...*ShamirShare) (curves.Point, error) {
 		curve:     f.Curve,
 	}
 	return shamir.CombinePoints(shares...)
-}
-
-// Computes the concatenation of the bytes of each commitment.
-func ConcatenateCommitments(verifier *kryptsharing.FeldmanVerifier) []byte {
-	commitmentsPoint := make([]byte, 0)
-	for _, commitment := range verifier.Commitments {
-		pointBytes := commitment.ToAffineCompressed()
-		commitmentsPoint = append(commitmentsPoint, pointBytes...)
-	}
-	return commitmentsPoint
 }

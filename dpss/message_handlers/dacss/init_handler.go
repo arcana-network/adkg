@@ -69,7 +69,6 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, recThreshold, _ := self.Params()
 
-	//TODO: nGenerations calculation needs to be fixed
 	// testing is done for 1 share(+1 added)
 	nGenerations := int(math.Ceil(float64(len(msg.OldShares)) / float64((nNodes - 2*recThreshold))))
 	for i := range nGenerations {

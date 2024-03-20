@@ -58,6 +58,13 @@ func (msg *DacssEchoMessage) Fingerprint() string {
 func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
 	if sender.Index == self.Details().Index {
+		log.WithFields(
+			log.Fields{
+				"SenderIdx": sender.Index,
+				"SelfIdx":   self.Details().Index,
+				"Message":   "Both indexes should be the same",
+			},
+		).Error("DACSSEchoMessage: Process")
 		return // TODO check
 	}
 

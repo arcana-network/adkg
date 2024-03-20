@@ -27,7 +27,7 @@ func NewDacssCommitmentMessage(
 ) (*common.PSSMessage, error) {
 
 	// Concatenate all the commitments in a big list to compute the hash.
-	concatCommitments := arcanasharing.ConcatenateCommitments(commitments)
+	concatCommitments := arcanasharing.CompressCommitments(commitments)
 	commitmentsHash := common.HashByte(concatCommitments)
 	log.WithFields(
 		log.Fields{

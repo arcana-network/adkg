@@ -2,6 +2,7 @@ package dacss
 
 import (
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 
 // TODO: add assertions
 func TestDacss(t *testing.T) {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
 	TestSetUp, _ := DefaultTestSetup()
@@ -34,15 +35,19 @@ func TestDacss(t *testing.T) {
 	_, shares, _ := sharing.GenerateCommitmentAndShares(testSecret, uint32(kOld), uint32(nOld), testutils.TestCurve())
 
 	//store the init msgs for testing
-	initMessages := make(map[common.NodeDetailsID]*dacss.InitMessage)
+	// initMessages := make(map[common.NodeDetailsID]*dacss.InitMessage)
+	var initMessages sync.Map
 
 	// Each node in old committee starts dACSS
 	// That means that for the single share each node has,
 	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
 	// and shared to both old & new committee
 
+	var waitGroup sync.WaitGroup
 	for index, n := range nodesOld {
+		waitGroup.Add(1)
 		go func(index int, node *PssTestNode2) {
+			defer waitGroup.Done()
 			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
 			share := sharing.ShamirShare{Id: shares[index].Id, Value: shares[index].Value}
 			initMsg := getTestInitMsgSingleShare(n, *big.NewInt(int64(index)), &share, ephemeralKeypair, TestSetUp.NewCommitteeParams)
@@ -57,23 +62,36 @@ func TestDacss(t *testing.T) {
 			}
 
 			//store the init msg for testing
-			initMessages[node.details.GetNodeDetailsID()] = initMsg
+			initMessages.Store(node.details.GetNodeDetailsID(), initMsg)
 
 			node.ReceiveMessage(node.Details(), InitPssMessage)
 		}(index, n)
 	}
+	waitGroup.Wait()
 
 	time.Sleep(10 * time.Second)
 
 	// round details for oldNode0 being the dealer
 	//since only one secret is shared, the ACSSCount = 0
+	retrievedMsg, found := initMessages.Load(nodesOld[0].details.GetNodeDetailsID())
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "Message not found in init messages",
+			},
+		).Error("TestDacss")
+		t.Error("Error retrieving the init message")
+	}
+	message := retrievedMsg.(*dacss.InitMessage)
+
 	acssRound := common.ACSSRoundDetails{
-		PSSRoundDetails: initMessages[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails,
+		PSSRoundDetails: message.PSSRoundDetails,
 		ACSSCount:       0,
 	}
 
 	// hex pubkey of the dealer aka oldnode0
-	pubKey := initMessages[nodesOld[0].details.GetNodeDetailsID()].PSSRoundDetails.Dealer.PubKey
+	pubKey := message.PSSRoundDetails.Dealer.PubKey
 	pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, "secp256k1")
 	assert.Nil(t, err)
 	pubKeyHex := common.PointToHex(pubKeyCurvePoint)
@@ -90,7 +108,10 @@ func TestDacss(t *testing.T) {
 
 		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
 		assert.Nil(t, err)
-		share := state.ReceivedShares[pubKeyHex]
+
+		share, found := state.ReceivedShares[pubKeyHex]
+		assert.True(t, found)
+
 		OldCommitteReceivedShareFromNodeOld0 = append(OldCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
 
 	}

@@ -171,6 +171,12 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		// Serialize data
 		msg_bytes, err := bijson.Marshal(msg.Data)
+		log.WithFields(
+			log.Fields{
+				"ACSS Data Bytes": msg_bytes,
+				"Message":         "Bytes of the data created",
+			},
+		).Debug("DACSSProposeMessage: Process")
 
 		if err != nil {
 			log.Debugf("error during data serialization of MsgData, err=%s", err)

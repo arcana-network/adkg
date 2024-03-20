@@ -54,6 +54,8 @@ func GenerateSecret(c *curves.Curve) curves.Scalar {
 	return secret
 }
 
+// Concatenates the byte representation of each commitment into an array of
+// bytes.
 func CompressCommitments(v *sharing.FeldmanVerifier) []byte {
 	c := make([]byte, 0)
 	for _, v := range v.Commitments {

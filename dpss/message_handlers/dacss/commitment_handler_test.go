@@ -13,7 +13,117 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHappyPath(test *testing.T) {
+func TestCommitmentMsgHappyPath(test *testing.T) {
+	commitmentMsg, receiverNode, senderGroup, err := getCommitmentMessageAndNodesSetup()
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error while creating the commitment message and the nodes",
+			},
+		).Error("TestHappyPath")
+		test.Error("Error creating the commitment message and nodes.")
+	}
+
+	for _, senderNode := range senderGroup {
+		commitmentMsg.Process(senderNode.Details(), receiverNode)
+	}
+
+	receiverNode.State().AcssStore.Lock()
+	defer receiverNode.State().AcssStore.Unlock()
+
+	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
+		commitmentMsg.ACSSRoundDetails.ToACSSRoundID(),
+	)
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "The state was not found",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("State not found")
+	}
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error while retrieving the state of the node",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("Error while retrieving the state of the node")
+	}
+
+	_, _, t := receiverNode.Params()
+	hashCommitment, found := stateReceiver.FindThresholdCommitment(t + 1)
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Threshold": t + 1,
+				"Message":   "There is no record with the given threshold",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("There is no record with the given threshold")
+	} else {
+		assert.Equal(test, t+1, stateReceiver.CommitmentCount[hashCommitment])
+	}
+}
+
+func TestCommitmentMsgRepeatedMessages(test *testing.T) {
+	commitmentMsg, receiverNode, senderGroup, err := getCommitmentMessageAndNodesSetup()
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error while creating the commitment message and the nodes",
+			},
+		).Error("TestHappyPath")
+		test.Error("Error creating the commitment message and nodes.")
+	}
+
+	// Take just one node from the sender group that will send the same message
+	// multiple times.
+	senderNode := senderGroup[0]
+	_, _, t := receiverNode.Params()
+
+	// Send the same message t+1 times
+	for range t + 1 {
+		commitmentMsg.Process(senderNode.Details(), receiverNode)
+	}
+
+	receiverNode.State().AcssStore.Lock()
+	defer receiverNode.State().AcssStore.Unlock()
+	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
+		commitmentMsg.ACSSRoundDetails.ToACSSRoundID(),
+	)
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "The state was not found",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("State not found")
+	}
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error while retrieving the state of the node",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("Error while retrieving the state of the node")
+	}
+
+	_, foundCommitment := stateReceiver.FindThresholdCommitment(t + 1)
+	assert.False(test, foundCommitment)
+
+	commitmentHashHex := hex.EncodeToString(commitmentMsg.CommitmentsHash)
+	countMsg := stateReceiver.CommitmentCount[commitmentHashHex]
+	assert.Equal(test, 1, countMsg)
+}
+
+func getCommitmentMessageAndNodesSetup() (DacssCommitmentMessage, *testutils.PssTestNode, []*testutils.PssTestNode, error) {
 	defaultSetup := testutils.DefaultTestSetup()
 	oldNodes := defaultSetup.GetAllOldNodesFromTestSetup()
 	newNodes := defaultSetup.GetAllNewNodesFromTestSetup()
@@ -25,7 +135,6 @@ func TestHappyPath(test *testing.T) {
 	// The sender committee are all old nodes that will send a message to the
 	// new committee
 	senderGroup := oldNodes[1 : t+1+1]
-	assert.Equal(test, t+1, len(senderGroup))
 
 	id := big.NewInt(1)
 	roundDetails := common.PSSRoundDetails{
@@ -47,16 +156,10 @@ func TestHappyPath(test *testing.T) {
 		curves.K256(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error constructing the commitments",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("Error while constructing the commitments")
+		return DacssCommitmentMessage{}, nil, []*testutils.PssTestNode{}, err
 	}
 
-	concatCommitments := sharing.ConcatenateCommitments(commitments)
+	concatCommitments := sharing.CompressCommitments(commitments)
 	hashCommitments := common.HashByte(concatCommitments)
 
 	receiverNode.State().AcssStore.UpdateAccsState(
@@ -73,42 +176,5 @@ func TestHappyPath(test *testing.T) {
 		CurveName:        common.CurveName(curves.K256().Name),
 	}
 
-	for _, senderNode := range senderGroup {
-		commitmentMsg.Process(senderNode.Details(), receiverNode)
-	}
-
-	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
-		acssRoundDetails.ToACSSRoundID(),
-	)
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "The state was not found",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("State not found")
-	}
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error while retrieving the state of the node",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("Error while retrieving the state of the node")
-	}
-
-	hashCommitment, found := stateReceiver.FindThresholdCommitment(t + 1)
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Threshold": t + 1,
-				"Message":   "There is no record with the given threshold",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("There is no record with the given threshold")
-	} else {
-		assert.Equal(test, t+1, stateReceiver.CommitmentCount[hashCommitment])
-	}
+	return commitmentMsg, receiverNode, senderGroup, nil
 }

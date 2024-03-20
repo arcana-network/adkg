@@ -211,10 +211,8 @@ func TestGoingToOutputHandler(test *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	_, _, t := receiverNode.Params()
-	hashOutputRbc := common.HashByte(stateReceiver.RBCState.ReceivedMessage)
 	assert.Equal(test, 2*t+1, len(stateReceiver.RBCState.ReadyMsgShards))
 	assert.Equal(test, 2*t+1, stateReceiver.RBCState.CountReady())
-	assert.Equal(test, stateReceiver.AcssDataHash, hashOutputRbc)
 	assert.Equal(test, stateReceiver.RBCState.Phase, common.Ended)
 }
 

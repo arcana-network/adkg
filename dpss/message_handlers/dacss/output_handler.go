@@ -41,6 +41,13 @@ func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, cu
 func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Received output message on %d", self.Details().Index)
 
+	log.WithFields(
+		log.Fields{
+			"MsgDataInfo": m.Data,
+			"Message":     "Message received at the output handler",
+		},
+	).Debug("DACSSOutputMessage: Process")
+
 	// Ignore if not received by self
 	if !sender.IsEqual(self.Details()) {
 		log.WithFields(
@@ -49,7 +56,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				"Self.Index":   self.Details().Index,
 				"Message":      "Not equal. Expected to be equal.",
 			},
-		).Error("DACSSCommitmentMessage: Process")
+		).Error("DacssOutputMessage: Process")
 		return
 	}
 
@@ -61,7 +68,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	}
 
 	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssEchoMessage - Process()")
+		log.WithField("error", "ACSS state not stored yet").Error("DacssOutputMessage - Process()")
 		return
 	}
 
@@ -75,10 +82,16 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	msgData := common.AcssData{}
 
 	// retrive the ACSSData
-	err = bijson.Unmarshal(m.Data, msgData)
+	err = bijson.Unmarshal(m.Data, &msgData)
 
 	if err != nil {
-		log.Errorf("Could not deserialize message data, err=%s", err)
+		log.WithFields(
+			log.Fields{
+				"Message": "Could not deserialize message data",
+				"Error":   err,
+				"Data":    m.Data,
+			},
+		).Error("DACSSOutputMessage: Process")
 		return
 	}
 
@@ -128,7 +141,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShares[hexPubKey] = share
 
 				// Line 203, Algorithm 4, DPS paper. Stores the commitment
-				concatCommitments := sharing.ConcatenateCommitments(verifier)
+				concatCommitments := sharing.CompressCommitments(verifier)
 				hashCommitments := common.HashByte(concatCommitments)
 				state.OwnCommitmentsHash = hex.EncodeToString(hashCommitments)
 			},

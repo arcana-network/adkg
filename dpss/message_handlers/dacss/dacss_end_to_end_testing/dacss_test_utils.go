@@ -243,6 +243,8 @@ func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMes
 		processDACSSMessage[*dacss.ReceiveShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ReceiveShareRecoveryMessageType)
 	case dacss.DacssOutputMessageType:
 		processDACSSMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
+	case dacss.DacssCommitmentMessageType:
+		processDACSSMessage[*dacss.DacssCommitmentMessage](PssMessage.Data, sender, node, dacss.DacssCommitmentMessageType)
 
 	default:
 		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
