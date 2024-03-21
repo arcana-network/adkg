@@ -62,20 +62,16 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			log.Fields{
 				"SenderIdx": sender.Index,
 				"SelfIdx":   self.Details().Index,
-				"Message":   "Both indexes should be the same",
+				"Message":   "Ignore the echo message from self.",
 			},
 		).Error("DACSSEchoMessage: Process")
-		return // TODO check
+		return // TODO check whether the Echo should indeed be ignored when coming from self
 	}
 
 	self.State().AcssStore.Lock()
 	defer self.State().AcssStore.Unlock()
 
 	acssState, isStored, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
-	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssEchoMessage - Process()")
-		return
-	}
 	if err != nil {
 		log.WithField("error", err).Error("DacssEchoMessage - Process()")
 		return
@@ -86,13 +82,14 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	// If the ECHO was already received, do nothing.
 	receivedEcho, echoFound := acssState.RBCState.ReceivedEcho[sender.Index]
-	if echoFound && receivedEcho {
+	if isStored && echoFound && receivedEcho {
 		log.Debugf("Already received echo from %d", sender.Index)
 		return
 	}
 
 	// If the ECHO message has been not received, then update the received ECHO
 	// and increase the counter.
+	// In case the node didn't have state for this acssRound, it will initiate one
 	self.State().AcssStore.UpdateAccsState(
 		m.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
@@ -123,7 +120,12 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			log.WithField("error", err).Error("DacssEchoMessage - Process()")
 			return
 		}
-		acssState.RBCState.IsReadyMsgSent = true
+		self.State().AcssStore.UpdateAccsState(
+			m.ACSSRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RBCState.IsReadyMsgSent = true
+			},
+		)
 		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 
@@ -135,7 +137,12 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			log.WithField("error", err).Error("DacssEchoMessage - Process()")
 			return
 		}
-		acssState.RBCState.IsReadyMsgSent = true
+		self.State().AcssStore.UpdateAccsState(
+			m.ACSSRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.RBCState.IsReadyMsgSent = true
+			},
+		)
 		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 }

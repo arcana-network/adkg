@@ -138,7 +138,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.RBCState.Phase = common.Ended
 
 				// Store the shares received at the end of the RBC.
-				state.ReceivedShares[hexPubKey] = share
+				state.ReceivedShares[msgData.DealerEphemeralPubKey] = share
 
 				// Line 203, Algorithm 4, DPS paper. Stores the commitment
 				concatCommitments := sharing.CompressCommitments(verifier)
