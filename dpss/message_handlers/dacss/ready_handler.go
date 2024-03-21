@@ -149,15 +149,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 			hashReconstMsg := common.HashByte(rbcMsg)
 			if reflect.DeepEqual(hashReconstMsg, state.AcssDataHash) {
-				// Update the state of the RBC to be ended & flag that we have reached a valid (share) output
-				p.State().AcssStore.UpdateAccsState(
-					m.AcssRoundDetails.ToACSSRoundID(),
-					func(state *common.AccsState) {
-						state.RBCState.Phase = common.Ended
-					},
-				)
-
-				//create output msg
+				// Send output msg to self
 				outputMsg, err := NewDacssOutputMessage(m.AcssRoundDetails, rbcMsg, m.CurveName)
 
 				if err != nil {
