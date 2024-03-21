@@ -103,10 +103,14 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 
 	// Mark that the sender already sent its commitments and increase the count
 	// for the received commitment.
-	state.ReceivedCommitments[sender.Index] = true
-	commitmentStrEncoding := hex.EncodeToString(msg.CommitmentsHash)
-	state.CommitmentCount[commitmentStrEncoding]++
-
+	self.State().AcssStore.UpdateAccsState(
+		msg.ACSSRoundDetails.ToACSSRoundID(),
+		func(state *common.AccsState) {
+			state.ReceivedCommitments[sender.Index] = true
+			commitmentStrEncoding := hex.EncodeToString(msg.CommitmentsHash)
+			state.CommitmentCount[commitmentStrEncoding]++
+		},
+	)
 	_, _, t := self.Params()
 	commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
 	if found {
