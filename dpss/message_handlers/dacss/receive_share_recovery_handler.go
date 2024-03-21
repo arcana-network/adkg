@@ -7,7 +7,6 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	kryptology "github.com/coinbase/kryptology/pkg/sharing"
 
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -44,6 +43,10 @@ func NewReceiveShareRecoveryMessage(acssRoundDetails common.ACSSRoundDetails, cu
 
 func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, receiver common.PSSParticipant) {
 
+	// Even if according to receiver node, we're not yet in share recovery phase,
+	// try to verify the share and store it in `VerifiedRecoveryShares` if it's valid.
+	// This node might still be catching up and need the share later
+
 	// Ignore if message comes from self
 	if receiver.Details().IsEqual(sender) {
 		return
@@ -58,17 +61,14 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		return
 	}
 
-	// We only care about this message if we are in Share Recovery phase
-	if !acssState.ShareRecoveryOngoing {
-		log.Errorf("Share Recovery not ongoing in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
-		return
-	}
-
 	// If the current node already has a valid share, ignore the message
-	if acssState.ValidShareOutput {
+	if acssState.ReceivedShare != nil {
 		log.Debugf("Node already has a valid share in Receive Share Recovery for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
+
+	// TODO add: if state.VerifiedRecoveryShares[sender.Index] != nil, ignore the message
+	// we've already received and processed the share from that node
 
 	// Hash the received acssData
 	hash, err := common.HashAcssData(msg.AcssData)
@@ -83,7 +83,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		return
 	}
 
-	curve := curves.GetCurveByName(string(msg.CurveName))
+	curve := common.CurveFromName(msg.CurveName)
 
 	proof, err := sharing.UnpackProof(curve, msg.Proof)
 	if err != nil {
@@ -157,7 +157,6 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	}
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
-		// TODO interpolate to obtain share for current node
 		shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 		if err != nil {
 			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
@@ -177,23 +176,23 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		}
 		// Obtain secret through interpolation
 		evalForNode, err := shamir.ObtainEvalForX(convertedShares, uint32(receiver.Details().Index))
+
 		if err != nil {
 			log.Errorf("Error obtaining share value for node in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		shareForNode := &sharing.ShamirShare{
+		shareForNode := &kryptology.ShamirShare{
 			Id:    uint32(receiver.Details().Index),
 			Value: evalForNode.Bytes(),
 		}
 
-		// TODO store share in node state. this will work the same as in OutputHandler (tbd)
-		// for now we just log to avoid compiler warning
-		log.Infof("shareForNode: %v", shareForNode)
-
-		// When finished set ValidShareOutput to true
+		// When finished, save the share + set RBC phase to ended
 		receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
-			state.ValidShareOutput = true
+			state.ReceivedShare = shareForNode
+			state.RBCState.Phase = common.Ended
 		})
+
+		// TODO add sending commit msg
 	}
 
 }

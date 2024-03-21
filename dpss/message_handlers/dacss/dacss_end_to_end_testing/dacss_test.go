@@ -17,7 +17,6 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-// FIXME: test is not yet passing
 func TestDacss(t *testing.T) {
 	log.SetLevel(log.InfoLevel)
 
@@ -85,7 +84,6 @@ func TestDacss(t *testing.T) {
 	}
 
 	// getting the random secret shared
-	// TODO uncomment when the initial checks pass
 	state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
 	assert.Nil(t, err)
 	randomSecretShared := state.RandomSecretShared[acssRound.ToACSSRoundID()]

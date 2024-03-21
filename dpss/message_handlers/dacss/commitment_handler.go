@@ -64,7 +64,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 			"Receiver": self.Details().Index,
 			"Message":  "Received Commitment message",
 		},
-	).Info("DACSSCommitmentMessage: Process")
+	).Debug("DACSSCommitmentMessage: Process")
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
@@ -97,7 +97,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 				"Received commitment": state.ReceivedCommitments[sender.Index],
 				"Message":             "The commitments have been already received from this sender.",
 			},
-		).Info("DACSSCommitmentMessage: Process")
+		).Debug("DACSSCommitmentMessage: Process")
 		return
 	}
 

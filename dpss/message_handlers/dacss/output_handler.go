@@ -15,7 +15,7 @@ type DacssOutputMessage struct {
 	AcssRoundDetails common.ACSSRoundDetails
 	kind             string
 	curveName        common.CurveName
-	Data             []byte
+	Data             []byte // Contains the reconstructed initial msg (that contains acssData)
 }
 
 func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, curveName common.CurveName) (*common.PSSMessage, error) {
@@ -34,9 +34,6 @@ func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, cu
 	msg := common.CreatePSSMessage(m.AcssRoundDetails.PSSRoundDetails, string(m.kind), bytes)
 	return &msg, nil
 }
-
-//TODO: This output handler is incomplete
-// But is suficient for testing the end to end flow of the DACSS
 
 func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.WithFields(
@@ -158,7 +155,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			func(state *common.AccsState) {
 				state.RBCState.Phase = common.Ended
 
-				// Store the shares received at the end of the RBC.
+				// Store the share received at the end of the RBC.
 				state.ReceivedShare = share
 
 				// Line 203, Algorithm 4, DPS paper. Stores the commitment

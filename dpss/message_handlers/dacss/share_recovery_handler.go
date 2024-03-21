@@ -69,8 +69,8 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	// https://eprint.iacr.org/2021/159.pdf 501: "if Pi previously output valid shares (line 307) then
 	// Multicast SKi and return"
 	// A node has a valid share if it has reached the outputHandler in RBC.
-	// At that point ValidShareOutput is set to true in the node's state
-	if acssState.ValidShareOutput && len(acssState.AcssDataHash) != 0 {
+	// At that point the share is stored in the state
+	if acssState.ReceivedShare != nil && len(acssState.AcssDataHash) != 0 {
 
 		priv := self.PrivateKey()
 		dealerPubKey, err := common.HexToPoint(msg.CurveName, msg.AcssData.DealerEphemeralPubKey)

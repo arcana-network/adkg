@@ -5,7 +5,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -94,7 +93,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 		return
 	}
 
-	curve := curves.GetCurveByName(string(msg.CurveName))
+	curve := common.CurveFromName(msg.CurveName)
 
 	proof, err := sharing.UnpackProof(curve, msg.Proof)
 	if err != nil {
