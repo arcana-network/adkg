@@ -39,12 +39,12 @@ func NewDacssOutputMessage(roundDetails common.ACSSRoundDetails, data []byte, cu
 // But is suficient for testing the end to end flow of the DACSS
 
 func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
-	log.Debugf("Received output message on %d", self.Details().Index)
-
 	log.WithFields(
 		log.Fields{
 			"MsgDataInfo": m.Data,
-			"Message":     "Message received at the output handler",
+			"Message":     "Output Message Received",
+			"Receiver":    self.Details().Index,
+			"Sender":      sender.Index,
 		},
 	).Debug("DACSSOutputMessage: Process")
 
@@ -60,15 +60,36 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	_, isStored, err := self.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
-
+	// Retrieves the state.
+	state, found, err := self.State().AcssStore.Get(
+		m.AcssRoundDetails.ToACSSRoundID(),
+	)
 	if err != nil {
-		log.WithField("error", err).Error("NewDacssOutputMessage - Process()")
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error retrieving the state of the node.",
+			},
+		).Error("DACSSOutputMessage: Process")
+		return
+	}
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Message": "The state was not found",
+			},
+		).Error("DACSSOutputMessage: Process")
 		return
 	}
 
-	if !isStored {
-		log.WithField("error", "ACSS state not stored yet").Error("DacssOutputMessage - Process()")
+	// Check if the RBC state has already ended.
+	if state.RBCState.Phase == common.Ended {
+		log.WithFields(
+			log.Fields{
+				"RBCState": state.RBCState.Phase,
+				"Message":  "The RBC state has already finished. Doing an early return",
+			},
+		).Info("DACSSOutputMessage: Process")
 		return
 	}
 
@@ -128,26 +149,6 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	share, verifier, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
 
-	state, found, err := self.State().AcssStore.Get(
-		m.AcssRoundDetails.ToACSSRoundID(),
-	)
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state of the node.",
-			},
-		).Error("DACSSOutputMessage: Process")
-		return
-	}
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Message": "The state was not found",
-			},
-		).Error("DACSSOutputMessage: Process")
-		return
-	}
 	if verified && !state.CommitmentSent {
 		log.Debugf("acss_verified: share=%v", *share)
 
@@ -191,5 +192,4 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			},
 		).Error("DACSSOutputMessage: Process")
 	}
-
 }
