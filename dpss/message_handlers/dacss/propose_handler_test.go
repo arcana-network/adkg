@@ -32,14 +32,14 @@ func TestProcessProposeMessage(t *testing.T) {
 
 	// Call the process on the msg
 	go msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
 
 	msgNewCommittee := getTestValidProposeMsg(singleNewNode, defaultSetup, true)
 	go msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 
 	sent_msg = transport.GetSentMessages()
 

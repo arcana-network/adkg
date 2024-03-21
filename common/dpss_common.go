@@ -83,6 +83,8 @@ type AccsState struct {
 	ReceivedCommitments map[int]bool
 	// Commitment database that counts how many times a commitment has been received.
 	CommitmentCount map[string]int
+	// Tells wether the node has broadcasted the commitment
+	CommitmentSent bool
 }
 
 func (state *AccsState) FindThresholdCommitment(threshold int) (string, bool) {

@@ -128,7 +128,27 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	share, verifier, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
 
-	if verified {
+	state, found, err := self.State().AcssStore.Get(
+		m.AcssRoundDetails.ToACSSRoundID(),
+	)
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error retrieving the state of the node.",
+			},
+		).Error("DACSSOutputMessage: Process")
+		return
+	}
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Message": "The state was not found",
+			},
+		).Error("DACSSOutputMessage: Process")
+		return
+	}
+	if verified && !state.CommitmentSent {
 		log.Debugf("acss_verified: share=%v", *share)
 
 		// Set the state to reflect that RBC has ended.
@@ -157,10 +177,19 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			return
 		}
 
+		self.State().AcssStore.UpdateAccsState(
+			m.AcssRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.CommitmentSent = true
+			},
+		)
 		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
-
-	} else {
-		log.Errorf("didnt pass acss_predicate")
+	} else if !verified {
+		log.WithFields(
+			log.Fields{
+				"Message": "The predicate was not verified correctly",
+			},
+		).Error("DACSSOutputMessage: Process")
 	}
 
 }
