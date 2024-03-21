@@ -200,6 +200,9 @@ func GatewayUrl(path, query string) (*url.URL, error) {
 func VerifierParams(appID, provider string) (vp *common.VerifierParams, err error) {
 	_, exists := providerList[provider]
 	if !exists {
+		if strings.HasPrefix(provider, "csp-") {
+			return &common.VerifierParams{ClientID: appID, Domain: ""}, nil
+		}
 		return nil, errors.New("invalid provider")
 	}
 
