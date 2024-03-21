@@ -75,11 +75,11 @@ func TestIncrement(test *testing.T) {
 	acssState, stateExists, err := testRecvr.State().AcssStore.Get(
 		echoMsg.ACSSRoundDetails.ToACSSRoundID(),
 	)
-	if !stateExists {
-		test.Errorf("The state does not exist")
-	}
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
+	}
+	if !stateExists {
+		test.Errorf("The state does not exist")
 	}
 	for idParty, received := range acssState.RBCState.ReceivedEcho {
 		if idParty == testSender.Details().Index {
@@ -172,11 +172,11 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 	acssState, stateExists, err := testRecvr.State().AcssStore.Get(
 		echoMsg.ACSSRoundDetails.ToACSSRoundID(),
 	)
-	if !stateExists {
-		test.Errorf("The state does not exist")
-	}
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
+	}
+	if !stateExists {
+		test.Errorf("The state does not exist")
 	}
 	echoDatabase := acssState.RBCState.ReceivedEcho
 	for idParty, received := range echoDatabase {
@@ -270,11 +270,11 @@ func TestCounterEchoMessages(test *testing.T) {
 	acssState, stateExists, err := receiverNode.State().AcssStore.Get(
 		acssRoundDetails.ToACSSRoundID(),
 	)
-	if !stateExists {
-		test.Errorf("The state does not exist")
-	}
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
+	}
+	if !stateExists {
+		test.Errorf("The state does not exist")
 	}
 	_, _, t := dealerNode.Params()
 
@@ -370,11 +370,11 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	acssState, stateExists, err := receiverNode.State().AcssStore.Get(
 		acssRoundDetails.ToACSSRoundID(),
 	)
-	if !stateExists {
-		test.Errorf("The state does not exist")
-	}
 	if err != nil {
 		test.Errorf("Error retrieving the state: %v", err)
+	}
+	if !stateExists {
+		test.Errorf("The state does not exist")
 	}
 	_, _, t := dealerNode.Params()
 

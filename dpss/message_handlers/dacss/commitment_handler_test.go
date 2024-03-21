@@ -35,15 +35,6 @@ func TestCommitmentMsgHappyPath(test *testing.T) {
 	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
 		commitmentMsg.ACSSRoundDetails.ToACSSRoundID(),
 	)
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "The state was not found",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("State not found")
-	}
 	if err != nil {
 		log.WithFields(
 			log.Fields{
@@ -52,6 +43,15 @@ func TestCommitmentMsgHappyPath(test *testing.T) {
 			},
 		).Error("DACSSCommitmentHandler: TestHappyPath")
 		test.Error("Error while retrieving the state of the node")
+	}
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "The state was not found",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("State not found")
 	}
 
 	_, _, t := receiverNode.Params()
@@ -96,15 +96,6 @@ func TestCommitmentMsgRepeatedMessages(test *testing.T) {
 	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
 		commitmentMsg.ACSSRoundDetails.ToACSSRoundID(),
 	)
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "The state was not found",
-			},
-		).Error("DACSSCommitmentHandler: TestHappyPath")
-		test.Error("State not found")
-	}
 	if err != nil {
 		log.WithFields(
 			log.Fields{
@@ -113,6 +104,15 @@ func TestCommitmentMsgRepeatedMessages(test *testing.T) {
 			},
 		).Error("DACSSCommitmentHandler: TestHappyPath")
 		test.Error("Error while retrieving the state of the node")
+	}
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "The state was not found",
+			},
+		).Error("DACSSCommitmentHandler: TestHappyPath")
+		test.Error("State not found")
 	}
 
 	_, foundCommitment := stateReceiver.FindThresholdCommitment(t + 1)

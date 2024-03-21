@@ -61,7 +61,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	defer p.State().AcssStore.Unlock()
 
 	// Get state from node
-	state, _, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
+	state, found, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
 		log.WithField("error", err).Error("DacssReadyMessage - Process()")
@@ -70,7 +70,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 	// If the ready message from sender was already received, we do an early
 	// return.
-	if state.RBCState.ReceivedReady[sender.Index] {
+	if found && state.RBCState.ReceivedReady[sender.Index] {
 		log.Debugf(
 			"The party already has a message from the node %d",
 			sender.Index,

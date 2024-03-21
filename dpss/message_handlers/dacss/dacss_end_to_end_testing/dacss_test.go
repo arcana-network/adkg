@@ -92,9 +92,9 @@ func TestDacss(t *testing.T) {
 
 	// getting the random secret shared
 	// TODO uncomment when the initial checks pass
-	// state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
-	// assert.Nil(t, err)
-	// randomSecretShared := state.RandomSecretShared[acssRound.ToACSSRoundID()]
+	state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
+	assert.Nil(t, err)
+	randomSecretShared := state.RandomSecretShared[acssRound.ToACSSRoundID()]
 
 	//storing shares received from the oldnode0 for old committee
 	var OldCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
@@ -111,23 +111,23 @@ func TestDacss(t *testing.T) {
 		assert.Equal(t, 1, len(state.ReceivedShares))
 		// FIXME: either the share is stored under the wrong key,
 		// or we're searching it under the wrong key
-		// assert.True(t, found)
+		assert.True(t, found)
 
 		OldCommitteReceivedShareFromNodeOld0 = append(OldCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
 
 	}
 
 	// TODO when finding the correct share check passes, uncomment below code for further verification
-	// //For Old Committee
+	//For Old Committee
 
-	// //reconstructing the random secret
-	// shamir, err := sharing.NewShamir(testutils.DefaultK_old, testutils.DefaultN_old, curves.K256())
-	// assert.Nil(t, err)
+	//reconstructing the random secret
+	shamir, err := sharing.NewShamir(testutils.DefaultK_old, testutils.DefaultN_old, curves.K256())
+	assert.Nil(t, err)
 
-	// reconstructedSecret, err := shamir.Combine(OldCommitteReceivedShareFromNodeOld0...)
-	// assert.Nil(t, err)
+	reconstructedSecret, err := shamir.Combine(OldCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
 
-	// assert.Equal(t, reconstructedSecret, *randomSecretShared)
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 
 	// //For New Committee
 

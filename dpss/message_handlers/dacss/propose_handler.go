@@ -54,7 +54,15 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	defer self.State().AcssStore.Unlock()
 
 	// Check whether the shares were already received. If so, ignore the message
-	acssState, found, _ := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error retrieving the state",
+			},
+		).Error("DACSSProposeMessage: Process")
+	}
 	if found && len(acssState.AcssDataHash) != 0 {
 		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
@@ -81,7 +89,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// hbACSS Algorithm 1, line 401 (continued, upon initially receive IMPLICATE, couldn't proceed because of missing data).
 	// Reference https://eprint.iacr.org/2021/159.pdf
 	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err == nil && len(acssState.ImplicateInformationSlice) > 0 {
+	if err != nil && len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes
 		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {

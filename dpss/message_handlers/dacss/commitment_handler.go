@@ -67,20 +67,20 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 	).Info("DACSSCommitmentMessage: Process")
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "State not found",
-			},
-		).Error("DACSSCommitmentMessage: Process")
-		return
-	}
 	if err != nil {
 		log.WithFields(
 			log.Fields{
 				"Error":   err,
 				"Message": "Error retrieving the state of the node.",
+			},
+		).Error("DACSSCommitmentMessage: Process")
+		return
+	}
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "State not found",
 			},
 		).Error("DACSSCommitmentMessage: Process")
 		return

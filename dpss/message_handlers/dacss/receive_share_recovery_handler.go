@@ -145,7 +145,16 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 	// If node has received >= t+1 verified shares: interpolate and output
 	// At this point we already know the acssState exists
-	acssState, _, _ = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	acssState, _, err = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error retrieving the state",
+			},
+		).Error("DACSSReceiveShareRecoveryHandler: Process")
+		return
+	}
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
 		// TODO interpolate to obtain share for current node

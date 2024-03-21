@@ -70,7 +70,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 
 	// At this point we should have the ACSS data hash for this acss round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if !found || len(acssState.AcssDataHash) == 0 || err != nil {
+	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
 		log.Errorf("Couldn't obtain AcssDataHash in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
