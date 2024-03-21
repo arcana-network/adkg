@@ -73,7 +73,7 @@ type AccsState struct {
 	// Indicates wether the shares held by the current party are valid at the end of the ACSS protocol.
 	ValidShareOutput bool
 	// Shares received from each dealer
-	ReceivedShares map[string]*sharing.ShamirShare
+	ReceivedShare *sharing.ShamirShare
 	//random secret shared by the dealers in the start of the protocol
 	//only to be stored by the dealer
 	RandomSecretShared map[ACSSRoundID]*curves.Scalar
@@ -151,7 +151,6 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 				IsReadyMsgSent: false,
 			},
 			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
-			ReceivedShares:         make(map[string]*sharing.ShamirShare),
 			RandomSecretShared:     make(map[ACSSRoundID]*curves.Scalar),
 			ReceivedCommitments:    make(map[int]bool),
 			CommitmentCount:        make(map[string]int),

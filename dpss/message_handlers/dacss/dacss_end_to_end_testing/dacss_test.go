@@ -25,7 +25,7 @@ func TestDacss(t *testing.T) {
 	TestSetUp, _ := DefaultTestSetup()
 
 	nodesOld := TestSetUp.oldCommitteeNetwork
-	// nodesNew := TestSetUp.newCommitteeNetwork
+	nodesNew := TestSetUp.newCommitteeNetwork
 
 	nOld := TestSetUp.OldCommitteeParams.N
 	kOld := TestSetUp.OldCommitteeParams.K
@@ -63,7 +63,7 @@ func TestDacss(t *testing.T) {
 		}(index, n)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	// round details for oldNode0 being the dealer
 	//since only one secret is shared, the ACSSCount = 0
@@ -84,12 +84,6 @@ func TestDacss(t *testing.T) {
 		ACSSCount:       0,
 	}
 
-	// hex pubkey of the dealer aka oldnode0
-	pubKey := message.PSSRoundDetails.Dealer.PubKey
-	pubKeyCurvePoint, err := common.PointToCurvePoint(pubKey, "secp256k1")
-	assert.Nil(t, err)
-	pubKeyHex := common.PointToHex(pubKeyCurvePoint)
-
 	// getting the random secret shared
 	// TODO uncomment when the initial checks pass
 	state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
@@ -106,18 +100,11 @@ func TestDacss(t *testing.T) {
 
 		rbcState := state.RBCState.Phase
 		assert.Equal(t, rbcState, common.Ended)
-		share := state.ReceivedShares[pubKeyHex]
-		// A share should have been stored for this ACSS round
-		assert.Equal(t, 1, len(state.ReceivedShares))
-		// FIXME: either the share is stored under the wrong key,
-		// or we're searching it under the wrong key
-		assert.True(t, found)
-
+		share := state.ReceivedShare
 		OldCommitteReceivedShareFromNodeOld0 = append(OldCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
 
 	}
 
-	// TODO when finding the correct share check passes, uncomment below code for further verification
 	//For Old Committee
 
 	//reconstructing the random secret
@@ -129,28 +116,28 @@ func TestDacss(t *testing.T) {
 
 	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 
-	// //For New Committee
+	//For New Committee
 
-	// //storing shares received from the oldnode0 for New committee
-	// var NewCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
+	//storing shares received from the oldnode0 for New committee
+	var NewCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
 
-	// for _, n := range nodesNew {
+	for _, n := range nodesNew {
 
-	// 	state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
-	// 	assert.Nil(t, err)
-	// 	share := state.ReceivedShares[pubKeyHex]
-	// 	NewCommitteReceivedShareFromNodeOld0 = append(NewCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
+		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		assert.Nil(t, err)
+		share := state.ReceivedShare
+		NewCommitteReceivedShareFromNodeOld0 = append(NewCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
 
-	// }
+	}
 
-	// //reconstructing the random secret
-	// shamir, err = sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
-	// assert.Nil(t, err)
+	//reconstructing the random secret
+	shamir, err = sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
+	assert.Nil(t, err)
 
-	// reconstructedSecret, err = shamir.Combine(NewCommitteReceivedShareFromNodeOld0...)
-	// assert.Nil(t, err)
+	reconstructedSecret, err = shamir.Combine(NewCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
 
-	// assert.Equal(t, reconstructedSecret, *randomSecretShared)
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 }
 
 func getTestInitMsgSingleShare(testDealer *PssTestNode2, pssRoundIndex big.Int, share *sharing.ShamirShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
