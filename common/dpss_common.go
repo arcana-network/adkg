@@ -99,6 +99,7 @@ func (state *AccsState) FindThresholdCommitment(threshold int) (string, bool) {
 type AccsStateUpdater func(*AccsState)
 
 type AcssData struct {
+	// Compressed commitments computed when the share was created.
 	Commitments []byte
 	// Key = hex of PubKey receiving node
 	// Value = encrypted share for receiving node
