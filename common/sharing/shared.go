@@ -82,3 +82,36 @@ func DecompressCommitments(k int, c []byte, curve *curves.Curve) ([]curves.Point
 
 	return commitment, nil
 }
+
+// Takes an array of shares [r_1, ..., r_n] and returns the concatenation of
+// shares in bytes, that is, it returns Bytes(r_1) || Bytes(r_2) || ... || Bytes(r_n)
+func CompressShares(shares []curves.Scalar) []byte {
+	sharesBytes := make([]byte, 0)
+	for _, share := range shares {
+		individualShareBytes := share.Bytes()
+		sharesBytes = append(sharesBytes, individualShareBytes...)
+	}
+	return sharesBytes
+}
+
+// Takes the concatenation of bytes of a list of bytes and returns an array with
+// with the actual shares. Specifically, it takes the array of bytes consisting of
+// Bytes(r_1) || Bytes(r_2) || ... || Bytes(r_n) and returns the array of curve
+// scalars [r_1, ..., r_n].
+func DecompressShares(sharesBytes []byte, curve *curves.Curve, numShares int) ([]curves.Scalar, error) {
+	// Trick to get the number of bytes needed to represent a scalar in the
+	// specific curve.
+	rndScalar := curve.Scalar.Random(rand.Reader)
+	numBytes := len(rndScalar.Bytes())
+
+	sharesScalar := make([]curves.Scalar, 0)
+	for i := 0; i < numShares; i++ {
+		indivShareScalarBytes := sharesBytes[i*numBytes : (i*numBytes)+numBytes]
+		indivShareScalar, err := curve.Scalar.SetBytes(indivShareScalarBytes)
+		if err != nil {
+			return nil, err
+		}
+		sharesScalar = append(sharesScalar, indivShareScalar)
+	}
+	return sharesScalar, nil
+}

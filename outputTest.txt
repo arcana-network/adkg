@@ -1,0 +1,71 @@
+=== RUN   TestDacss
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=5 SenderIdx=5
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=5 SenderIdx=5
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=6 SenderIdx=6
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=7 SenderIdx=7
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=6 SenderIdx=6
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=8 SenderIdx=8
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=5 SenderIdx=5
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=7 SenderIdx=7
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=7 SenderIdx=7
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=8 SenderIdx=8
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=6 SenderIdx=6
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=5 SenderIdx=5
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=7 SenderIdx=7
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=8 SenderIdx=8
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=6 SenderIdx=6
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=1 SenderIdx=1
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=5 SenderIdx=5
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=8 SenderIdx=8
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=6 SenderIdx=6
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=4 SenderIdx=4
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=8 SenderIdx=8
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=7 SenderIdx=7
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=2 SenderIdx=2
+time="2024-03-21T09:34:06-05:00" level=error msg="DACSSEchoMessage: Process" Message="Ignore the echo message from self." SelfIdx=3 SenderIdx=3
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x28 pc=0x9d4dd8]
+
+goroutine 316 [running]:
+github.com/arcana-network/dkgnode/dpss/message_handlers/dacss.DacssEchoMessage.Process({{{{0xc000014918, 0x5}, {0x3, {...}}}, 0x0}, {0xc000014a50, 0xa}, {0xc000014ab0, 0x9}, {0x3, ...}, ...}, ...)
+	/home/hdvanegasm/Documents/hashcloak/Arcana/adkg/dpss/message_handlers/dacss/echo_handler.go:84 +0x5f8
+github.com/arcana-network/dkgnode/dpss/message_handlers/dacss/dacss_end_to_end_testing.processDACSSMessage[...]({0xc000924b00, 0x560, 0x580}, {0x8, {{0x0, {0xc00002b440, 0x4, 0x8}}, {0x0, {0xc00002b480, ...}}}}, ...)
+	/home/hdvanegasm/Documents/hashcloak/Arcana/adkg/dpss/message_handlers/dacss/dacss_end_to_end_testing/dacss_test_utils.go:221 +0x29c
+github.com/arcana-network/dkgnode/dpss/message_handlers/dacss/dacss_end_to_end_testing.(*PssTestNode2).ProcessDACSSMessages(0xc00016c790, {0x8, {{0x0, {0xc00002b440, 0x4, 0x8}}, {0x0, {0xc00002b480, 0x4, 0x8}}}}, ...)
+	/home/hdvanegasm/Documents/hashcloak/Arcana/adkg/dpss/message_handlers/dacss/dacss_end_to_end_testing/dacss_test_utils.go:229 +0x90a
+github.com/arcana-network/dkgnode/dpss/message_handlers/dacss/dacss_end_to_end_testing.(*PssTestNode2).ReceiveMessage(0xc00016c790, {0x8, {{0x0, {0xc00002b440, 0x4, 0x8}}, {0x0, {0xc00002b480, 0x4, 0x8}}}}, ...)
+	/home/hdvanegasm/Documents/hashcloak/Arcana/adkg/dpss/message_handlers/dacss/dacss_end_to_end_testing/dacss_test_utils.go:202 +0x1d8
+created by github.com/arcana-network/dkgnode/dpss/message_handlers/dacss/dacss_end_to_end_testing.(*MockTransport).Send in goroutine 376
+	/home/hdvanegasm/Documents/hashcloak/Arcana/adkg/dpss/message_handlers/dacss/dacss_end_to_end_testing/dacss_test_utils.go:172 +0x9b8
+FAIL	github.com/arcana-network/dkgnode/dpss/message_handlers/dacss/dacss_end_to_end_testing	0.119s
+FAIL

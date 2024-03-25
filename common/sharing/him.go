@@ -22,3 +22,8 @@ func CreateHIM(size int, curve *curves.Curve) [][]curves.Scalar {
 
 	return him
 }
+
+// TODO: Finish this
+func HimMultiplication(matrix [][]curves.Scalar, vector []curves.Scalar) []curves.Scalar {
+	return make([]curves.Scalar, 0)
+}

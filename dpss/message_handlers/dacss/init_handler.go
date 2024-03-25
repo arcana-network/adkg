@@ -66,6 +66,23 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 		return
 	}
 
+	// Store the old shares in the local database
+	self.State().ShareStore.Lock()
+	defer self.State().ShareStore.Unlock()
+	self.State().ShareStore.Initialize()
+	for _, share := range msg.OldShares {
+		shareScalar, err := curve.Scalar.SetBytes(share.Value)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "Error storing the old shares in the local state",
+				},
+			).Error("DacssInitMessage: Process")
+		}
+		self.State().ShareStore.OldShares[int(share.Id)] = shareScalar
+	}
+
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, recThreshold, _ := self.Params()
 

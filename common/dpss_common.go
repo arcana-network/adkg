@@ -47,7 +47,8 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	AcssStore *AcssStateMap // State for the separate ACSS rounds
+	AcssStore  *AcssStateMap  // State for the separate ACSS rounds
+	ShareStore *PSSShareStore // Storage of shares for the DPSS protocol.
 }
 
 // Stores the information of the shares for a given ACSS Round
@@ -179,18 +180,24 @@ type ImplicateInformation struct {
 	AcssDataHash    []byte // Hash of received AcssData
 }
 
-// Stores the shares that the node receives during the DPSS protocol.
+// Stores the shares that the node uses during the DPSS protocol. That means that
+// This storage stores the old shares (for the old nodes) but also the new shares
+// at the end of the DPSS protocol (for the new nodes).
 type PSSShareStore struct {
 	sync.Mutex
-	Shares map[int]curves.Scalar // Map of shares. K: index of the owner of the share, V: the actual share.
+	NewShares map[int]curves.Scalar // Map of shares at the end of the protocol. K: index of the owner of the share in the new committee, V: the actual share.
+	OldShares map[int]curves.Scalar // Map of shares at the beginning of the protocol. K: index of the owner of the share in the old committee, V: the actual share.
+}
+
+func (store *PSSShareStore) Initialize() {
+	store.NewShares = make(map[int]curves.Scalar)
+	store.OldShares = make(map[int]curves.Scalar)
 }
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
 type PSSRoundDetails struct {
-	// ID for the PSS.
-	PssID string
-	// Index & PubKey of the dealer Node.
-	Dealer NodeDetails
+	PssID  string      // ID for the PSS.
+	Dealer NodeDetails // Index & PubKey of the dealer Node.
 }
 
 // ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
