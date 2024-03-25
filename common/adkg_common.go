@@ -304,6 +304,40 @@ func DefaultADKGSession() *ADKGSession {
 	return &s
 }
 
+type AbaStateMap struct {
+	Map sync.Map
+}
+
+func (m *AbaStateMap) Get(r PSSRoundID) (keygen *ABAState, found bool) {
+	inter, found := m.Map.Load(r)
+	keygen, _ = inter.(*ABAState)
+	return
+}
+
+func (store *AbaStateMap) GetOrSetIfNotComplete(r PSSRoundID, input *ABAState) (keygen *ABAState, complete bool) {
+	inter, found := store.GetOrSet(r, input)
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *AbaStateMap) GetOrSet(r PSSRoundID, input *ABAState) (keygen *ABAState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*ABAState)
+	return
+}
+
+func (store *AbaStateMap) Complete(r PSSRoundID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *AbaStateMap) Delete(r PSSRoundID) {
+	store.Map.Delete(r)
+}
+
 type ABAStoreMap struct {
 	Map sync.Map
 }

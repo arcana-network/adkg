@@ -61,9 +61,10 @@ const (
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
+	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
 	AcssStore       *AcssStateMap     // State for the separate ACSS rounds
 	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
-	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
+	ABAStore        *AbaStateMap
 }
 
 // Clean completely cleans the state of a node for a given PSSRound.
@@ -357,6 +358,21 @@ func (pssRoundDetails PSSRoundDetails) ToString() string {
 	}, Delimiter1)
 }
 
+type PSSID string
+
+func GeneratePSSID(index big.Int) PSSID {
+	return PSSID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
+}
+
+func (round *PSSRoundDetails) ToRoundID() PSSRoundID {
+	return PSSRoundID(strings.Join([]string{
+		string(round.PssID),
+		strconv.Itoa(round.Dealer.Index),
+	}, Delimiter1))
+}
+
+type PSSRoundID string
+
 // ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
 type ACSSRoundID string
 
@@ -365,6 +381,8 @@ type ACSSRoundDetails struct {
 	ACSSCount       int             // number of ACSS round this is in the PSS
 }
 
+// What? this is dealer + delim + count, shudnt this be pssid + dealer + delim + count
+// otherwise it will always overwrite the other data if two are running in advance
 func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	// Convert ACSSRoundDetails to a string representation to be used as an ID
 	return ACSSRoundID(strings.Join([]string{
@@ -421,8 +439,8 @@ func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPssID(index big.Int) string {
-	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
+func NewPssID(index big.Int) PSSID {
+	return PSSID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
 }
 
 func HashAcssData(data AcssData) ([]byte, error) {
