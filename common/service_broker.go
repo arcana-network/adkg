@@ -718,10 +718,28 @@ func (cm *ChainMethods) SelfSignData(input []byte) (rawSig []byte) {
 	return
 }
 
-func (cm *ChainMethods) GetPssStatus(oldEpoch int, newEpoch int) (pssRunning bool, err error) {
+// query PSS status on chain for an epoch
+func (cm *ChainMethods) GetEpochPssStatus(oldEpoch int, newEpoch int) (pssRunning bool, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_pss_status", oldEpoch, newEpoch)
 	if methodResponse.Error != nil {
 		log.WithError(methodResponse.Error).Error("GetPssStatus")
+		err = methodResponse.Error
+		pssRunning = false
+		return
+	}
+	err = CastOrUnmarshal(methodResponse.Data, &pssRunning)
+	if err != nil {
+		pssRunning = false
+		return
+	}
+	return
+}
+
+// return current pss status stored in chain service
+func (cm *ChainMethods) GetCurrentPssStatus() (pssRunning bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_current_pss_status")
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("GetCurrentPssStatus")
 		err = methodResponse.Error
 		pssRunning = false
 		return

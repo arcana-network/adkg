@@ -133,9 +133,14 @@ func (service *ChainService) Start() error {
 	if err != nil {
 		return err
 	}
-
+	service.nodeList = NodeListContract
 	// set self epoch
 	service.selfEpoch = config.GlobalConfig.SelfEpoch
+	service.index = 0
+	service.running = true
+	service.cachedEpochInfo = &EpochCache{}
+	service.nodeRegisterMap = make(map[int]*NodeRegister)
+
 	// set current epoch on chain
 	err = retry.Do(func() error {
 		epoch, err := service.GetCurrentEpoch()
@@ -148,11 +153,6 @@ func (service *ChainService) Start() error {
 	if err != nil {
 		log.WithError(err).Fatal()
 	}
-	service.nodeList = NodeListContract
-	service.index = 0
-	service.running = true
-	service.cachedEpochInfo = &EpochCache{}
-	service.nodeRegisterMap = make(map[int]*NodeRegister)
 	// set isNewCommittee true if a node is in a future epoch
 	if service.selfEpoch > service.currentEpoch {
 		service.isNewCommittee = true
@@ -418,7 +418,7 @@ func pssFlagMonitor(e *ChainService) {
 			log.WithError(err).Error("could not get epochInfo on chain")
 		}
 		// query pssStatus from currentEpoch to nextEpoch
-		newStatus, err := e.getPssStatus(e.currentEpoch, int(epochInfo.NextEpoch.Int64()))
+		newStatus, err := e.GetEpochPssStatus(e.currentEpoch, int(epochInfo.NextEpoch.Int64()))
 		if err != nil {
 			log.WithError(err).Error("getPssStatus")
 			continue
@@ -453,7 +453,7 @@ func pssFlagMonitor(e *ChainService) {
 }
 
 // call getPssStatus function on chain
-func (e *ChainService) getPssStatus(oldEpoch int, newEpoch int) (bool, error) {
+func (e *ChainService) GetEpochPssStatus(oldEpoch int, newEpoch int) (bool, error) {
 	opts := e.CallOpts()
 	pssStatus_int, err := e.nodeList.GetPssStatus(opts, big.NewInt(int64(oldEpoch)), big.NewInt(int64(newEpoch)))
 	if err != nil {
@@ -462,6 +462,11 @@ func (e *ChainService) getPssStatus(oldEpoch int, newEpoch int) (bool, error) {
 	}
 	isRunning := pssStatus_int == big.NewInt(PSSRUNNING)
 	return isRunning, nil
+}
+
+// return pssRunning state stored locally
+func (e *ChainService) IsPssRunning() bool {
+	return e.pssRunning
 }
 
 func (s *ChainService) IsSelfRegistered(epoch int) (bool, error) {
@@ -764,7 +769,7 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		_ = common.CastOrUnmarshal(args[0], &args0)
 
 		return chainService.getKeyPartition(args0)
-	case "get_pss_status":
+	case "get_epoch_pss_status":
 		var args0, args1 int
 		_ = common.CastOrUnmarshal(args[0], &args0)
 		_ = common.CastOrUnmarshal(args[1], &args1)
@@ -773,7 +778,9 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 			"args0": args0,
 			"args1": args1,
 		}).Debug("get_pss_status")
-		return chainService.getPssStatus(args0, args1)
+		return chainService.GetEpochPssStatus(args0, args1)
+	case "get_current_pss_status":
+		return chainService.IsPssRunning(), nil
 	}
 	return "", nil
 }

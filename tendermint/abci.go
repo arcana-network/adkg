@@ -220,6 +220,16 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 		"LastUnassignedIndex": int(abci.state.LastUnassignedIndex),
 	}).Info("EndBlock")
 
+	// if PSS is running, skip adkg
+	pssRunning, err := abci.broker.ChainMethods().GetCurrentPssStatus()
+	if err != nil {
+		log.WithError(err).Error("Could not get current PSS status")
+	}
+	if pssRunning {
+		log.Info("PSS running, ADKG on halt")
+		return abcitypes.ResponseEndBlock{}
+	}
+
 	buffer := abci.broker.ChainMethods().KeyBuffer()
 	var maxKeyInit int
 	if buffer > 500 {
