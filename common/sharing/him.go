@@ -1,6 +1,10 @@
 package sharing
 
-import "github.com/coinbase/kryptology/pkg/core/curves"
+import (
+	"fmt"
+
+	"github.com/coinbase/kryptology/pkg/core/curves"
+)
 
 // TODO: This needs to be confirmed that the matrix is HIM.
 // Vandermonde matrix
@@ -23,7 +27,30 @@ func CreateHIM(size int, curve *curves.Curve) [][]curves.Scalar {
 	return him
 }
 
-// TODO: Finish this
-func HimMultiplication(matrix [][]curves.Scalar, vector []curves.Scalar) []curves.Scalar {
-	return make([]curves.Scalar, 0)
+func HimMultiplication(matrix [][]curves.Scalar, vector []curves.Scalar) ([]curves.Scalar, error) {
+
+	// column size must be equal to the length of vector
+	if len(matrix[0]) != len(vector) {
+		return nil, fmt.Errorf("number of columns in the matrix must be equal to the size of the vector")
+	}
+
+	rows := len(matrix)
+	columns := len(matrix[0])
+	result := make([]curves.Scalar, rows)
+
+	// initialize the result vector
+	curve := curves.K256()
+	for i := 0; i < rows; i++ {
+		result[i] = curve.Scalar.Zero()
+	}
+
+	// multiply
+	for i := 0; i < rows; i++ {
+		for j := 0; j < columns; j++ {
+			result[i] = result[i].Add(matrix[i][j].Mul(vector[j]))
+		}
+	}
+
+	return result, nil
+
 }

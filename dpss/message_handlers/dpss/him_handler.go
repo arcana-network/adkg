@@ -90,8 +90,16 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 	// Multiplies the HI matrix by the shares outputted by MVBA. We provide
 	// n - t shares and obtain again n - t shares with the following property:
 	// n - 2t of such shares are hidding truly random values.
-	globalRandomR := sharing.HimMultiplication(hiMatrix, shares)
+	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "error in HIM Matrix Multiplication",
+			},
+		).Error("HIMMessageHandler: Process")
+	}
 	// Number of old shares that will be transformed, i.e. B.
 	numShares := len(self.State().ShareStore.OldShares)
 

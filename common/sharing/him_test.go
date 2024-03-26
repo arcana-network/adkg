@@ -48,6 +48,52 @@ func TestCreateHIM(t *testing.T) {
 
 }
 
+func TestHimMultiplication(t *testing.T) {
+	him := CreateHIM(10, curves.K256())
+	curve := curves.K256()
+
+	// valid multiplication
+	vector := make([]curves.Scalar, 10)
+
+	for i := 0; i < 10; i++ {
+		vector[i] = curve.Scalar.Zero()
+	}
+
+	result, err := HimMultiplication(him, vector)
+	assert.Nil(t, err)
+	assert.Equal(t, result, vector)
+
+	// check if the matrix column != vector length
+	vector = make([]curves.Scalar, 7)
+	_, err = HimMultiplication(him, vector)
+	assert.NotNil(t, err)
+
+	// another valid multiplication test
+
+	vector = make([]curves.Scalar, 10)
+	for i := 0; i < 10; i++ {
+		vector[i] = curve.Scalar.One()
+	}
+
+	//Expected result
+	ExpectedResult := make([]curves.Scalar, 10)
+
+	//initialize
+	for i := 0; i < 10; i++ {
+		ExpectedResult[i] = curve.Scalar.Zero()
+	}
+
+	for i := 0; i < 10; i++ {
+		for j := 0; j < 10; j++ {
+			ExpectedResult[i] = ExpectedResult[i].Add(him[i][j])
+		}
+	}
+
+	result, err = HimMultiplication(him, vector)
+	assert.Nil(t, err)
+	assert.Equal(t, ExpectedResult, result)
+}
+
 // Function to calculate the determinant of a square matrix
 func determinant(matrix [][]curves.Scalar) curves.Scalar {
 	// Check if the matrix is square
