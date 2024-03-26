@@ -38,7 +38,7 @@ func NewCoinInitMessage(id common.PSSRoundDetails, coinID string, curve common.C
 	return &msg, nil
 }
 
-func (m CoinInitMessage) Process(sender common.NodeDetails, self common.DkgParticipant) {
+func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	curve := common.CurveFromName(m.Curve)
 
 	gTilde := curve.Point.Hash([]byte(m.CoinID))
@@ -119,7 +119,7 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.DkgParti
 		return
 	}
 
-	go self.Broadcast(*msg)
+	go self.Broadcast(false, *msg)
 }
 
 func generateProof(

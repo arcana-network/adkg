@@ -10,9 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/him"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
-	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 )
 
 var CoinMessageType string = "aba_coin"
@@ -232,7 +232,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
 		if n == len(sessionStore.Decisions) && !sessionStore.KeyderivationStarted {
 			sessionStore.KeyderivationStarted = true
-			msg, err := keyderivation.NewInitMessage(m.RoundID, m.Curve)
+			msg, err := him.NewInitMessage(m.RoundID, m.Curve)
 			if err != nil {
 				return
 			}

@@ -99,7 +99,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 				// Create a coin
 				coinID := string(m.RoundID.ToRoundID()) + strconv.Itoa(m.R)
 				log.Debugf("Node=%d, Round=%s,CoinID=%s", self.Details().Index, m.RoundID, coinID)
-				msg, err := NewCoinInitMessage(m.RoundID.To, coinID, m.Curve)
+				msg, err := NewCoinInitMessage(m.RoundID, coinID, m.Curve)
 				if err != nil {
 					return
 				}

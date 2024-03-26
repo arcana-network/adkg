@@ -12,6 +12,7 @@ import (
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
 	"github.com/torusresearch/bijson"
+	"github.com/vivint/infectious"
 )
 
 // PSSParticipant is the interface that covers all the participants inside the
@@ -65,6 +66,7 @@ type PSSNodeState struct {
 	AcssStore       *AcssStateMap     // State for the separate ACSS rounds
 	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
 	ABAStore        *AbaStateMap
+	KeysetStore     *KeysetStateMap // Could have reused ACSS here
 }
 
 // Clean completely cleans the state of a node for a given PSSRound.
@@ -190,7 +192,80 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 	return nil
 }
 
+/* ------- Keyset start ------- */
 // Stores the information of the shares for a given ACSS Round
+type KeysetStateMap struct {
+	// Removed mutex since its already a sync.Map
+	Map sync.Map // key:PSSRoundID, value: KeysetState
+}
+
+type KeysetState struct {
+	sync.Mutex
+	RoundID  PSSRoundID
+	RBCState NewRBCState
+}
+
+type NewRBCState struct {
+	Phase         phase
+	ReceivedEcho  map[int]bool
+	ReceivedReady map[int]bool
+	ReadySent     bool
+	EchoStore     map[string]*EchoStore
+	ReadyStore    []infectious.Share
+}
+
+// Get or create echo store according to the id
+func (s *KeysetState) GetEchoStore(id string, share infectious.Share, hash []byte) *EchoStore {
+	if _, ok := s.RBCState.EchoStore[id]; !ok {
+		s.RBCState.EchoStore[id] = &EchoStore{
+			Shard:       share,
+			HashMessage: hash,
+			Count:       0,
+		}
+	}
+	return s.RBCState.EchoStore[id]
+}
+
+func (s *KeysetState) FindThresholdEchoStore(threshold int) *EchoStore {
+	for _, v := range s.RBCState.EchoStore {
+		if v.Count >= threshold {
+			return v
+		}
+	}
+	return nil
+}
+
+func (m *KeysetStateMap) Get(r RoundID) (keygen *KeysetState, found bool) {
+	inter, found := m.Map.Load(r)
+	keygen, _ = inter.(*KeysetState)
+	return
+}
+
+func (store *KeysetStateMap) GetOrSetIfNotComplete(r PSSRoundID, input *KeysetState) (keygen *KeysetState, complete bool) {
+	inter, found := store.GetOrSet(r, input)
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *KeysetStateMap) GetOrSet(r PSSRoundID, input *KeysetState) (keygen *KeysetState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*KeysetState)
+	return
+}
+func (store *KeysetStateMap) Complete(r PSSRoundID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *KeysetStateMap) Delete(r PSSRoundID) {
+	store.Map.Delete(r)
+}
+
+/* ------- Keyset end ------- */
+
 type AcssStateMap struct {
 	sync.Mutex
 	// For each specific ACSS round, we have a DacssState
