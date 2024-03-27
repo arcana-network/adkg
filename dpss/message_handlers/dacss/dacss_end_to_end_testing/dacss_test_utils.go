@@ -124,7 +124,8 @@ func NewEmptyNode(index int, keypair common.KeyPair, Transport *MockTransport, i
 		isNewCommittee:      isNewCommittee,
 		committeeTestParams: params,
 		state: &common.PSSNodeState{
-			AcssStore: &common.AcssStateMap{},
+			AcssStore:  &common.AcssStateMap{},
+			ShareStore: &common.PSSShareStore{},
 		},
 		Transport:   Transport,
 		LongtermKey: keypair,
