@@ -229,7 +229,6 @@ func (s Shamir) interpolate(xs, ys []curves.Scalar) (curves.Scalar, error) {
 	return result, nil
 }
 
-// TODO test
 // interpolateShares interpolates the shares at a given x value and returns the result as curves.Scalar.
 func (s *Shamir) ObtainEvalForX(shares []*ShamirShare, xValue uint32) (curves.Scalar, error) {
 	x := s.curve.Scalar.New(int(xValue))
