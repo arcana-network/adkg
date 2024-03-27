@@ -11,7 +11,7 @@ import (
 )
 
 // Type of the message for the HIM handler.
-var AcssHimHandlerType string = "dpss_him"
+var DpssHimHandlerType string = "dpss_him"
 
 // Represents a message for the hyper-invertible matrix computation in Line 103 of the DPSS protocol.
 // We assume the following representation for the r_i shares: [ r_1 | r_2 | r_3 | ... | r_(n-t) ].
@@ -33,7 +33,7 @@ func NewDacssHimMatrix(
 	sharesBytes := sharing.CompressShares(shares)
 	msg := DacssHimMessage{
 		PSSRoundDetails: pssRoundDetails,
-		Kind:            AcssHimHandlerType,
+		Kind:            DpssHimHandlerType,
 		CurveName:       curve,
 		Shares:          sharesBytes,
 	}
