@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const MSG_PREFIX = "TO_MANAGER"
+const MSG_PREFIX = "MSG_TO_MANAGER:"
 
 type ManagerService struct {
 	bus    eventbus.Bus
@@ -44,12 +44,13 @@ func (m *ManagerService) IsRunning() bool {
 func (m *ManagerService) Call(method string, args ...interface{}) (result interface{}, err error) {
 	switch method {
 	case "send_to_manager":
+		// print a message with a MSG_PREFIX
 		var msg string
 		err := common.CastOrUnmarshal(args[0], &msg)
 		if err != nil {
 			return nil, fmt.Errorf("send_to_manager msg cast error")
 		}
-		fmt.Printf("%s:%s", MSG_PREFIX, msg)
+		fmt.Printf("%s%s", MSG_PREFIX, msg)
 		return nil, nil
 
 	default:
