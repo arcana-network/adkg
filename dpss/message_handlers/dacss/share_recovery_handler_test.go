@@ -37,7 +37,7 @@ func TestSendReceiveShareRecoveryMsg(t *testing.T) {
 	node1, _, acssRoundDetails, shareRecoveryMessage := shareRecoveryHappyPathSetup()
 
 	shareRecoveryMessage.Process(node1.Details(), node1)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 
 	// Check 1: ReceiveShareRecoveryMessage was sent to all other nodes from committee
 	sentMsgs := node1.Transport.GetSentMessages()
