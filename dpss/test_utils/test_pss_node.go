@@ -5,6 +5,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	log "github.com/sirupsen/logrus"
 )
 
 // Implements the PssParticipant interface
@@ -62,6 +63,7 @@ func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 }
 
 func (node *PssTestNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
+	log.Debugf("-----sending: from=%d, to=%d", node.Details().Index, n.Index)
 	node.Transport.Send(node.Details(), n, msg)
 	return nil
 }

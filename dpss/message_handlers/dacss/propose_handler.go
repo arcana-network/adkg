@@ -89,7 +89,13 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// hbACSS Algorithm 1, line 401 (continued, upon initially receive IMPLICATE, couldn't proceed because of missing data).
 	// Reference https://eprint.iacr.org/2021/159.pdf
 	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil && len(acssState.ImplicateInformationSlice) > 0 {
+
+	if err != nil {
+		log.Errorf("Error getting the state state: %v", err)
+		return
+	}
+
+	if len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes
 		// They should all be processed since some could be valid and some not
 		for _, implicate := range acssState.ImplicateInformationSlice {
@@ -111,6 +117,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				log.Errorf("Error creating implicate execute msg in proposeHandler for implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 				return
 			}
+			log.Debugf("Sending NewImplicateExecuteMessage: from=%d", self.Details().Index)
 			go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
 		}
 

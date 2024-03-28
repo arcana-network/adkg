@@ -20,7 +20,7 @@ import (
 // if everything passes, send an eco msg
 
 func TestProcessProposeMessage(t *testing.T) {
-
+	log.SetLevel(log.DebugLevel)
 	defaultSetup := testutils.DefaultTestSetup()
 
 	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
@@ -85,7 +85,7 @@ func TestInvalidShare(t *testing.T) {
 	// Call the process on the msg
 	// should send an implicate
 	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Second)
 	sent_msg := transport.GetSentMessages()
 
 	for i := 0; i < defaultSetup.OldCommitteeParams.N; i++ {
@@ -158,7 +158,7 @@ Testcase: 2 ImplicateInformations have been stored in Node's state.
 Expectation: Node should send itself 1 implicateExecuteMessage (only for the matching hash)
 */
 func TestAlreadyInImplicateFlow(t *testing.T) {
-
+	log.SetLevel(log.DebugLevel)
 	defaultSetup := testutils.DefaultTestSetup()
 	node0, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 	transport := node0.Transport
@@ -197,7 +197,7 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Second)
 	// Check: Node should send itself 2 implicateExecuteMessages
 	sent_msgs := transport.ReceivedMessages
 	implicateExecuteMessages := []common.PSSMessage{}
