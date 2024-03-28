@@ -166,6 +166,13 @@ func (broker *MessageBroker) KeystoreMethods() *KeystoreMethods {
 		service: KEYSTORE_SERVICE_NAME,
 	}
 }
+func (broker *MessageBroker) ManagerMethods() *ManagerMethods {
+	return &ManagerMethods{
+		bus:     broker.bus,
+		caller:  broker.caller,
+		service: KEYSTORE_SERVICE_NAME,
+	}
+}
 
 type KeystoreMethods struct {
 	bus     eventbus.Bus
@@ -1419,8 +1426,32 @@ type ManagerMethods struct {
 	service string
 }
 
-func (mm *ManagerMethods) SendToManager() error {
-	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_to_manager")
+func (mm *ManagerMethods) SendToManager(msg string) error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_to_manager", msg)
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendDpssStart() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_dpss_start")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendDpssEnd() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_dpss_end")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendKillProcess() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_kill_process")
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}

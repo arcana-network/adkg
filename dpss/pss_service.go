@@ -66,6 +66,7 @@ func (service *PssService) Stop() error {
 	return nil
 }
 
+// TODO - check if we need this here, currently using one in chain_service
 func (service *PssService) PssRunning() bool {
 	return service.pssStatus == RUNNING
 }
@@ -74,16 +75,23 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 	switch method {
 
 	case "trigger_pss":
-		// TODO add functionality
 		/*
 			1. Abort keygen
-			2. Retrieve old & new committee from smart contract
-			3. Create PssNode
+			2. Send start new process msg to manager
+			3. Retrieve old & new committee from smart contract
+			4. Create PssNode
 				PssNode in startup process
 				- should figure out the type it is
 				- must connect to the correct committee
 		*/
 		service.pssStatus = RUNNING
+
+		// send new process msg to manager
+		err := service.broker.ManagerMethods().SendDpssStart()
+		if err != nil {
+			log.Errorf("unable to send DPSS start message: %s", err.Error())
+		}
+
 		// get self info from ChainService
 		chainMethods := service.broker.ChainMethods()
 		selfIndex := chainMethods.GetSelfIndex()
@@ -132,6 +140,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			return nil, err
 		}
 		service.pssNode = pssNode
+		// TODO - send init message here?
 	}
 
 	// TODO add stop_pss

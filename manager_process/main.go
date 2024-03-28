@@ -154,6 +154,7 @@ func startNewNode(binName string, cfgPath string) {
 	}
 }
 
+// TODO: add functions to manually start/stop a process
 func main() {
 	go startNewNode(BIN_NAME, CONFIG_PATH)
 	stopOnInterrupt()
