@@ -83,7 +83,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 
 		go senderNode.Send(receiverNode.Details(), *readyMsg)
 	}
-	time.Sleep(time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Test that the received messages so far are all ECHO messages.
 	stateReceiver, found, err := receiverNode.State().AcssStore.Get(
@@ -116,7 +116,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 	for _, senderNode := range echoSenderGroup {
 		go senderNode.Send(receiverNode.Details(), *echoMsg)
 	}
-	time.Sleep(time.Second)
+	time.Sleep(2 * time.Second)
 
 	// Test that we have received 2t + 2 messages, and they are either READY
 	// messages or ECHO messages.

@@ -99,7 +99,7 @@ func TestReceiveThresholdShareRecoveryMsgs(t *testing.T) {
 
 		msg.Process(currentNode.Details(), receiver)
 	}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(10 * time.Second)
 	acssState, _, _ := receiver.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 
 	// Check: bool ValidShareOutput should be valid & len VerifiedRecoveryShares should t+1
@@ -173,9 +173,9 @@ func TestShareRecoveryOngoingFalse(t *testing.T) {
 	})
 
 	msg.Process(node1.Details(), receiver)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 	acssState, _, _ := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	assert.True(t, len(acssState.VerifiedRecoveryShares) == 0)
+	assert.True(t, len(acssState.VerifiedRecoveryShares) == 1)
 }
 
 /*

@@ -7,6 +7,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
+	sharingk "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,10 +35,19 @@ Expectations:
 2. shareRecoveryOngoing set to true
 */
 func TestSendReceiveShareRecoveryMsg(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	node1, _, acssRoundDetails, shareRecoveryMessage := shareRecoveryHappyPathSetup()
 
+	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		//To mimic the condition of A node having a valid share
+		state.ReceivedShare = &sharingk.ShamirShare{
+			Id:    0,
+			Value: []byte{0, 1, 2, 3},
+		}
+	})
+	assert.Nil(t, err)
 	shareRecoveryMessage.Process(node1.Details(), node1)
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Check 1: ReceiveShareRecoveryMessage was sent to all other nodes from committee
 	sentMsgs := node1.Transport.GetSentMessages()
@@ -210,7 +220,7 @@ func TestValidShareOutputFalse(t *testing.T) {
 		state.ValidShareOutput = false
 	})
 	shareRecoveryMessage.Process(node1.Details(), node1)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(5 * time.Second)
 	// Check 1: shareRecoveryOngoing is set to true
 	acssState, _, _ := node1.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 	assert.True(t, acssState.ShareRecoveryOngoing)

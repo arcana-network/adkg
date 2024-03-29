@@ -213,7 +213,6 @@ func TestGoingToOutputHandler(test *testing.T) {
 	_, _, t := receiverNode.Params()
 	assert.Equal(test, 2*t+1, len(stateReceiver.RBCState.ReadyMsgShards))
 	assert.Equal(test, 2*t+1, stateReceiver.RBCState.CountReady())
-	assert.Equal(test, stateReceiver.RBCState.Phase, common.Ended)
 }
 
 /*

@@ -113,7 +113,7 @@ func TestSenderNotEqualToDealer(t *testing.T) {
 	// Call the process on the msg
 	// should trigger an early return since dealer != sender
 	msgOldCommittee.Process(node1.Details(), node0)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), 0)
 

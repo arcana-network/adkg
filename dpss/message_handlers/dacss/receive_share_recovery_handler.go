@@ -157,6 +157,13 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	}
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
+		//once the threshold is reached, update the state
+		receiver.State().AcssStore.UpdateAccsState(
+			msg.ACSSRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.ValidShareOutput = true
+			},
+		)
 		shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 		if err != nil {
 			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
