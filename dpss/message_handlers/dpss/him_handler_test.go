@@ -41,7 +41,7 @@ func TestHappyPathHIM(test *testing.T) {
 		dealerNode.Details().Index,
 		n,
 		k,
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	assert.Nil(test, err)
 
@@ -57,7 +57,7 @@ func TestHappyPathHIM(test *testing.T) {
 	msg := DacssHimMessage{
 		PSSRoundDetails: pssRoundDetails,
 		Kind:            DpssHimHandlerType,
-		CurveName:       common.CurveName(curves.K256().Name),
+		CurveName:       common.CurveName(testutils.TestCurve().Name),
 		Shares:          compressedShares,
 	}
 
@@ -73,7 +73,7 @@ func TestHappyPathHIM(test *testing.T) {
 func generateSharesMultipleSecrets(nShares, nodeIdx, n, k int, curve *curves.Curve) ([]curves.Scalar, error) {
 	shares := make([]curves.Scalar, 0)
 	for range nShares {
-		randomScalar := curves.K256().Scalar.Random(rand.Reader)
+		randomScalar := testutils.TestCurve().Scalar.Random(rand.Reader)
 		_, sharesRandScalar, err := sharing.GenerateCommitmentAndShares(
 			randomScalar,
 			uint32(k),
@@ -94,7 +94,7 @@ func generateSharesMultipleSecrets(nShares, nodeIdx, n, k int, curve *curves.Cur
 			return nil, errors.New("Index not found in share slice")
 		} else {
 			value := sharesRandScalar[shareIdx].Value
-			shareScalar, err := curves.K256().Scalar.SetBytes(value)
+			shareScalar, err := testutils.TestCurve().Scalar.SetBytes(value)
 			if err != nil {
 				return nil, err
 			}

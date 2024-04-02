@@ -12,7 +12,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	ksharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ Expectations:
 func TestRBCAlreadyEnded(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealerNode, testNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	correctMessage, err := generateCorrectOutputMessage(
 		testNode,
@@ -67,7 +66,7 @@ Expectations:
 func TestNotVerifiedCorrectly(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealerNode, testNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	correctMessage, err := generateCorrectOutputMessage(
 		testNode,
@@ -111,7 +110,7 @@ Expectations:
 func TestCommitmentMessageAlreadySent(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealerNode, testNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	correctMessage, err := generateCorrectOutputMessage(
 		testNode,
@@ -148,7 +147,7 @@ Expectations:
 func TestCommitmentMessageSentTwice(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealerNode, testNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	correctMessage, err := generateCorrectOutputMessage(
 		testNode,
@@ -187,7 +186,7 @@ Expectations:
 func TestOutputHappyPath(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealerNode, testNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	correctMessage, err := generateCorrectOutputMessage(
 		testNode,
@@ -230,12 +229,12 @@ func generateCorrectOutputMessage(
 	n, k, _ := dealerNode.Params()
 
 	// Create a commitment for a secret.
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitments, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		return DacssOutputMessage{}, err
@@ -286,7 +285,7 @@ func generateCorrectOutputMessage(
 	outputMsg := DacssOutputMessage{
 		AcssRoundDetails: acssRoundDetails,
 		kind:             DacssOutputMessageType,
-		curveName:        common.CurveName(curves.K256().Name),
+		curveName:        common.CurveName(testutils.TestCurve().Name),
 		Data:             bytesMsgData,
 	}
 	return outputMsg, nil
@@ -315,9 +314,9 @@ func constructFakeMessage(correctMsg DacssOutputMessage, numParties int) (
 	}
 
 	randomIdx := mrand.Intn(len(uncompressedCommitmnets))
-	randomPoint := curves.K256().Point.Random(rand.Reader)
+	randomPoint := testutils.TestCurve().Point.Random(rand.Reader)
 	for randomPoint.Equal(uncompressedCommitmnets[randomIdx]) {
-		randomPoint = curves.K256().Point.Random(rand.Reader)
+		randomPoint = testutils.TestCurve().Point.Random(rand.Reader)
 	}
 	uncompressedCommitmnets[randomIdx] = randomPoint
 	fakeCommitments := ksharing.FeldmanVerifier{
@@ -341,7 +340,7 @@ func constructFakeMessage(correctMsg DacssOutputMessage, numParties int) (
 	outputFakeMsg := DacssOutputMessage{
 		AcssRoundDetails: correctMsg.AcssRoundDetails,
 		kind:             DacssOutputMessageType,
-		curveName:        common.CurveName(curves.K256().Name),
+		curveName:        common.CurveName(testutils.TestCurve().Name),
 		Data:             bytesFakeMsgData,
 	}
 	return outputFakeMsg, nil

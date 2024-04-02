@@ -69,7 +69,7 @@ func (n *PssTestNode2) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Po
 	nodes := n.Nodes(fromNewCommittee)
 	for _, n := range nodes {
 		if n.Index == idx {
-			pk, err := curves.K256().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
+			pk, err := TestCurve().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
 			if err != nil {
 				return nil
 			}
@@ -98,7 +98,7 @@ func (n *PssTestNode2) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]com
 func GetSingleNode(isNewCommittee bool, isFaulty bool) (*PssTestNode2, *MockTransport) {
 	nodesOld := []*PssTestNode2{}
 	nodesNew := []*PssTestNode2{}
-	keypair := common.GenerateKeyPair(curves.K256())
+	keypair := common.GenerateKeyPair(TestCurve())
 	transport := NewMockTransport(nodesOld, nodesNew)
 
 	node := NewEmptyNode(1, keypair, transport, isFaulty, isNewCommittee)
@@ -287,4 +287,12 @@ func (node *PssTestNode2) GetReceivedMessages(msgType string) []common.PSSMessag
 		}
 	}
 	return filteredMessages
+}
+
+func TestCurveName() common.CurveName {
+	return common.SECP256K1
+}
+
+func TestCurve() *curves.Curve {
+	return common.CurveFromName(TestCurveName())
 }

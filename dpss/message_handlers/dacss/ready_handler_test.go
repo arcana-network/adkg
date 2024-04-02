@@ -7,7 +7,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,14 +43,14 @@ func TestProcessReadyMessage(test *testing.T) {
 	echoMsg := DacssEchoMessage{
 		ACSSRoundDetails: *acssRoundDetails,
 		Kind:             DacssEchoMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
+		CurveName:        common.CurveName(testutils.TestCurve().Name),
 		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 		Hash:             stateReceiver.AcssDataHash,
 	}
 	readyMsg := DacssReadyMessage{
 		AcssRoundDetails: *acssRoundDetails,
 		Kind:             DacssEchoMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
+		CurveName:        common.CurveName(testutils.TestCurve().Name),
 		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 		Hash:             stateReceiver.AcssDataHash,
 	}
@@ -125,7 +124,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 		readyMsg := DacssReadyMessage{
 			AcssRoundDetails: *acssRoundDetails,
 			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
+			CurveName:        common.CurveName(testutils.TestCurve().Name),
 			Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 			Hash:             stateReceiver.AcssDataHash,
 		}
@@ -142,7 +141,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 	echoMsg := DacssEchoMessage{
 		ACSSRoundDetails: *acssRoundDetails,
 		Kind:             DacssEchoMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
+		CurveName:        common.CurveName(testutils.TestCurve().Name),
 		Share:            stateReceiver.RBCState.OwnReedSolomonShard,
 		Hash:             stateReceiver.AcssDataHash,
 	}
@@ -202,7 +201,7 @@ func TestGoingToOutputHandler(test *testing.T) {
 		readyMsg := DacssReadyMessage{
 			AcssRoundDetails: *acssRoundDetails,
 			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
+			CurveName:        common.CurveName(testutils.TestCurve().Name),
 			Share:            stateSender.RBCState.OwnReedSolomonShard,
 			Hash:             stateReceiver.AcssDataHash,
 		}
@@ -240,7 +239,7 @@ func TestRepeatedReadyMessages(test *testing.T) {
 		ACSSCount:       1,
 	}
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	shards, hashMsg, err := testutils.CreateShardAndHash(
 		senderNode,
@@ -289,7 +288,7 @@ func TestRepeatedReadyMessages(test *testing.T) {
 		readyMsg := DacssReadyMessage{
 			AcssRoundDetails: acssRoundDetails,
 			Kind:             DacssEchoMessageType,
-			CurveName:        common.CurveName(curves.K256().Name),
+			CurveName:        common.CurveName(testutils.TestCurve().Name),
 			Share:            stateSender.RBCState.OwnReedSolomonShard,
 			Hash:             stateReceiver.AcssDataHash,
 		}
@@ -323,7 +322,7 @@ func setupDealerAndGroup() (
 
 	// Defines the dealer node and its ephemeral key pair
 	dealerNode := senderGroup[0]
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	// Creates the details for the ACSS protocol.
 	id := big.NewInt(1)

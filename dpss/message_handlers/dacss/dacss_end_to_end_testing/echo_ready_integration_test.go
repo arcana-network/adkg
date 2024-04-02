@@ -10,7 +10,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,7 +47,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 		ACSSCount:       1,
 	}
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(TestCurve())
 
 	shards, hashMsg, err := testutils.CreateShardAndHash(
 		dealerNode,
@@ -75,7 +74,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 			acssRoundDetails,
 			shardReceiver,
 			hashMsg,
-			common.CurveName(curves.K256().Name),
+			common.CurveName(TestCurve().Name),
 		)
 		if err != nil {
 			test.Errorf("error creating the ECHO message: %v", err)
@@ -107,7 +106,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 		acssRoundDetails,
 		shardReceiver,
 		hashMsg,
-		common.CurveName(curves.K256().Name),
+		common.CurveName(TestCurve().Name),
 		receiverNode.IsNewNode(),
 	)
 	if err != nil {
@@ -134,7 +133,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 	echoMsgTemp := dacss.DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             dacss.DacssEchoMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
+		CurveName:        common.CurveName(TestCurve().Name),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
 	}

@@ -85,10 +85,10 @@ func TestAcssStateNotFound(t *testing.T) {
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
 	// The dealer creates the shareMap
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	// Set the round parameters
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
 	executeMsg := createProofAndExecuteMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails, acssData)
@@ -110,10 +110,10 @@ func TestAcssDataUninitialized(t *testing.T) {
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
 	// The dealer creates the shareMap
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	// Set the round parameters
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
 	// This should trigger creating an empty state.
@@ -140,10 +140,10 @@ func TestAcssDataHashMismatch(t *testing.T) {
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
 	// The dealer creates the shareMap
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	// Set the round parameters
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
 	// Store a different hash
@@ -189,10 +189,10 @@ func TestDealerPubkeyInvalid(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
 	// Set dealer's ephemeral key to invalid value
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
@@ -244,10 +244,10 @@ func TestSenderPubkeyInvalid(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
 	// Set dealer's ephemeral key to invalid value
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
@@ -303,10 +303,10 @@ func TestZKPVerificationFails(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
@@ -342,18 +342,18 @@ func TestPredicatePasses(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
 	n, k, _ := dealer.Params()
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitment, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		log.Errorf("Error generating commitments & shares: %v\n", err)
@@ -422,10 +422,10 @@ func happyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNode, Implicate
 	defaultSetup := testutils.DefaultTestSetup()
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
 	acssData := getCorruptedAcssData(dealer, ephemeralKeypairDealer, node2)
 
@@ -445,12 +445,12 @@ func happyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNode, Implicate
 func getCorruptedAcssData(dealer *testutils.PssTestNode, ephemeralKeypairDealer common.KeyPair,
 	nodeOfCorruptShare *testutils.PssTestNode) common.AcssData {
 	n, k, _ := dealer.Params()
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitment, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		log.Errorf("Error generating commitments & shares: %v\n", err)

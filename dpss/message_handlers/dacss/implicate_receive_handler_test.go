@@ -26,16 +26,16 @@ func TestAlreadyHasShareMap(t *testing.T) {
 	dealer, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
 
 	// The dealer creates the shareMap
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	n, k, _ := dealer.Params()
-	curve := curves.K256()
+	curve := testutils.TestCurve()
 
-	secret := sharing.GenerateSecret(curves.K256())
+	secret := sharing.GenerateSecret(testutils.TestCurve())
 	commitment, shares, err := sharing.GenerateCommitmentAndShares(
 		secret,
 		uint32(k),
 		uint32(n),
-		curves.K256(),
+		testutils.TestCurve(),
 	)
 	if err != nil {
 		log.Errorf("Error generating commitments & shares: %v", err)
@@ -110,8 +110,8 @@ func TestDoesntHaveShareMap(t *testing.T) {
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 
 	// Ephemeral pubkey of dealer
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
-	curve := curves.K256()
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
+	curve := testutils.TestCurve()
 
 	// Assume in Node 2 the Implicate msg is created
 	implicateMsg := createProofAndImplicateMsg(ephemeralKeypairDealer, node2, curve, acssRoundDetails)
@@ -143,8 +143,8 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	// Set the round parameters
 	acssRoundDetails := testutils.GetTestACSSRoundDetails(dealer)
 	// Ephemeral pubkey of dealer
-	ephemeralKeypairDealer := common.GenerateKeyPair(curves.K256())
-	curve := curves.K256()
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
+	curve := testutils.TestCurve()
 
 	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ShareRecoveryOngoing = true

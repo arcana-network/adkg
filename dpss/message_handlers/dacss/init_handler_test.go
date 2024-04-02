@@ -9,7 +9,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/torusresearch/bijson"
@@ -33,7 +32,7 @@ func TestProcessInitMessage(test *testing.T) {
 	n, k, _ := testDealer.Params()
 
 	const N_SECRETS int = 30
-	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
 	msg, err := createTestMsg(testDealer, N_SECRETS, n, k, ephemeralKeypair)
 	if err != nil {
 		test.Error("Error creating the init message.")
@@ -56,7 +55,7 @@ func TestNewInitMessage(test *testing.T) {
 	const N_SECRETS int = 30
 	n, k, _ := testDealer.Params()
 
-	ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
 	msg, err := createTestMsg(testDealer, N_SECRETS, n, k, ephemeralKeypair)
 	if err != nil {
 		test.Errorf("Error creating the reference message.")
