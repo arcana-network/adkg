@@ -6,6 +6,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -158,6 +159,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	if verified && !state.CommitmentSent {
 		log.Debugf("acss_verified: share=%v", *share)
+		dealer := m.AcssRoundDetails.PSSRoundDetails.Dealer
 
 		// Set the state to reflect that RBC has ended.
 		err = self.State().AcssStore.UpdateAccsState(
@@ -181,6 +183,23 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		if err != nil {
 			common.LogStateUpdateError("OutputHandler", "Process", common.AcssStateType, err)
 			return
+		}
+
+		{
+			// Storing this for easier fetch
+			// Waiting time for 1 unlock < waiting time for (B / n-2t) * n unlocks
+			pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(m.AcssRoundDetails.PSSRoundDetails.PssID)
+			if complete {
+				return
+			}
+
+			pssState.Lock()
+			defer pssState.Unlock()
+
+			keysetMap := pssState.GetKeysetMap(m.AcssRoundDetails.ACSSCount)
+			keysetMap.TPrime = dpsscommon.SetBit(keysetMap.TPrime, dealer.Index)
+			keysetMap.ShareStore[dealer.Index] = share
+			keysetMap.CommitmentStore[dealer.Index] = verifier.Commitments
 		}
 
 		commitmentMsg, err := NewDacssCommitmentMessage(

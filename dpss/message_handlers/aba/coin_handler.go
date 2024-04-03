@@ -49,11 +49,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 	}
 	n, k, f := self.Params()
 
-	roundLeader, err := m.RoundID.Leader()
-	if err != nil {
-		log.WithError(err).Error("Could not get round leader in aba_coin_share")
-		return
-	}
+	roundLeader := m.RoundID.Dealer.Index
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), common.DefaultABAStore())
 	if complete {
@@ -61,19 +57,15 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		return
 	}
 	store.Lock()
-	coinID := string(m.RoundID) + strconv.Itoa(store.GetRound())
+	coinID := string(m.RoundID.ToRoundID()) + strconv.Itoa(store.GetRound())
 	store.Unlock()
 
 	gTilde := curve.Point.Hash([]byte(coinID))
 
-	adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-	if err != nil {
-		log.Infof("Could not get leader from roundID, err=%s", err)
-		return
-	}
-	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
+	pssID := m.RoundID.PssID
+	pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 	if complete {
-		log.Infof("Keygen already complete: %s", adkgid)
+		log.Infof("pss already complete: %s", pssID)
 		return
 	}
 
@@ -81,52 +73,52 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 	start := time.Now()
 
 	for {
-		sessionStore.Lock()
+		pssState.Lock()
 
-		TiSet := kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+		TiSet := kcommon.GetSetBits(n, pssState.T[roundLeader])
 
 		log.WithFields(log.Fields{
-			"self":   self.ID(),
+			"self":   self.Details().Index,
 			"sender": sender.Index,
 			"round":  m.RoundID,
 			"TiSet":  TiSet,
 		}).Info("aba_coin")
 
 		if len(TiSet) > 0 {
-			sessionStore.Unlock()
+			pssState.Unlock()
 			break
 		}
 		// Breakout if time since message received has exceeded 10s
 		if time.Since(start) > time.Second*20 {
-			sessionStore.Unlock()
+			pssState.Unlock()
 			log.Errorf("timeout coin_share message, round=%s", m.RoundID)
 			return
 		}
 
-		sessionStore.Unlock()
+		pssState.Unlock()
 
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	sessionStore.Lock()
-	defer sessionStore.Unlock()
+	pssState.Lock()
+	defer pssState.Unlock()
 
-	TiSet = kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+	TiSet = kcommon.GetSetBits(n, pssState.T[roundLeader])
 
 	if len(TiSet) == 0 {
-		log.Infof("TiSet == 0 for round: %s, self: %d", m.RoundID, self.ID())
+		log.Infof("TiSet == 0 for round: %s, self: %d", m.RoundID, self.Details().Index)
 		return
 	}
 
-	gI := aba.DerivePublicKey(sender.Index, k, curve, TiSet, sessionStore.C)
+	// TODO: Recheck this, using the first sample for coin tossing
+	gI := aba.DerivePublicKey(sender.Index, k, curve, TiSet, pssState.KeysetMap[0].CommitmentStore)
 
 	log.WithFields(log.Fields{
-		"self":      self.ID(),
+		"self":      self.Details().Index,
 		"sender":    sender.Index,
 		"round":     m.RoundID,
 		"publicKey": gI.ToAffineCompressed(),
-		"T":         sessionStore.T,
-		"C":         sessionStore.C,
+		"T":         pssState.T,
 		"verified":  verify(u, gTilde, gI, curve, self),
 	}).Debug("aba_coin_msg_before_verified")
 
@@ -139,15 +131,15 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 	coinShares := store.GetCoinShares()
 	log.WithFields(log.Fields{
-		"self":             self.ID(),
+		"self":             self.Details().Index,
 		"sender":           sender.Index,
 		"round":            m.RoundID,
 		"coinsharesLength": len(coinShares),
 		"k":                k,
-		"decisions":        sessionStore.Decisions,
+		"decisions":        pssState.Decisions,
 	}).Debug("aba_coin")
 
-	_, ok := sessionStore.Decisions[int(roundLeader.Int64())]
+	_, ok := pssState.Decisions[roundLeader]
 
 	if len(coinShares) == f+1 && !ok {
 		identities := make([]int, 0)
@@ -161,7 +153,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			return
 		}
 		log.WithFields(log.Fields{
-			"self":   self.ID(),
+			"self":   self.Details().Index,
 			"sender": sender.Index,
 			"round":  m.RoundID,
 			"coeff":  coeff,
@@ -176,35 +168,25 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			}
 		}
 
-		roundLeader, err := m.RoundID.Leader()
-		if err != nil {
-			return
-		}
-
 		log.WithFields(log.Fields{
-			"self":                 self.ID(),
+			"self":                 self.Details().Index,
 			"sender":               sender.Index,
 			"round":                m.RoundID,
-			"sessionStoreDecision": sessionStore.Decisions,
+			"sessionStoreDecision": pssState.Decisions,
 			"Inequality(1==true)":  int(sha256.Sum256(g0Tilde.ToAffineCompressed())[31]) % 2,
 		}).Info("aba_coin")
 
 		if int(sha256.Sum256(g0Tilde.ToAffineCompressed())[31])%2 == 1 {
-			sessionStore.Decisions[int(roundLeader.Int64())] = 1
-			if !sessionStore.ABAComplete {
-				sessionStore.ABAComplete = true
-				adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-				if err != nil {
-					log.Info("Could not get ADKGIDf from roundID")
-					return
-				}
-				index, _ := adkgid.GetIndex()
-				log.Debugf("ADKGID=%d, decisions=%v,self=%d", index.Int64(), sessionStore.Decisions, self.ID())
+			pssState.Decisions[roundLeader] = 1
+			if !pssState.ABAComplete {
+				pssState.ABAComplete = true
+				pssID := m.RoundID.PssID
+				log.Debugf("PSSID=%s, decisions=%v,self=%d", pssID, pssState.Decisions, self.Details().Index)
 
 				for i := 1; i <= n; i++ {
-					if !Contains(sessionStore.ABAStarted, i) {
+					if !Contains(pssState.ABAStarted, i) {
 						go func(id int) {
-							round := common.CreateRound(adkgid, id, "keyset")
+							round := common.CreatePSSRound(pssID, m.RoundID.Dealer, "keyset")
 							msg, err := NewInitMessage(round, 0, 0, m.Curve)
 							if err != nil {
 								log.WithError(err).Error("Could not create init message")
@@ -216,22 +198,22 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 				}
 			}
 		} else {
-			sessionStore.Decisions[int(roundLeader.Int64())] = 0
+			pssState.Decisions[roundLeader] = 0
 		}
 
 		log.WithFields(log.Fields{
-			"self":                 self.ID(),
+			"self":                 self.Details().Index,
 			"sender":               sender.Index,
 			"round":                m.RoundID,
-			"Decision":             sessionStore.Decisions[int(roundLeader.Int64())],
-			"sessionStoreDecision": sessionStore.Decisions,
-			"CompleteCount":        len(sessionStore.Decisions),
-			"ABAComplete":          sessionStore.ABAComplete,
+			"Decision":             pssState.Decisions[roundLeader],
+			"sessionStoreDecision": pssState.Decisions,
+			"CompleteCount":        len(pssState.Decisions),
+			"ABAComplete":          pssState.ABAComplete,
 		}).Info("aba_coin")
 
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
-		if n == len(sessionStore.Decisions) && !sessionStore.KeyderivationStarted {
-			sessionStore.KeyderivationStarted = true
+		if n == len(pssState.Decisions) && !pssState.HIMStarted {
+			pssState.HIMStarted = true
 			msg, err := him.NewInitMessage(m.RoundID, m.Curve)
 			if err != nil {
 				return
@@ -278,7 +260,7 @@ func unpack(curve *curves.Curve, msg []byte) (*Unpack, error) {
 	return &d, nil
 }
 
-func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common.DkgParticipant) bool {
+func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common.PSSParticipant) bool {
 	g, _ := self.CurveParams(curve.Name)
 
 	cBar := aba.Hash(g, u.H, gTilde, u.HTilde, gI, u.GiTilde, curve)

@@ -105,15 +105,10 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 				}
 				go self.ReceiveMessage(self.Details(), *msg)
 			} else {
-				round := common.RoundDetails{}
-				err := round.FromID(m.RoundID)
-				if err != nil {
-					log.Infof("Could not get leader from roundID, err=%s", err)
-					return
-				}
-				sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(round.ADKGID, common.DefaultADKGSession())
+				pssID := m.RoundID.PssID
+				sessionStore, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 				if complete {
-					log.Infof("Keygen already complete: %s", round.ADKGID)
+					log.Infof("Keygen already complete: %s", pssID)
 					return
 				}
 
@@ -122,7 +117,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 				log.WithFields(log.Fields{
 					"completed":     sessionStore.ABAComplete,
 					"round":         m.RoundID,
-					"self":          self.ID(),
+					"self":          self.Details().Index,
 					"Decisions":     sessionStore.Decisions,
 					"ABAStarted":    sessionStore.ABAStarted,
 					"completeCount": len(sessionStore.Decisions),
@@ -130,60 +125,50 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 
 				log.WithFields(log.Fields{
 					"Decisions": sessionStore.Decisions,
-				}).Debugf("Node %d decided on round %s=%d", self.ID(), m.RoundID, w)
+				}).Debugf("Node %d decided on round %s=%d", self.Details().Index, m.RoundID, w)
+				leader := m.RoundID.Dealer.Index
 				// Set decision to 0 or 1
-				if _, ok := sessionStore.Decisions[round.Dealer]; ok {
+				if _, ok := sessionStore.Decisions[leader]; ok {
 					return
 				}
-				sessionStore.Decisions[round.Dealer] = w
+				sessionStore.Decisions[leader] = w
 
 				// If one ABA has outputted 1, then any ABA hasn't started yet, vote 0 for that ABA
 				if w == 1 && !sessionStore.ABAComplete {
 					sessionStore.ABAComplete = true
-					adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-					if err != nil {
-						log.Debug("Could not get ADKGIDf from roundID")
-						return
-					}
-					index, _ := adkgid.GetIndex()
-					log.Debugf("ADKGID=%d, decisions=%v,self=%d", index.Int64(), sessionStore.Decisions, self.ID())
+					pssID := m.RoundID.PssID
+					log.Debugf("PSSID=%s, decisions=%v,self=%d", pssID, sessionStore.Decisions, self.Details().Index)
 
 					for i := 1; i <= n; i++ {
 						if !Contains(sessionStore.ABAStarted, i) {
-							// go func(id int) {
-							round := common.CreateRound(adkgid, i, "keyset")
+							details, err := self.OldNodeDetailsByID(i)
+							if err != nil {
+								continue
+							}
+							round := common.CreatePSSRound(pssID, details, "keyset")
 							msg, err := NewInitMessage(round, 0, 0, m.Curve)
 							if err != nil {
 								log.WithError(err).Error("Could not create init message")
 								return
 							}
 							go self.ReceiveMessage(self.Details(), *msg)
-							// }(i)
 						}
 					}
 				}
 
 				// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
-				if n == len(sessionStore.Decisions) && !sessionStore.KeyderivationStarted {
+				if n == len(sessionStore.Decisions) && !sessionStore.HIMStarted {
 					log.WithFields(log.Fields{
 						"roundID":   m.RoundID,
 						"f":         f,
-						"node":      self.ID(),
+						"node":      self.Details().Index,
 						"Decisions": sessionStore.Decisions,
 					}).Debug("starting_key_derivation")
-					//
-
-					// msg, err := keyderivation.NewInitMessage(m.RoundID, m.Curve)
-					// if err != nil {
-					// 	return
-					// }
-					// sessionStore.KeyderivationStarted = true
-					// go self.ReceiveMessage(self.Details(), *msg)
 					msg, err := him.NewInitMessage(m.RoundID, m.Curve)
 					if err != nil {
 						return
 					}
-					sessionStore.KeyderivationStarted = true
+					sessionStore.HIMStarted = true
 					go self.ReceiveMessage(self.Details(), *msg)
 				}
 			}

@@ -3,12 +3,13 @@ package keyset
 import (
 	"encoding/binary"
 	"encoding/json"
+	"math"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
-	"github.com/arcana-network/dkgnode/keygen/message_handlers/aba"
 )
 
 var OutputMessageType string = "keyset_output"
@@ -38,21 +39,15 @@ func NewOutputMessage(id common.PSSRoundDetails, data []byte, curve common.Curve
 
 func (m OutputMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	// Ignore if not received by self
-	if sender.Index != self.ID() {
+	if sender.Index != self.Details().Index {
 		return
 	}
 
-	adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-	if err != nil {
-		return
-	}
-	leader, err := m.RoundID.Leader()
-	if err != nil {
-		return
-	}
+	pssID := m.RoundID.PssID
+	leader := m.RoundID.Dealer.Index
 
 	// create default session to use below
-	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
+	sessionStore, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 	if complete {
 		// if keygen is complete, ignore and return
 		log.Infof("keygen already complete: %s", m.RoundID)
@@ -63,17 +58,29 @@ func (m OutputMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	defer sessionStore.Unlock()
 
 	log.WithFields(log.Fields{
-		"adkgid":         adkgid,
-		"self":           self.ID(),
+		"pssID":          pssID,
+		"self":           self.Details().Index,
 		"alreadyStarted": sessionStore.ABAStarted,
 	}).Debug("aba_predicate")
 
-	if kcommon.Contains(sessionStore.ABAStarted, int(leader.Int64())) {
+	if kcommon.Contains(sessionStore.ABAStarted, leader) {
+		return
+	}
+	n, _, t := self.Params()
+
+	pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
+	if complete {
+		log.Infof("pss already complete: %s", pssID)
 		return
 	}
 
+	pssState.Lock()
+	defer pssState.Unlock()
+
+	alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*t))))
+	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
+	b := uint64(TSet)
 	a := binary.BigEndian.Uint64(m.M)
-	b := uint64(sessionStore.TPrime)
 
 	vote := 0
 	if b&a == a {
@@ -82,7 +89,7 @@ func (m OutputMessage) Process(sender common.NodeDetails, self common.PSSPartici
 		}
 	}
 
-	sessionStore.ABAStarted = append(sessionStore.ABAStarted, int(leader.Int64()))
+	sessionStore.ABAStarted = append(sessionStore.ABAStarted, leader)
 	msg, err := aba.NewInitMessage(m.RoundID, vote, 0, m.Curve)
 	if err != nil {
 		log.WithError(err).Error("Could not create init message")

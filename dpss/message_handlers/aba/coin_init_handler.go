@@ -46,20 +46,13 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 	uJi := curve.Scalar.Zero()
 
 	n, _, _ := self.Params()
-	roundLeader, err := m.RoundID.Leader()
-	if err != nil {
-		return
-	}
+	roundLeader := m.RoundID.Dealer.Index
 
-	adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-	if err != nil {
-		log.Infof("Could not get leader from roundID, err=%s", err)
-		return
-	}
+	pssID := m.RoundID.PssID
 
-	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
+	sessionStore, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 	if complete {
-		log.Infof("Keygen already complete: %s", adkgid)
+		log.Infof("pss already complete: %s", pssID)
 		return
 	}
 
@@ -69,10 +62,10 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 	for {
 		sessionStore.Lock()
 
-		TiSet := kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+		TiSet := kcommon.GetSetBits(n, sessionStore.T[roundLeader])
 
 		log.WithFields(log.Fields{
-			"self":   self.ID(),
+			"self":   self.Details().Index,
 			"sender": sender.Index,
 			"round":  m.RoundID,
 			"TiSet":  TiSet,
@@ -82,7 +75,7 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 			sessionStore.Unlock()
 			break
 		}
-		// Breakout if time since message received has exceeded 10s
+		// Breakout if time since message received has exceeded 20s
 		if time.Since(start) > time.Second*20 {
 			sessionStore.Unlock()
 			log.Errorf("timeout coin_init message, round=%s", m.RoundID)
@@ -97,9 +90,9 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 	sessionStore.Lock()
 	defer sessionStore.Unlock()
 
-	TiSet = kcommon.GetSetBits(n, sessionStore.T[int(roundLeader.Int64())])
+	TiSet = kcommon.GetSetBits(n, sessionStore.T[roundLeader])
 	for _, i := range TiSet {
-		share, err := curve.Scalar.SetBytes(sessionStore.S[i].Value)
+		share, err := curve.Scalar.SetBytes(sessionStore.KeysetMap[0].ShareStore[i].Value)
 		if err != nil {
 			continue
 		}
@@ -125,7 +118,7 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 func generateProof(
 	curve *curves.Curve,
 	gTilde curves.Point,
-	xI curves.Scalar, self common.DkgParticipant) []byte {
+	xI curves.Scalar, self common.PSSParticipant) []byte {
 
 	s := curve.NewScalar().Random(rand.Reader)
 

@@ -2,6 +2,7 @@ package keyset
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/arcana-network/dkgnode/common"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
@@ -37,7 +38,7 @@ func NewProposeMessage(id common.PSSRoundDetails, d []byte, curve common.CurveNa
 }
 
 func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
-	log.Debugf("Received keyset Propose message from %d on %d", sender.Index, self.ID())
+	log.Debugf("Received keyset Propose message from %d on %d", sender.Index, self.Details().Index)
 
 	leader := m.RoundID.Dealer.Index
 
@@ -49,33 +50,34 @@ func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSPartic
 	// Verify keyset predicate Tj and output
 	log.Debugf("Verify keyset predicate for node=%d, leader=%d", self.Details().Index, leader)
 
-	adkgid, err := common.ADKGIDFromRoundID(m.RoundID)
-	if err != nil {
-		log.Infof("Could not get leader from roundID, err=%s", err)
-		return
-	}
+	pssID := m.RoundID.PssID
 
-	sessionStore, complete := self.State().SessionStore.GetOrSetIfNotComplete(adkgid, common.DefaultADKGSession())
+	pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 	if complete {
-		log.Infof("Keygen already complete: %s", adkgid)
+		log.Infof("pss already complete: %s", pssID)
 		return
 	}
 
-	sessionStore.Lock()
-	defer sessionStore.Unlock()
+	n, _, t := self.Params()
 
-	verified := Predicate(kcommon.IntToByteValue(sessionStore.TPrime), m.Data)
+	pssState.Lock()
+	defer pssState.Unlock()
+
+	// TODO: deduplicate this v ??
+	alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*t))))
+	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
+	verified := Predicate(kcommon.IntToByteValue(TSet), m.Data)
 
 	// If verified, send echo to each node
 	if verified {
-		OnKeysetVerified(m.RoundID, m.Curve, m.Data, sessionStore, leader, self)
+		OnKeysetVerified(m.RoundID, m.Curve, m.Data, pssState, leader, self)
 	} else {
-		sessionStore.TProposals[sender.Index] = kcommon.ByteToIntValue(m.Data)
+		pssState.TProposals[sender.Index] = kcommon.ByteToIntValue(m.Data)
 	}
 }
 
 func OnKeysetVerified(roundID common.PSSRoundDetails, curve common.CurveName, keyset []byte,
-	sessionStore *common.ADKGSession, leader int, self common.PSSParticipant) {
+	sessionStore *common.PSSState, leader int, self common.PSSParticipant) {
 	if leader != self.Details().Index {
 		data := kcommon.ByteToIntValue(keyset)
 		sessionStore.T[int(leader)] = data

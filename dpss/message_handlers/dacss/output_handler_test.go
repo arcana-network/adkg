@@ -194,6 +194,9 @@ Expectations:
 - The RBC state has ended.
 - There is one broadcast of the commitment message.
 - The commitment sent is set to true.
+- PSSState: The share store has one share
+- PSSState: The commitment store has one commitment
+- PSSState: The TPrime should be equal to 2 since dealer index is 1 and 0|(1<<1) should be 2
 */
 func TestOutputHappyPath(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
@@ -221,6 +224,16 @@ func TestOutputHappyPath(test *testing.T) {
 	assert.Equal(test, stateNode.RBCState.Phase, common.Ended)
 	assert.Equal(test, 1, len(broadcastedMsgs))
 	assert.True(test, stateNode.CommitmentSent)
+
+	pssState, found := testNode.State().PSSStore.Get(
+		correctMessage.AcssRoundDetails.PSSRoundDetails.PssID,
+	)
+	assert.Nil(test, err)
+	assert.True(test, found)
+
+	assert.Equal(test, 1, len(pssState.KeysetMap[correctMessage.AcssRoundDetails.ACSSCount].CommitmentStore))
+	assert.Equal(test, 1, len(pssState.KeysetMap[correctMessage.AcssRoundDetails.ACSSCount].ShareStore))
+	assert.Equal(test, 2, pssState.KeysetMap[correctMessage.AcssRoundDetails.ACSSCount].TPrime)
 }
 
 func generateCorrectOutputMessage(

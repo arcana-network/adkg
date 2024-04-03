@@ -44,11 +44,16 @@ type PSSParticipant interface {
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
-
 	// Broker needed to start the next batch of DPSS
 	// In all the Test Nodes it is mocked to simply return nil
 	// In the PSSNode, it returns the MessageBroker
 	GetMessageBroker() *MessageBroker
+	// Get node details by id, only checks in list of old nodes
+	OldNodeDetailsByID(id int) (NodeDetails, error)
+	// Get B
+	GetBatchCount() int
+	// Get (G, H) for specific curve
+	CurveParams(curveName string) (curves.Point, curves.Point)
 }
 
 // Constants for state naming. Used for loging.
@@ -57,6 +62,14 @@ const (
 	BatchRecStateType = "BatchRec"
 	RbcStateType      = "RBC"
 )
+
+/*
+B is fixed, we dont want to start too many dpss
+at once since P2P network will start dropping messages
+
+PSS-1 => 0 - 51 => B = 51 / 3 => 17 ACSS
+PSS-2 => 52 -103 => B = 51 / 3 => 17 ACSS
+*/
 
 // PSSNodeState represents the internal state of a node that participates in
 // possibly multiple DPSS protocol. There is an storage for the different
@@ -67,6 +80,7 @@ type PSSNodeState struct {
 	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
 	ABAStore        *AbaStateMap
 	KeysetStore     *KeysetStateMap // Could have reused ACSS here
+	PSSStore        *PSSStateMap
 }
 
 // Clean completely cleans the state of a node for a given PSSRound.
@@ -192,10 +206,158 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 	return nil
 }
 
+/* ------- PSS state start ------- */
+// Stores the information of the shares for a given PSS Round
+type PSSStateMap struct {
+	Map sync.Map // key:PSSRoundID, value: PSSState
+}
+
+type ACSSKeysetMap struct {
+	// Own super keyset, not limited to n-f
+	TPrime int
+	// nodeIndex => Commitments (used in ABA coin tossing)
+	CommitmentStore map[int][]curves.Point
+	// nodeIndex => share
+	ShareStore map[int]*sharing.ShamirShare
+}
+
+// Shared data for a PSS Round
+type PSSState struct {
+	sync.Mutex
+	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
+	TProposals     map[int]int // nodeIndex => unverified keyset
+	PSSID          PSSID
+	KeysetMap      map[int]*ACSSKeysetMap // [1-alpha]acssCount => nodeIndex => ACCKeysetMap
+	KeysetProposed bool
+	ABAStarted     []int
+	ABAComplete    bool
+	Decisions      map[int]int
+	HIMStarted     bool
+}
+
+/*
+PSS-1-Dealer-1-Alpha-1
+Alpha = 0 -> B/n-2t
+
+keysetMap Structure:
+Alpha-0 => {
+	Node - 1 => {
+
+	},
+	Node - X => {
+		TPrime => int
+		CommmitmentStore => {
+			NodeIndex => Commitment
+		}
+		ShareStore => {
+			NodeIndex => share
+		}
+	}
+},
+.
+.
+.
+Alpha-X => {
+	Node - 1 => {
+
+	},
+	Node - X => {
+		TPrime => int
+		CommmitmentStore => {
+			NodeIndex => Commitment
+		}
+		ShareStore => {
+			NodeIndex => share
+		}
+	}
+}
+*/
+
+func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
+	_, ok := state.KeysetMap[id]
+	if !ok {
+		state.KeysetMap[id] = &ACSSKeysetMap{
+			TPrime:          0,
+			CommitmentStore: make(map[int][]curves.Point),
+			ShareStore:      make(map[int]*sharing.ShamirShare),
+		}
+	}
+
+	return state.KeysetMap[id]
+}
+
+// Threshold = n-t, alpha = B/n-2t
+func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, bool) {
+	T := 0
+	Tset := make([]int, 0)
+	if len(state.KeysetMap) == alpha {
+		for _, v := range state.KeysetMap {
+			Tset = append(Tset, v.TPrime)
+		}
+
+		T = Tset[0]
+		for i := 1; i < threshold; i += 1 {
+			T = T & Tset[i]
+		}
+		if CountBit(T) >= threshold {
+			return T, true
+		}
+	}
+	return 0, false
+}
+
+// FIXME: Deduplicate this v
+func CountBit(n int) int {
+	count := 0
+	for n > 0 {
+		n &= (n - 1)
+		count++
+	}
+	return count
+}
+
+func GetDefaultPSSState(id PSSID) *PSSState {
+	s := PSSState{
+		PSSID:     id,
+		KeysetMap: make(map[int]*ACSSKeysetMap),
+	}
+	return &s
+}
+
+func (m *PSSStateMap) Get(r PSSID) (state *PSSState, found bool) {
+	inter, found := m.Map.Load(r)
+	state, _ = inter.(*PSSState)
+	return
+}
+
+func (store *PSSStateMap) GetOrSetIfNotComplete(r PSSID) (keygen *PSSState, complete bool) {
+	inter, found := store.GetOrSet(r, GetDefaultPSSState(r))
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *PSSStateMap) GetOrSet(r PSSID, input *PSSState) (keygen *PSSState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*PSSState)
+	return
+}
+func (store *PSSStateMap) Complete(r PSSID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *PSSStateMap) Delete(r PSSID) {
+	store.Map.Delete(r)
+}
+
+/* ------- PSS state end ------- */
+
 /* ------- Keyset start ------- */
-// Stores the information of the shares for a given ACSS Round
+// Stores the information of the shares for a given Keyset Round
 type KeysetStateMap struct {
-	// Removed mutex since its already a sync.Map
 	Map sync.Map // key:PSSRoundID, value: KeysetState
 }
 
@@ -235,7 +397,7 @@ func (s *KeysetState) FindThresholdEchoStore(threshold int) *EchoStore {
 	return nil
 }
 
-func (m *KeysetStateMap) Get(r RoundID) (keygen *KeysetState, found bool) {
+func (m *KeysetStateMap) Get(r PSSRoundID) (keygen *KeysetState, found bool) {
 	inter, found := m.Map.Load(r)
 	keygen, _ = inter.(*KeysetState)
 	return
@@ -433,6 +595,14 @@ func (pssRoundDetails PSSRoundDetails) ToString() string {
 	}, Delimiter1)
 }
 
+func CreatePSSRound(pssID string, dealer NodeDetails, batchSize int) PSSRoundDetails {
+	return PSSRoundDetails{
+		pssID,
+		dealer,
+		batchSize,
+	}
+}
+
 type PSSID string
 
 func GeneratePSSID(index big.Int) PSSID {
@@ -456,8 +626,6 @@ type ACSSRoundDetails struct {
 	ACSSCount       int             // number of ACSS round this is in the PSS
 }
 
-// What? this is dealer + delim + count, shudnt this be pssid + dealer + delim + count
-// otherwise it will always overwrite the other data if two are running in advance
 func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	// Convert ACSSRoundDetails to a string representation to be used as an ID
 	return ACSSRoundID(strings.Join([]string{

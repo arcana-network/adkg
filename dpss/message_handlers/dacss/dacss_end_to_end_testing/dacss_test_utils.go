@@ -1,10 +1,12 @@
 package dacss
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -52,6 +54,14 @@ func (n *PssTestNode2) State() *common.PSSNodeState {
 
 func (n *PssTestNode2) ID() int {
 	return n.details.Index
+}
+
+func (n *PssTestNode2) GetBatchCount() int {
+	return 3
+}
+
+func (n *PssTestNode2) CurveParams(curveName string) (curves.Point, curves.Point) {
+	return sharing.CurveParams(curveName)
 }
 
 func (n *PssTestNode2) IsNewNode() bool {
@@ -140,6 +150,16 @@ func NewEmptyNode(index int, keypair common.KeyPair, Transport *MockTransport, i
 
 func (node *PssTestNode2) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 	node.Transport.Broadcast(toNewCommittee, node.Details(), msg)
+}
+
+func (n *PssTestNode2) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
+	nodes := n.Nodes(false)
+	for _, n := range nodes {
+		if n.Index == id {
+			return n, nil
+		}
+	}
+	return common.NodeDetails{}, errors.New("node not found in old committee")
 }
 func (node *PssTestNode2) Params() (n int, k int, t int) {
 	return node.committeeTestParams.N, node.committeeTestParams.K, node.committeeTestParams.T

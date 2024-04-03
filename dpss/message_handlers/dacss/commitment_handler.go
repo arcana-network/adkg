@@ -1,9 +1,12 @@
 package dacss
 
 import (
+	"encoding/binary"
 	"encoding/hex"
+	"math"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -103,44 +106,55 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 			state.CommitmentCount[commitmentStrEncoding]++
 		},
 	)
-	if err != nil {
-		common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
-		return
-	}
+	n, _, t := self.Params()
+	commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
+	if found {
+		// Computes the hash of the own commitment
+		if commitmentHexHash == state.OwnCommitmentsHash {
+			self.State().AcssStore.UpdateAccsState(
+				msg.ACSSRoundDetails.ToACSSRoundID(),
+				func(state *common.AccsState) {
+					state.ValidShareOutput = true
+				},
+			)
 
-	// If the RBC hasn't ended, we should not do the check afterwards
-	if state.RBCState.Phase == common.Ended {
-		_, _, t := self.Params()
-		commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
-		if found {
-			// Computes the hash of the own commitment
-			if commitmentHexHash == state.OwnCommitmentsHash {
-				err = self.State().AcssStore.UpdateAccsState(
-					msg.ACSSRoundDetails.ToACSSRoundID(),
-					func(state *common.AccsState) {
-						state.ValidShareOutput = true
-					},
-				)
-				if err != nil {
-					common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
+			// DONE: Call the message to start MVBA here.
+			{
+				pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(msg.ACSSRoundDetails.PSSRoundDetails.PssID)
+				if complete {
+					return
+				}
+				pssState.Lock()
+				defer pssState.Unlock()
+
+				if pssState.KeysetProposed {
 					return
 				}
 
-				log.WithFields(
-					log.Fields{
-						"Message":   "commitment finished correctly. Start MBVA here",
-						"SelfIdx":   self.Details().Index,
-						"IsNewNode": self.IsNewNode,
-					},
-				).Debug("DacssCommitmentMessage: process")
+				// Deduplicate this calculation v ??
+				alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*t))))
+
+				TSet, completed := pssState.CheckForThresholdCompletion(alpha, n-t)
+				if completed {
+					pssState.T[self.Details().Index] = TSet
+
+					var output [8]byte
+					binary.BigEndian.PutUint64(output[:], uint64(TSet))
+
+					round := common.PSSRoundDetails{
+						PssID:  msg.ACSSRoundDetails.PSSRoundDetails.PssID,
+						Dealer: self.Details(),
+					}
+					msg, err := keyset.NewProposeMessage(round, output[:], msg.CurveName)
+					if err != nil {
+						log.Errorf("Error while creating keyset propose: %v", err)
+						return
+					}
+					go self.Broadcast(false, *msg)
+					pssState.KeysetProposed = true
+				}
 			}
-		} else {
-			log.WithFields(
-				log.Fields{
-					"Threshold": t + 1,
-					"Message":   "There is no commitment record surpasing the threshold",
-				},
-			).Info("DACSSCommitmentMessage: Process")
+
 		}
 	} else {
 		log.WithFields(

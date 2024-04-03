@@ -1,9 +1,11 @@
 package testutils
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 )
@@ -37,9 +39,26 @@ func (n *PssTestNode) State() *common.PSSNodeState {
 func (n *PssTestNode) ID() int {
 	return n.details.Index
 }
+func (n *PssTestNode) CurveParams(curveName string) (curves.Point, curves.Point) {
+	return sharing.CurveParams(curveName)
+}
+
+func (n *PssTestNode) GetBatchCount() int {
+	return 9
+}
 
 func (n *PssTestNode) IsNewNode() bool {
 	return n.isNewCommittee
+}
+
+func (n *PssTestNode) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
+	nodes := n.Nodes(false)
+	for _, n := range nodes {
+		if n.Index == id {
+			return n, nil
+		}
+	}
+	return common.NodeDetails{}, errors.New("node not found in old committee")
 }
 
 // TODO we should probably flip this bool and have all bools either isOld or fromNew, to prevent confusion
@@ -122,6 +141,7 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 			AcssStore:       &common.AcssStateMap{},
 			ShareStore:      &common.PSSShareStore{},
 			BatchReconStore: &common.BatchRecStoreMap{},
+			PSSStore:        &common.PSSStateMap{},
 		},
 		transport:   noSendTransport,
 		LongtermKey: keypair,
