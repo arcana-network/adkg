@@ -47,7 +47,7 @@ func createInitRecMessage(dealerNode *testutils.PssTestNode, curve curves.Curve)
 	}
 	dpssBatchRecDetails := common.DPSSBatchRecDetails{
 		PSSRoundDetails: pssRoundDetails,
-		BatchRecID:      1,
+		BatchRecCount:   1,
 	}
 
 	// Create n - 2t random numbers

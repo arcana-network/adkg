@@ -64,6 +64,16 @@ type BatchRecState struct {
 	UStore map[int]curves.Scalar // Stores the shares [u_i] sent by a given party.
 }
 
+// Counts the ammount of U shares received by the party.
+func (batchState *BatchRecState) CountReceivedU() int {
+	counter := 0
+	for range batchState.UStore {
+		counter++
+	}
+
+	return counter
+}
+
 // Obtains the batch reconstruction information for a given batch reconstruction ID.
 func (store *BatchRecStoreMap) Get(id BatchRecID) (*BatchRecState, bool, error) {
 	value, found := store.BatchReconStateForRound.Load(id)
