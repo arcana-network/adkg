@@ -47,8 +47,36 @@ type PSSParticipant interface {
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
-	AcssStore  *AcssStateMap  // State for the separate ACSS rounds
-	ShareStore *PSSShareStore // Storage of shares for the DPSS protocol.
+	AcssStore       *AcssStateMap     // State for the separate ACSS rounds
+	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
+	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
+}
+
+// Stores all the information for each separate batch reconstruction.
+type BatchRecStoreMap struct {
+	sync.Mutex
+	// For a specific batch reconstructoin round, we have a BatchRecState
+	BatchReconStateForRound sync.Map // key: DPSSBatchRecID, value: BatchRecState
+}
+
+// Stores all the information related to the batch reconstruction protocol for a given round.
+type BatchRecState struct {
+	UStore map[int]curves.Scalar // Stores the shares [u_i] sent by a given party.
+}
+
+// Obtains the batch reconstruction information for a given batch reconstruction ID.
+func (store *BatchRecStoreMap) Get(id BatchRecID) (*BatchRecState, bool, error) {
+	value, found := store.BatchReconStateForRound.Load(id)
+	if !found {
+		return nil, false, nil
+	}
+
+	state, ok := value.(*BatchRecState)
+	if !ok {
+		return nil, true, errors.New("error while retrieving the batch state")
+	}
+
+	return state, true, nil
 }
 
 // Stores the information of the shares for a given ACSS Round
@@ -216,10 +244,27 @@ func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	}, Delimiter1))
 }
 
+// BatchRecID represents the ID for a single round of the batch reconstruction in the DPSS protocol.
+type BatchRecID string
+
 // Defines the information for a round in the batch reconstruction.
 type DPSSBatchRecDetails struct {
 	PSSRoundDetails PSSRoundDetails // PSS instance to which the Batch reconstruction belongs.
-	BatchRecID      int             // ID for the batch reconstruction round.
+	BatchRecCount   int             // ID for the batch reconstruction round.
+}
+
+// ToBathcRecID transforms the details of a batch reocnstruction round into an
+// ID by encoding its fields.
+func (details *DPSSBatchRecDetails) ToBatchRecID() BatchRecID {
+	return BatchRecID(
+		strings.Join(
+			[]string{
+				string(details.PSSRoundDetails.Dealer.ToNodeDetailsID()),
+				strconv.Itoa(details.BatchRecCount),
+			},
+			Delimiter2,
+		),
+	)
 }
 
 // n -> total number of nodes
