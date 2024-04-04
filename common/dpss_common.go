@@ -79,6 +79,29 @@ func (store *BatchRecStoreMap) Get(id BatchRecID) (*BatchRecState, bool, error) 
 	return state, true, nil
 }
 
+// UpdateBatchRecState updates the state stored under the provided ID. The updating
+// is defined by the updater function provided in the parameters. If the ID is not
+// stored in the
+func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater func(*BatchRecState)) error {
+	value, found := store.BatchReconStateForRound.Load(batchID)
+	var state *BatchRecState
+	if found {
+		var ok bool
+		state, ok = value.(*BatchRecState)
+		if !ok {
+			return errors.New("error retrieving the batch state to update it")
+		}
+	} else {
+		state = &BatchRecState{
+			UStore: make(map[int]curves.Scalar),
+		}
+	}
+
+	updater(state)
+	store.BatchReconStateForRound.Store(batchID, state)
+	return nil
+}
+
 // Stores the information of the shares for a given ACSS Round
 type AcssStateMap struct {
 	sync.Mutex
