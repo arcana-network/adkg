@@ -62,8 +62,8 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, old
 }
 
 // Returns the PSS protocol prefix in the form dpss-<epoch>
-func getPSSProtocolPrefix(epoch int) ProtocolPrefix {
-	return ProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
+func getPSSProtocolPrefix(epoch int) PSSProtocolPrefix {
+	return PSSProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
 }
 
 // IsNewNode determines if the current node belongs to the new committee.

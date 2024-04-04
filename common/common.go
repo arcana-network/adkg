@@ -99,11 +99,13 @@ func reverse(s []byte) []byte {
 	return s
 }
 
+// Basic information of the node.
 type NodeDetails struct {
-	Index  int
-	PubKey Point
+	Index  int   // Index of the party. The first party has index 1.
+	PubKey Point // Public key of the node.
 }
 
+// Converts the public key of the node into a string representation of its bytes.
 func (n NodeDetails) ToHexString(curveName CurveName) (string, error) {
 	curvePoint, err := PointToCurvePoint(n.PubKey, curveName)
 	if err != nil {

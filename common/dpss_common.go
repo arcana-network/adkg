@@ -216,6 +216,12 @@ func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	}, Delimiter1))
 }
 
+// Defines the information for a round in the batch reconstruction.
+type DPSSBatchRecDetails struct {
+	PSSRoundDetails PSSRoundDetails // PSS instance to which the Batch reconstruction belongs.
+	BatchRecID      int             // ID for the batch reconstruction round.
+}
+
 // n -> total number of nodes
 // t = f -> number of *max* malicious nodes
 // k = f + 1 > reconstruction threshold

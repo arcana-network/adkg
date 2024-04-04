@@ -31,7 +31,7 @@ func HimMultiplication(matrix [][]curves.Scalar, vector []curves.Scalar) ([]curv
 
 	// column size must be equal to the length of vector
 	if len(matrix[0]) != len(vector) {
-		return nil, fmt.Errorf("number of columns in the matrix must be equal to the size of the vector")
+		return nil, fmt.Errorf("number of columns in the matrix must be equal to the size of the vector. Columns: %d, VecLenght: %d", len(matrix[0]), len(vector))
 	}
 
 	rows := len(matrix)
@@ -53,4 +53,18 @@ func HimMultiplication(matrix [][]curves.Scalar, vector []curves.Scalar) ([]curv
 
 	return result, nil
 
+}
+
+// Obtains a new matrix with all the rows and the first n columns from the
+// provided matrix.
+func GetFirstColumns(matrix [][]curves.Scalar, n int) [][]curves.Scalar {
+	newMatrix := make([][]curves.Scalar, len(matrix))
+	for i := range len(matrix) {
+		newRow := make([]curves.Scalar, n)
+		copy(newRow, matrix[i][:n])
+		newMatrix[i] = newRow
+	}
+
+	// TODO: Return an error here
+	return newMatrix
 }
