@@ -246,13 +246,13 @@ type ImplicateInformation struct {
 // at the end of the DPSS protocol (for the new nodes).
 type PSSShareStore struct {
 	sync.Mutex
-	NewShares map[int]curves.Scalar // Map of shares at the end of the protocol. K: index of the owner of the share in the new committee, V: the actual share.
-	OldShares map[int]curves.Scalar // Map of shares at the beginning of the protocol. K: index of the owner of the share in the old committee, V: the actual share.
+	NewShares []curves.Scalar // Map of shares at the end of the protocol.
+	OldShares []curves.Scalar // Map of shares at the beginning of the protocol.
 }
 
-func (store *PSSShareStore) Initialize() {
-	store.NewShares = make(map[int]curves.Scalar)
-	store.OldShares = make(map[int]curves.Scalar)
+func (store *PSSShareStore) Initialize(storeSize int) {
+	store.NewShares = make([]curves.Scalar, storeSize)
+	store.OldShares = make([]curves.Scalar, storeSize)
 }
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.

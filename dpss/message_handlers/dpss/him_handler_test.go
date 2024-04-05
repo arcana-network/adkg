@@ -32,8 +32,6 @@ func TestHappyPathHIM(test *testing.T) {
 	testNode, dealerNode := defaultSetup.GetTwoOldNodesFromTestSetup()
 	transport := testNode.Transport
 
-	testNode.State().ShareStore.Initialize()
-
 	n, k, t := testNode.Params()
 
 	shares, err := generateSharesMultipleSecrets(
@@ -44,6 +42,8 @@ func TestHappyPathHIM(test *testing.T) {
 		testutils.TestCurve(),
 	)
 	assert.Nil(test, err)
+
+	testNode.State().ShareStore.Initialize(len(shares))
 
 	compressedShares := sharing.CompressScalars(shares)
 

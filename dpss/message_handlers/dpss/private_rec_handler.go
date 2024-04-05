@@ -92,7 +92,24 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 
 	countU := recState.CountReceivedU()
 	_, _, t := self.Params()
-	if countU > 2*t+1 {
+	if countU >= 2*t+1 {
+		// Separates the shares that will be used to construct the polynomial
+		// from the shares that will be used to confirm the correctness of the
+		// polynomial.
+		interpolationShares := make(map[int]curves.Scalar) // Shares to construct the polynomial.
+		confirmationShares := make(map[int]curves.Scalar)  // Shares to confirm that the polynomial is correct.
+		counter := 0
+		for idx, share := range recState.UStore {
+			counter++
+			if counter <= t+1 {
+				interpolationShares[idx] = share
+			} else if counter <= 2*t+1 {
+				confirmationShares[idx] = share
+			} else {
+				break
+			}
+		}
+
 		// Take the first t + 1 shares and interpolates the polynomial
 
 		// Evaluate all the points in the polinomial and see if they coincide
