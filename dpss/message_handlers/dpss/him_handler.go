@@ -30,7 +30,7 @@ func NewDacssHimMatrix(
 	hash []byte,
 	curve common.CurveName,
 ) (*common.PSSMessage, error) {
-	sharesBytes := sharing.CompressShares(shares)
+	sharesBytes := sharing.CompressScalars(shares)
 	msg := DacssHimMessage{
 		PSSRoundDetails: pssRoundDetails,
 		Kind:            DpssHimHandlerType,
@@ -68,7 +68,7 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 	n, _, t := self.Params()
 
 	// Decompress the shares comming from the MVBA protocol.
-	shares, err := sharing.DecompressShares(
+	shares, err := sharing.DecompressScalars(
 		msg.Shares,
 		common.CurveFromName(msg.CurveName),
 		n-t,
@@ -106,7 +106,7 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 	// From the trully random values, we select B of them to be the masks for
 	// the values {s_i}.
 	rValues := globalRandomR[:numShares]
-	rValuesBytes := sharing.CompressShares(rValues)
+	rValuesBytes := sharing.CompressScalars(rValues)
 
 	reconstructionMsg, err := NewPssBatchReconstructionMessage(
 		msg.PSSRoundDetails,

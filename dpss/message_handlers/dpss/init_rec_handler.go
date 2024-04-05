@@ -46,12 +46,12 @@ func NewInitRecMessage(
 // Process processes a received InitRecMessage
 func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	// Check if the sender and receiver are the same party.
-	if sender.Index != self.Details().Index {
+	if !sender.IsEqual(self.Details()) {
 		log.WithFields(
 			log.Fields{
-				"Sender":   sender.Index,
-				"Receiver": self.Details().Index,
-				"Message":  "The indexes should be the same",
+				"Sender":   sender,
+				"Receiver": self.Details(),
+				"Message":  "Sender and receiver should be the same",
 			},
 		).Error("InitRecMessage: Process")
 		return
@@ -60,7 +60,7 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 	// Deserialize the shares.
 	n, _, t := self.Params()
 	batchSize := n - 2*t
-	shareBatch, err := sharing.DecompressShares(
+	shareBatch, err := sharing.DecompressScalars(
 		msg.ShareBatch,
 		common.CurveFromName(msg.Curve),
 		batchSize,

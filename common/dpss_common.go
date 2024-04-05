@@ -273,6 +273,7 @@ func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	// Convert ACSSRoundDetails to a string representation to be used as an ID
 	return ACSSRoundID(strings.Join([]string{
 		string(acssRoundDetails.PSSRoundDetails.Dealer.ToNodeDetailsID()),
+		string(acssRoundDetails.PSSRoundDetails.PssID),
 		strconv.Itoa(acssRoundDetails.ACSSCount),
 	}, Delimiter1))
 }
@@ -293,6 +294,7 @@ func (details *DPSSBatchRecDetails) ToBatchRecID() BatchRecID {
 		strings.Join(
 			[]string{
 				string(details.PSSRoundDetails.Dealer.ToNodeDetailsID()),
+				string(details.PSSRoundDetails.PssID),
 				strconv.Itoa(details.BatchRecCount),
 			},
 			Delimiter2,

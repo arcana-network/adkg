@@ -45,7 +45,7 @@ func TestHappyPathHIM(test *testing.T) {
 	)
 	assert.Nil(test, err)
 
-	compressedShares := sharing.CompressShares(shares)
+	compressedShares := sharing.CompressScalars(shares)
 
 	// Set the round parameters
 	id := big.NewInt(1)

@@ -57,7 +57,7 @@ func createInitRecMessage(dealerNode *testutils.PssTestNode, curve curves.Curve)
 		share := curve.Scalar.Random(rand.Reader)
 		shareBatch = append(shareBatch, share)
 	}
-	shareBatchBytes := sharing.CompressShares(shareBatch)
+	shareBatchBytes := sharing.CompressScalars(shareBatch)
 
 	msg := InitRecMessage{
 		DPSSBatchRecDetails: dpssBatchRecDetails,

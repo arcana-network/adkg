@@ -25,8 +25,8 @@ func TestCompressionAndDecompressionShares(test *testing.T) {
 		scalars = append(scalars, randomScalar)
 	}
 
-	compression := CompressShares(scalars)
-	decompression, err := DecompressShares(compression, curve, nScalars)
+	compression := CompressScalars(scalars)
+	decompression, err := DecompressScalars(compression, curve, nScalars)
 	assert.Nil(test, err)
 
 	for i, shareDecompressed := range decompression {
