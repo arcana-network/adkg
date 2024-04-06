@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -18,10 +19,15 @@ type NoSendMockTransport struct {
 	BroadcastedMessages []common.PSSMessage
 	sentMessages        []common.PSSMessage
 	ReceivedMessages    []common.PSSMessage
+	MsgReceivedSignal   chan struct{}
+	Mu                  sync.Mutex
 }
 
 func NewNoSendMockTransport(nodesOld, nodesNew []*PssTestNode) *NoSendMockTransport {
-	return &NoSendMockTransport{nodesNew: nodesNew, nodesOld: nodesOld, output: make(chan string, 100)}
+	return &NoSendMockTransport{nodesNew: nodesNew, nodesOld: nodesOld,
+		output:            make(chan string, 100),
+		MsgReceivedSignal: make(chan struct{}, 1001),
+	}
 }
 
 func (transport *NoSendMockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
@@ -48,4 +54,10 @@ func (transport *NoSendMockTransport) AssertNoMsgsBroadcast(t *testing.T) {
 	broadcastedMsgs := transport.BroadcastedMessages
 
 	assert.Equal(t, 0, len(broadcastedMsgs))
+}
+
+func (transport *NoSendMockTransport) WaitForMessagesReceived(count int) {
+	for i := 0; i < count; i++ {
+		<-transport.MsgReceivedSignal
+	}
 }
