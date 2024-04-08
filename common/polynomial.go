@@ -13,21 +13,60 @@ import (
 // represented as [a_0, a_1, ..., a_n] and its degree will be n, which is the
 // length of the array minus 1.
 type Polynomial struct {
-	Coefficients []curves.Scalar
-	Curve        *curves.Curve
+	Coefficients []curves.Scalar // Coefficients of the polynomial.
+	Curve        *curves.Curve   // Curve in which the coefficients live in.
 }
 
 // Creates a new polynomial with the given coefficients in a given curve.
 func NewPolynomial(coeff []curves.Scalar, curve *curves.Curve) *Polynomial {
-	return &Polynomial{
+	newPoly := &Polynomial{
 		Coefficients: coeff,
 		Curve:        curve,
 	}
+	newPoly.Normalize()
+	return newPoly
 }
 
 // Returns the degree of a polynomial.
 func (p *Polynomial) Degree() int {
 	return len(p.Coefficients) - 1
+}
+
+func (p *Polynomial) Equal(q *Polynomial) bool {
+	p.Normalize()
+	q.Normalize()
+	if p.Curve.Name != q.Curve.Name {
+		return false
+	}
+
+	if p.Degree() != q.Degree() {
+		return false
+	}
+
+	for i, pCoeff := range p.Coefficients {
+		if pCoeff.Cmp(q.Coefficients[i]) != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Removes the coefficients that are zero after the most signifficant
+// coefficient.
+func (p *Polynomial) Normalize() {
+	var i int
+	for i = len(p.Coefficients) - 1; i >= 0; i-- {
+		if p.Coefficients[i].Cmp(p.Curve.Scalar.Zero()) != 0 {
+			break
+		}
+	}
+	if i == -1 {
+		p.Coefficients = []curves.Scalar{p.Curve.Scalar.Zero()}
+	}
+	if i >= 0 {
+		p.Coefficients = p.Coefficients[:i+1]
+	}
 }
 
 // Returns the addition of the polynomial p and the polynomial q.
@@ -41,13 +80,20 @@ func (p *Polynomial) Mul(q *Polynomial) (*Polynomial, error) {
 
 	for i := range degreeNewPoly + 1 {
 		coeff := p.Curve.Scalar.Zero()
-		for j := range i {
+		for j := range i + 1 {
+			if j > p.Degree() {
+				continue
+			}
+			if i-j > q.Degree() {
+				continue
+			}
 			coeff = coeff.Add(p.Coefficients[j].Mul(q.Coefficients[i-j]))
 		}
 		coeffsNewPoly[i] = coeff
 	}
 
 	newPoly := NewPolynomial(coeffsNewPoly, p.Curve)
+	newPoly.Normalize()
 	return newPoly, nil
 }
 
@@ -71,6 +117,7 @@ func (p *Polynomial) Add(q *Polynomial) (*Polynomial, error) {
 	}
 
 	newPoly := NewPolynomial(coeffsNewPoly, p.Curve)
+	newPoly.Normalize()
 	return newPoly, nil
 }
 
@@ -81,7 +128,9 @@ func (p *Polynomial) MulByConst(constant curves.Scalar) *Polynomial {
 		coeffsNewPoly[i] = coeff.Mul(constant)
 	}
 
-	return NewPolynomial(coeffsNewPoly, p.Curve)
+	newPoly := NewPolynomial(coeffsNewPoly, p.Curve)
+	newPoly.Normalize()
+	return newPoly
 }
 
 // Computes the Lagrange basis polynomial, that is it computes
@@ -119,7 +168,7 @@ func lagrangeBasis(j int, xAxisValues []curves.Scalar, curve *curves.Curve) (*Po
 			return nil, err
 		}
 	}
-
+	lagrangeBasisPoly.Normalize()
 	return lagrangeBasisPoly, nil
 }
 

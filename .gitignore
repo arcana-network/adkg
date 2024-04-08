@@ -8,3 +8,5 @@ coverage.txt
 dist/
 .*-env
 dist/
+
+.vscode
