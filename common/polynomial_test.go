@@ -97,11 +97,6 @@ func TestPolyMulWithZero(test *testing.T) {
 	mulPoly, err := randomPoly.Mul(zeroPoly)
 	assert.Nil(test, err)
 
-	log.WithFields(
-		log.Fields{
-			"Coefficients": mulPoly.Coefficients,
-		},
-	).Debug("TestPolyMulWithZero")
 	assert.True(test, mulPoly.Equal(zeroPoly))
 }
 
@@ -197,6 +192,62 @@ func TestLagrangeBasis(test *testing.T) {
 			}
 		}
 	}
+}
+
+func TestInterpolatePolynomial(test *testing.T) {
+	curve := polyTestCurve()
+	points := generateRandomPoints(100, curve)
+
+	interpolatedPoly, err := InterpolatePolynomial(points, curve)
+	assert.Nil(test, err)
+
+	for x, y := range points {
+		evaluation := interpolatedPoly.Evaluate(
+			curve.Scalar.New(x),
+		)
+
+		assert.Zero(test, evaluation.Cmp(y))
+	}
+}
+
+func TestInterpolatePolynomialConstant(test *testing.T) {
+	curve := polyTestCurve()
+	const MAX_POINTS int = 100
+	const MAX_X_AXIS int = 1000
+
+	yValue := curve.Scalar.Random(rand.Reader)
+
+	pointsChecking := make([]curves.Scalar, MAX_POINTS)
+	pointsInterpolation := make(map[int]curves.Scalar)
+	for i := range MAX_POINTS {
+		randomXCheck := mrand.Intn(MAX_X_AXIS)
+		pointsChecking[i] = curve.Scalar.New(randomXCheck)
+
+		randomXInterp := mrand.Intn(MAX_X_AXIS)
+		pointsInterpolation[randomXInterp] = yValue
+	}
+
+	interpolatedPoly, err := InterpolatePolynomial(pointsInterpolation, curve)
+	assert.Nil(test, err)
+
+	for _, x := range pointsChecking {
+		evaluation := interpolatedPoly.Evaluate(x)
+
+		assert.Zero(test, evaluation.Cmp(yValue))
+	}
+}
+
+func generateRandomPoints(length int, curve *curves.Curve) map[int]curves.Scalar {
+	points := make(map[int]curves.Scalar)
+	const MAX_X_AXIS int = 1000
+	const MAX_Y_AXIS int = 1000
+	for range length {
+		randomX := mrand.Intn(MAX_X_AXIS)
+		randomY := mrand.Intn(MAX_Y_AXIS)
+		randomYScalar := curve.Scalar.New(randomY)
+		points[randomX] = randomYScalar
+	}
+	return points
 }
 
 func generateRandomPolynomial(degree int, curve *curves.Curve) *Polynomial {
