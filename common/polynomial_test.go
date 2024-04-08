@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/rand"
+	"math"
 	mrand "math/rand"
 	"testing"
 
@@ -26,11 +27,61 @@ func TestPolyAddWithZero(test *testing.T) {
 }
 
 func TestNormalize(test *testing.T) {
+	curve := polyTestCurve()
 
+	// Generates a random polynomial with a random degree.
+	randomDegree := mrand.Intn(1000)
+	randomPoly := generateRandomPolynomial(randomDegree, curve)
+
+	// Copy the random polynomial.
+	newCoeffs := make([]curves.Scalar, randomPoly.Degree()+1)
+	copy(newCoeffs, randomPoly.Coefficients)
+
+	// Append zeros to the end.
+	nZeros := mrand.Intn(100)
+	for range nZeros {
+		newCoeffs = append(newCoeffs, curve.Scalar.Zero())
+	}
+
+	randomPolyWithZeros := NewPolynomial(newCoeffs, curve)
+	assert.True(test, randomPolyWithZeros.Equal(randomPoly))
 }
 
 func TestPolyAddRandom(test *testing.T) {
+	curve := polyTestCurve()
 
+	// Generates a random polynomial with a random degree.
+	randomDegree1 := mrand.Intn(1000)
+	randomDegree2 := mrand.Intn(1000)
+
+	randomPoly1 := generateRandomPolynomial(randomDegree1, curve)
+	randomPoly2 := generateRandomPolynomial(randomDegree2, curve)
+
+	smallestDegree := int(math.Min(float64(randomDegree1), float64(randomDegree2)))
+	highestDegree := int(math.Max(float64(randomDegree1), float64(randomDegree2)))
+
+	sumPoly, err := randomPoly1.Add(randomPoly2)
+	assert.Nil(test, err)
+
+	for i := range smallestDegree + 1 {
+		sumCoeff := randomPoly1.Coefficients[i].Add(
+			randomPoly2.Coefficients[i],
+		)
+
+		assert.Zero(test, sumPoly.Coefficients[i].Cmp(sumCoeff))
+	}
+
+	if randomDegree1 != randomDegree2 {
+		if randomDegree1 == highestDegree {
+			for i := smallestDegree + 1; i <= highestDegree; i++ {
+				assert.Zero(test, sumPoly.Coefficients[i].Cmp(randomPoly1.Coefficients[i]))
+			}
+		} else if randomDegree2 == highestDegree {
+			for i := smallestDegree + 1; i <= highestDegree; i++ {
+				assert.Zero(test, sumPoly.Coefficients[i].Cmp(randomPoly2.Coefficients[i]))
+			}
+		}
+	}
 }
 
 func TestPolyMulWithZero(test *testing.T) {
@@ -69,24 +120,83 @@ func TestPolyMulWithOne(test *testing.T) {
 	assert.True(test, mulPoly.Equal(randomPoly))
 }
 
-func TestPolyMul(test *testing.T) {
-
-}
-
 func TestPolyMulByConsWithZero(test *testing.T) {
+	curve := polyTestCurve()
 
+	// Generates a random polynomial with a random degree.
+	randomDegree := mrand.Intn(1000)
+	randomPoly := generateRandomPolynomial(randomDegree, curve)
+	zeroPoly := NewPolynomial([]curves.Scalar{curve.Scalar.Zero()}, curve)
+
+	mulPoly := randomPoly.MulByConst(curve.Scalar.Zero())
+
+	assert.True(test, mulPoly.Equal(zeroPoly))
 }
 
 func TestPolyMulByConsWithOne(test *testing.T) {
+	curve := polyTestCurve()
 
+	// Generates a random polynomial with a random degree.
+	randomDegree := mrand.Intn(1000)
+	randomPoly := generateRandomPolynomial(randomDegree, curve)
+
+	mulPoly := randomPoly.MulByConst(curve.Scalar.One())
+
+	assert.True(test, mulPoly.Equal(randomPoly))
 }
 
 func TestPolyMulByConsRandom(test *testing.T) {
+	curve := polyTestCurve()
 
+	// Generates a random polynomial with a random degree.
+	randomDegree := mrand.Intn(1000)
+	randomPoly := generateRandomPolynomial(randomDegree, curve)
+
+	randomConstant := curve.Scalar.Random(rand.Reader)
+
+	mulPoly := randomPoly.MulByConst(randomConstant)
+	for i, coeff := range mulPoly.Coefficients {
+		multiCoeff := randomConstant.Mul(randomPoly.Coefficients[i])
+		assert.Equal(test, 0, coeff.Cmp(multiCoeff))
+	}
 }
 
 func TestLagrangeBasis(test *testing.T) {
+	// Generate a random number of different random values.
+	const MAX_CAPACITY int = 100
+	const MAX_VALUE int = 1000
+	curve := polyTestCurve()
 
+	nXAxis := mrand.Intn(MAX_CAPACITY)
+	randomXAxis := make([]curves.Scalar, 0, nXAxis)
+	differentChecker := make(map[int]bool) // Stores the numbers created so far to avoid repeated occurrences.
+	for len(randomXAxis) < nXAxis {
+		randomElem := mrand.Intn(MAX_VALUE)
+		if !differentChecker[randomElem] {
+			differentChecker[randomElem] = true
+			scalarElem := curve.Scalar.New(randomElem)
+			randomXAxis = append(randomXAxis, scalarElem)
+		}
+	}
+
+	basisPolynomials := make([]*Polynomial, nXAxis)
+	for j := range nXAxis {
+		lagBasisPoly, err := lagrangeBasis(j, randomXAxis, curve)
+		assert.Nil(test, err)
+
+		basisPolynomials[j] = lagBasisPoly
+	}
+
+	for j, basisPoly := range basisPolynomials {
+		for i, xElement := range randomXAxis {
+			evaluation := basisPoly.Evaluate(xElement)
+			if i == j {
+				assert.Zero(test, evaluation.Cmp(curve.Scalar.One()))
+			} else {
+				assert.Zero(test, evaluation.Cmp(curve.Scalar.Zero()))
+			}
+		}
+	}
 }
 
 func generateRandomPolynomial(degree int, curve *curves.Curve) *Polynomial {
@@ -100,8 +210,4 @@ func generateRandomPolynomial(degree int, curve *curves.Curve) *Polynomial {
 
 func polyTestCurve() *curves.Curve {
 	return curves.K256()
-}
-
-func differentPolyTestCurves() (*curves.Curve, *curves.Curve) {
-	return curves.K256(), curves.ED25519()
 }

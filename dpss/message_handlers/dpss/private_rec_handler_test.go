@@ -1,6 +1,3 @@
-//go:build ignore_test
-// +build ignore_test
-
 package dpss
 
 import (

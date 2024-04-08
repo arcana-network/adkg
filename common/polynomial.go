@@ -138,7 +138,7 @@ func (p *Polynomial) MulByConst(constant curves.Scalar) *Polynomial {
 func lagrangeBasis(j int, xAxisValues []curves.Scalar, curve *curves.Curve) (*Polynomial, error) {
 	xj := xAxisValues[j]
 	lagrangeBasisPoly := NewPolynomial(
-		[]curves.Scalar{curve.Scalar.Zero()},
+		[]curves.Scalar{curve.Scalar.One()},
 		curve,
 	)
 
@@ -159,8 +159,8 @@ func lagrangeBasis(j int, xAxisValues []curves.Scalar, curve *curves.Curve) (*Po
 			return nil, err
 		}
 
-		coeffsLinearPoly[0] = denomInverted
-		coeffsLinearPoly[1] = xm.Neg().Mul(denomInverted)
+		coeffsLinearPoly[1] = denomInverted
+		coeffsLinearPoly[0] = xm.Neg().Mul(denomInverted)
 		linearPolynomial := NewPolynomial(coeffsLinearPoly, curve)
 
 		lagrangeBasisPoly, err = lagrangeBasisPoly.Mul(linearPolynomial)
