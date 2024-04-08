@@ -110,8 +110,8 @@ func lagrangeBasis(j int, xAxisValues []curves.Scalar, curve *curves.Curve) (*Po
 			return nil, err
 		}
 
-		coeffsLinearPoly[1] = denomInverted
-		coeffsLinearPoly[2] = xm.Neg().Mul(denomInverted)
+		coeffsLinearPoly[0] = denomInverted
+		coeffsLinearPoly[1] = xm.Neg().Mul(denomInverted)
 		linearPolynomial := NewPolynomial(coeffsLinearPoly, curve)
 
 		lagrangeBasisPoly, err = lagrangeBasisPoly.Mul(linearPolynomial)
@@ -159,4 +159,23 @@ func InterpolatePolynomial(points map[int]curves.Scalar, curve *curves.Curve) (*
 	}
 
 	return interPolinomial, nil
+}
+
+// Evaluate evaluates the polynomial at the given point
+func (p *Polynomial) Evaluate(x curves.Scalar) curves.Scalar {
+	curve := p.Curve
+	result := curve.Scalar.Zero()
+	power := curve.Scalar.One()
+
+	// Iterate over the coefficients and compute the polynomial value
+	for _, coeff := range p.Coefficients {
+		// Add the product of the coefficient and the current power of x to the result
+		term := coeff.Mul(power)
+		result = result.Add(term)
+
+		// Update the power of x for the next iteration
+		power = power.Mul(x)
+	}
+
+	return result
 }

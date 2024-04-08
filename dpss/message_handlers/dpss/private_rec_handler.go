@@ -118,5 +118,68 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 
 		// If they coincide, send u_i to the respective party.
 
+		UStore := recState.UStore
+
+		tPlus1Share := make(map[int]curves.Scalar)
+		remainingShare := make(map[int]curves.Scalar)
+
+		count := 0
+		for key, value := range UStore {
+			if count < t+1 {
+				tPlus1Share[key] = value
+				count++
+			} else {
+				remainingShare[key] = value
+			}
+		}
+		curve := curves.K256()
+		interpolatePloy, err := common.InterpolatePolynomial(tPlus1Share, curve)
+
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "Error trying to interpolate ploynomial with t+1 shares",
+				},
+			).Error("PrivateRecMsg: Process")
+			return
+		}
+
+		for key, value := range remainingShare {
+
+			keyScalar := curve.Scalar.New(key)
+			evaluationResult := interpolatePloy.Evaluate(keyScalar)
+
+			// If the result don't coincide return error
+			if evaluationResult != value {
+				log.WithFields(
+					log.Fields{
+						"Message": "shares does not coincide on the interpolationg polynomail",
+					},
+				)
+				return
+			}
+		}
+
+		// all the shares lie on the point therefore send the respective u_i's to the respective parties
+		for _, n := range self.Nodes(self.IsNewNode()) {
+
+			share := UStore[n.Index]
+			PublicReconstructMsg, err := NewPublicRecMsg(msg.DPSSBatchRecDetails, msg.curveName, share.Bytes())
+
+			if err != nil {
+				log.WithFields(
+					log.Fields{
+						"Error":   err,
+						"Message": "Error constructiong Public Reconstruction msg",
+					},
+				).Error("PrivateRecMsg: Process")
+				return
+			}
+
+			go self.Send(n, *PublicReconstructMsg)
+
+		}
+
 	}
 }
