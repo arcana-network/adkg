@@ -64,6 +64,7 @@ func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 
 func (node *PssTestNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	log.Debugf("-----sending: from=%d, to=%d", node.Details().Index, n.Index)
+	node.Transport.MsgSentSignal <- struct{}{}
 	node.Transport.Send(node.Details(), n, msg)
 	return nil
 }
@@ -78,9 +79,9 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 
 // only register a message was received, no further action
 func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage common.PSSMessage) {
-	node.Transport.Mu.Lock()
+	node.Transport.Lock()
 	node.Transport.ReceivedMessages = append(node.Transport.ReceivedMessages, pssMessage)
-	node.Transport.Mu.Unlock()
+	node.Transport.Unlock()
 	// Signal that a msg was received
 	node.Transport.MsgReceivedSignal <- struct{}{}
 }

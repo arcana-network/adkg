@@ -47,15 +47,15 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	defer self.State().BatchReconStore.Unlock()
 
 	// Deserialize the share.
-	var share curves.Scalar
-	err := bijson.Unmarshal(msg.UShare, share)
+	curve := common.CurveFromName(msg.curveName)
+	share, err := curve.Scalar.SetBytes(msg.UShare)
 	if err != nil {
 		log.WithFields(
 			log.Fields{
 				"Error":   err,
-				"Message": "Error while unmarshalling the u_i share",
+				"Message": "Error while converting the share from bytes to scalar",
 			},
-		).Error("PrivateRecMsg: Process")
+		)
 		return
 	}
 
@@ -93,48 +93,29 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	countU := recState.CountReceivedU()
 	_, _, t := self.Params()
 	if countU >= 2*t+1 {
-		// Separates the shares that will be used to construct the polynomial
-		// from the shares that will be used to confirm the correctness of the
-		// polynomial.
-		interpolationShares := make(map[int]curves.Scalar) // Shares to construct the polynomial.
-		confirmationShares := make(map[int]curves.Scalar)  // Shares to confirm that the polynomial is correct.
-		counter := 0
-		for idx, share := range recState.UStore {
-			counter++
-			if counter <= t+1 {
-				interpolationShares[idx] = share
-			} else if counter <= 2*t+1 {
-				confirmationShares[idx] = share
-			} else {
-				break
-			}
-		}
-
-		// Take the first t + 1 shares and interpolates the polynomial
-
-		// Evaluate all the points in the polinomial and see if they coincide
-
-		// If they don't coincide return error
-
-		// If they coincide, send u_i to the respective party.
 
 		UStore := recState.UStore
 
+		// Separates the shares that will be used to construct the polynomial
+		// from the shares that will be used to confirm the correctness of the
+		// polynomial.
 		tPlus1Share := make(map[int]curves.Scalar)
 		remainingShare := make(map[int]curves.Scalar)
 
+		// Take the first t + 1 shares and interpolate the polynomial
 		count := 0
 		for key, value := range UStore {
 			if count < t+1 {
 				tPlus1Share[key] = value
-				count++
-			} else {
+			} else if count < 2*t+1 {
 				remainingShare[key] = value
+			} else {
+				break
 			}
+			count++
 		}
-		curve := curves.K256()
-		interpolatePloy, err := common.InterpolatePolynomial(tPlus1Share, curve)
 
+		interpolatePoly, err := common.InterpolatePolynomial(tPlus1Share, curve)
 		if err != nil {
 			log.WithFields(
 				log.Fields{
@@ -145,27 +126,26 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			return
 		}
 
+		// Evaluate all the points in the polinomial and see if they coincide
 		for key, value := range remainingShare {
-
 			keyScalar := curve.Scalar.New(key)
-			evaluationResult := interpolatePloy.Evaluate(keyScalar)
+			evaluationResult := interpolatePoly.Evaluate(keyScalar)
 
-			// If the result don't coincide return error
-			if evaluationResult != value {
+			// If the evaluation doesn't coincide return error
+			if evaluationResult.Cmp(value) != 0 {
 				log.WithFields(
 					log.Fields{
-						"Message": "shares does not coincide on the interpolationg polynomail",
+						"Message": "shares does not coincide on the interpolationg polynomial",
 					},
-				)
+				).Error("PrivateRecMsg: Process")
 				return
 			}
 		}
 
-		// all the shares lie on the point therefore send the respective u_i's to the respective parties
+		// If they coincide, send u_i to the all the parties party.
+		reconstructedU := interpolatePoly.Coefficients[0]
 		for _, n := range self.Nodes(self.IsNewNode()) {
-
-			share := UStore[n.Index]
-			PublicReconstructMsg, err := NewPublicRecMsg(msg.DPSSBatchRecDetails, msg.curveName, share.Bytes())
+			publicReconstructMsg, err := NewPublicRecMsg(msg.DPSSBatchRecDetails, msg.curveName, reconstructedU.Bytes())
 
 			if err != nil {
 				log.WithFields(
@@ -177,7 +157,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 				return
 			}
 
-			go self.Send(n, *PublicReconstructMsg)
+			go self.Send(n, *publicReconstructMsg)
 
 		}
 

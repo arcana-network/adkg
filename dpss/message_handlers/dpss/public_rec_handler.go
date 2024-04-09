@@ -39,3 +39,7 @@ func NewPublicRecMsg(
 
 	return &pssMessage, nil
 }
+
+// TODO: Implement.
+func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
+}

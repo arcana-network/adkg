@@ -134,11 +134,7 @@ func (setup *TestSetup) GetXOldCommitteeNodes(x int) []*PssTestNode {
 
 // Returns all nodes in the old committee for a given test setup.
 func (setup *TestSetup) GetAllOldNodesFromTestSetup() []*PssTestNode {
-
-	nodes := make([]*PssTestNode, 0)
-	nodes = append(nodes, setup.newCommitteeNetwork...)
-
-	return nodes
+	return setup.oldCommitteeNetwork
 }
 
 func (setup *TestSetup) GetAllNewNodesFromTestSetup() []*PssTestNode {
