@@ -21,7 +21,7 @@ func TestDacss(t *testing.T) {
 	log.SetLevel(log.InfoLevel)
 
 	//default setup and mock transport
-	TestSetUp, _ := DefaultTestSetup()
+	TestSetUp, _ := DacssIntegrationTestSetup()
 
 	nodesOld := TestSetUp.oldCommitteeNetwork
 	nodesNew := TestSetUp.newCommitteeNetwork
@@ -41,7 +41,7 @@ func TestDacss(t *testing.T) {
 	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
 	// and shared to both old & new committee
 	for index, n := range nodesOld {
-		go func(index int, node *PssTestNode2) {
+		go func(index int, node *testutils.IntegrationTestNode) {
 			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
 			share := sharing.ShamirShare{Id: shares[index].Id, Value: shares[index].Value}
 			initMsg := getTestInitMsgSingleShare(n, *big.NewInt(int64(index)), &share, ephemeralKeypair, TestSetUp.NewCommitteeParams)
@@ -138,7 +138,7 @@ func TestDacss(t *testing.T) {
 	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 }
 
-func getTestInitMsgSingleShare(testDealer *PssTestNode2, pssRoundIndex big.Int, share *sharing.ShamirShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
+func getTestInitMsgSingleShare(testDealer *testutils.IntegrationTestNode, pssRoundIndex big.Int, share *sharing.ShamirShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
 	roundDetails := common.PSSRoundDetails{
 		PssID:  common.NewPssID(pssRoundIndex),
 		Dealer: testDealer.Details(),

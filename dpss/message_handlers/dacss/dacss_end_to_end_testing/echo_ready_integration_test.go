@@ -15,7 +15,7 @@ import (
 
 func TestEchoReadyInteraction(test *testing.T) {
 	log.SetLevel(log.DebugLevel)
-	setup, transport := DefaultTestSetup()
+	setup, transport := DacssIntegrationTestSetup()
 	completeCommittee := setup.oldCommitteeNetwork
 
 	log.Debugf(

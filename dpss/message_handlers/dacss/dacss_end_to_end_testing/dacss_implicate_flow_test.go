@@ -30,7 +30,7 @@ Expected outcome:
 func TestTriggerImplicateFlow(t *testing.T) {
 	log.SetLevel(log.InfoLevel)
 
-	testSetUp, _ := DefaultTestSetup()
+	testSetUp, _ := DacssIntegrationTestSetup()
 	nNew := testSetUp.NewCommitteeParams.N
 	kNew := testSetUp.NewCommitteeParams.K
 	// Dealer is a single node from Old committee
@@ -89,7 +89,7 @@ func TestTriggerImplicateFlow(t *testing.T) {
 
 	// Send the ProposeMsg to each node in new committee
 	for _, node := range testSetUp.newCommitteeNetwork {
-		go func(node *PssTestNode2) {
+		go func(node *testutils.IntegrationTestNode) {
 			msg.Process(dealer.Details(), node)
 		}(node)
 	}
