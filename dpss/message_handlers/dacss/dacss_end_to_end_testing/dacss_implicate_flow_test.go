@@ -59,12 +59,13 @@ func TestTriggerImplicateFlow(t *testing.T) {
 
 	// Corrupting the shareMap, 3 nodes will get the same encrypted shares
 	// This will trigger the Implicate flow for 2 of those 3 nodes
-	pubkey1Hex, err := testSetUp.newCommitteeNetwork[0].Details().ToHexString(testutils.TestCurveName())
+	pubkey1Hex, err := testSetUp.NewCommitteeNetwork[0].Details().ToHexString(testutils.TestCurveName())
 	if err != nil {
 		t.Fatal(err)
 	}
-	pubkey2Hex, _ := testSetUp.newCommitteeNetwork[1].Details().ToHexString(testutils.TestCurveName())
-	pubkey3Hex, _ := testSetUp.newCommitteeNetwork[2].Details().ToHexString(testutils.TestCurveName())
+
+	pubkey2Hex, _ := testSetUp.NewCommitteeNetwork[1].Details().ToHexString(testutils.TestCurveName())
+	pubkey3Hex, _ := testSetUp.NewCommitteeNetwork[2].Details().ToHexString(testutils.TestCurveName())
 
 	shareNode0 := shareMap[pubkey1Hex]
 	// Node 2 & 3 will have to recover their share with help of the other nodes
@@ -88,7 +89,7 @@ func TestTriggerImplicateFlow(t *testing.T) {
 	}
 
 	// Send the ProposeMsg to each node in new committee
-	for _, node := range testSetUp.newCommitteeNetwork {
+	for _, node := range testSetUp.NewCommitteeNetwork {
 		go func(node *testutils.IntegrationTestNode) {
 			msg.Process(dealer.Details(), node)
 		}(node)
@@ -97,7 +98,7 @@ func TestTriggerImplicateFlow(t *testing.T) {
 	time.Sleep(15 * time.Second)
 
 	var receivedShares []*sharing.ShamirShare
-	for _, n := range testSetUp.newCommitteeNetwork {
+	for _, n := range testSetUp.NewCommitteeNetwork {
 
 		state, _, err := n.State().AcssStore.Get(acssRoundDetails.ToACSSRoundID())
 		assert.Nil(t, err)

@@ -7,6 +7,10 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
+// Definition of a testNode meant for Integration testing
+// In particular, this has a transport layer that is used to send messages between nodes
+// additionally, it has a ProcessMessagesInterface to easily switch between definitions
+// of how to process msgs
 type IntegrationTestNode struct {
 	PssTestNode
 	NewTransport             *IntegrationMockTransport
@@ -22,6 +26,8 @@ func (n *IntegrationTestNode) Transport() *IntegrationMockTransport {
 	return n.NewTransport
 }
 
+// Transport layer for Integration testing. Messages should be passed on, in addition to being stored
+// what precise messages are passed on is defined in the functionality of ProcessMessagesInterface
 type IntegrationMockTransport struct {
 	nodesOld            []*IntegrationTestNode
 	nodesNew            []*IntegrationTestNode
@@ -31,7 +37,7 @@ type IntegrationMockTransport struct {
 	ReceivedMessages    []common.PSSMessage
 }
 
-func NewMockTransport(nodesOld, nodesNew []*IntegrationTestNode) *IntegrationMockTransport {
+func NewIntegrationMockTransport(nodesOld, nodesNew []*IntegrationTestNode) *IntegrationMockTransport {
 	return &IntegrationMockTransport{nodesOld: nodesOld, nodesNew: nodesNew, output: make(chan string, 100)}
 }
 
@@ -40,6 +46,7 @@ func (transport *IntegrationMockTransport) Init(nodesOld, nodesNew []*Integratio
 	transport.nodesNew = nodesNew
 }
 
+// Obtain public key for node with given index, from given committee
 func (n *IntegrationTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
 	nodes := n.Nodes(fromNewCommittee)
 	for _, n := range nodes {
@@ -54,6 +61,7 @@ func (n *IntegrationTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) cu
 	return nil
 }
 
+// Returns nodes from the given committee that are stored in the transport for this testNode
 func (n *IntegrationTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	var selectedNodes []*IntegrationTestNode
 	if fromNewCommittee {
@@ -70,6 +78,7 @@ func (n *IntegrationTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetail
 	return nodes
 }
 
+// Returns a new IntegrationTestNode
 func NewIntegrationTestNode(index int, keypair common.KeyPair, transport *IntegrationMockTransport, isFaulty, isNewCommittee bool, processMessagesInterface ProcessMessagesInterface) *IntegrationTestNode {
 	pssTestNode := NewEmptyNode(index, keypair, nil, isFaulty, isNewCommittee)
 	node := IntegrationTestNode{
@@ -82,6 +91,7 @@ func NewIntegrationTestNode(index int, keypair common.KeyPair, transport *Integr
 	return &node
 }
 
+// Message is stored in ReceivedMessages and passed on to the ProcessMessagesInterface
 func (node *IntegrationTestNode) ReceiveMessage(sender common.NodeDetails, PssMessage common.PSSMessage) {
 	node.NewTransport.ReceivedMessages = append(node.NewTransport.ReceivedMessages, PssMessage) // Save the message
 	node.MessageCount = node.MessageCount + 1
@@ -147,7 +157,9 @@ type MessageProcessor interface {
 	Process(sender common.NodeDetails, node common.PSSParticipant)
 }
 
-func ProcessDACSSMessage[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
+// General function to process messages of a given type:
+// does the unmarshalling and calls the Process function of the message
+func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
 	log.Debugf("Got %s", messageType)
 	var msg T
 	err := bijson.Unmarshal(data, &msg)

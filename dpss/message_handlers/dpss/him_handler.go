@@ -108,7 +108,7 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 	rValues := globalRandomR[:numShares]
 	rValuesBytes := sharing.CompressScalars(rValues)
 
-	reconstructionMsg, err := NewPssBatchReconstructionMessage(
+	reconstructionMsg, err := NewPreprocessBatchReconstructionMessage(
 		msg.PSSRoundDetails,
 		rValuesBytes,
 		msg.CurveName,

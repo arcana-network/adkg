@@ -10,7 +10,7 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var PreprocessBatchRecMessageType string = "batchreconstruction_preprocess"
+var PreprocessBatchRecMessageType string = "dpss_batchreconstruction_preprocess"
 
 type PreprocessBatchRecMessage struct {
 	PSSRoundDetails common.PSSRoundDetails // Details of the PSS instance.

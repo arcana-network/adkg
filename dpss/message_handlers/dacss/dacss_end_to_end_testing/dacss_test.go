@@ -23,8 +23,8 @@ func TestDacss(t *testing.T) {
 	//default setup and mock transport
 	TestSetUp, _ := DacssIntegrationTestSetup()
 
-	nodesOld := TestSetUp.oldCommitteeNetwork
-	nodesNew := TestSetUp.newCommitteeNetwork
+	nodesOld := TestSetUp.OldCommitteeNetwork
+	nodesNew := TestSetUp.NewCommitteeNetwork
 
 	nOld := TestSetUp.OldCommitteeParams.N
 	kOld := TestSetUp.OldCommitteeParams.K
