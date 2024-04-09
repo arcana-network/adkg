@@ -31,7 +31,7 @@ func TestStartDualAcss(t *testing.T) {
 	oldParams := defaultSetup.OldCommitteeParams
 	newParams := defaultSetup.NewCommitteeParams
 	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
-	transport := testDealer.Transport
+	transport := testDealer.Transport()
 
 	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
 
@@ -132,7 +132,7 @@ func TestNodeInNewCommittee(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	// Node is NOT in old committee (as it should be)
 	nodeNewCommittee := defaultSetup.GetSingleNewNodeFromTestSetup()
-	transport := nodeNewCommittee.Transport
+	transport := nodeNewCommittee.Transport()
 
 	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
 
@@ -159,7 +159,7 @@ Expectations:
 func TestSenderNotSelf(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	oldNode1, oldNode2 := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := oldNode1.Transport
+	transport := oldNode1.Transport()
 
 	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
 

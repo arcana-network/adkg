@@ -26,7 +26,7 @@ func TestProcessProposeMessage(t *testing.T) {
 	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
 	singleNewNode := defaultSetup.GetSingleNewNodeFromTestSetup()
 
-	transport := SingleOldNode.Transport
+	transport := SingleOldNode.Transport()
 
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
@@ -65,7 +65,7 @@ func TestInvalidShare(t *testing.T) {
 
 	//invalid msg construction
 	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
-	transport := SingleOldNode.Transport
+	transport := SingleOldNode.Transport()
 
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
@@ -107,7 +107,7 @@ func TestSenderNotEqualToDealer(t *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
 	node0, node1 := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := node1.Transport
+	transport := node1.Transport()
 	msgOldCommittee := getTestValidProposeMsg(node0, defaultSetup, false)
 
 	// Call the process on the msg
@@ -128,7 +128,7 @@ func TestShareAlreadyReceived(t *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
 	node0, node1 := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := node0.Transport
+	transport := node0.Transport()
 	msgOldCommittee := getTestValidProposeMsg(node0, defaultSetup, false)
 
 	// The node already received the shares, and thus stored the acssDataHash
@@ -161,7 +161,7 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	defaultSetup := testutils.DefaultTestSetup()
 	node0, node1, node2 := defaultSetup.GetThreeOldNodesFromTestSetup()
-	transport := node0.Transport
+	transport := node0.Transport()
 	msgOldCommittee := getTestValidProposeMsg(node0, defaultSetup, false)
 
 	curveName := msgOldCommittee.CurveName

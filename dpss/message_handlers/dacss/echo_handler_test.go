@@ -27,7 +27,7 @@ func TestIncrement(test *testing.T) {
 	// Setup the parties
 	defaultSetup := testutils.DefaultTestSetup()
 	testSender, testRecvr := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := testRecvr.Transport
+	transport := testRecvr.Transport()
 
 	// Set the round parameters
 	id := big.NewInt(1)
@@ -113,7 +113,7 @@ func TestCounterDoesNotIncrement(test *testing.T) {
 	// Setup the parties
 	defaultSetup := testutils.DefaultTestSetup()
 	testSender, testRecvr := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := testRecvr.Transport
+	transport := testRecvr.Transport()
 
 	// Set the round parameters
 	id := big.NewInt(1)
@@ -211,7 +211,7 @@ func TestCounterEchoMessages(test *testing.T) {
 	const oldCommittee = true
 	defaultSetup := testutils.DefaultTestSetup()
 	receiverNode, senderGroup := defaultSetup.GetDealerAnd2kPlusOneNodes(oldCommittee)
-	transport := receiverNode.Transport
+	transport := receiverNode.Transport()
 
 	// The dealer node will be the first node in the set of 2k + 1 nodes.
 	dealerNode := senderGroup[0]
@@ -306,7 +306,7 @@ func TestNotSendIfReadyMessageAlreadySent(test *testing.T) {
 	const oldCommittee = true
 	defaultSetup := testutils.DefaultTestSetup()
 	receiverNode, senderGroup := defaultSetup.GetDealerAnd2kPlusOneNodes(oldCommittee)
-	transport := receiverNode.Transport
+	transport := receiverNode.Transport()
 
 	// The dealer node will be the first node in the set of 2k + 1 nodes.
 	dealerNode := senderGroup[0]

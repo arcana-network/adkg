@@ -27,7 +27,7 @@ func TestProcessInitMessage(test *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
 	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
-	transport := testDealer.Transport
+	transport := testDealer.Transport()
 
 	n, k, _ := testDealer.Params()
 
@@ -89,7 +89,7 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 
 	defaultSetup := testutils.DefaultTestSetup()
 	testDealer := defaultSetup.GetSingleNewNodeFromTestSetup()
-	transport := testDealer.Transport
+	transport := testDealer.Transport()
 
 	n, k, _ := testDealer.Params()
 	ephemeralKey := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))

@@ -85,7 +85,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 
 	// In this part we don't actually check whether the Predicate indeed fails, that happens in the ImplicateExecute
 	// Check 1: the node itself receives the implicateExecuteMessage
-	receivedMsgNode1 := node1.Transport.ReceivedMessages
+	receivedMsgNode1 := node1.Transport().ReceivedMessages
 	assert.Equal(t, 1, len(receivedMsgNode1))
 	assert.Equal(t, ImplicateExecuteMessageType, receivedMsgNode1[0].Type)
 
@@ -122,7 +122,7 @@ func TestDoesntHaveShareMap(t *testing.T) {
 	// Check 1: no ImplicateExecute message is sent
 	implicateMsg.Process(node2.Details(), node1)
 	time.Sleep(100 * time.Millisecond)
-	receivedMsgNode1 := node1.Transport.ReceivedMessages
+	receivedMsgNode1 := node1.Transport().ReceivedMessages
 	assert.Equal(t, 0, len(receivedMsgNode1))
 
 	// Check 2: ImplicateInformation is added to Node's state
@@ -161,7 +161,7 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	// Check 1: no ImplicateExecute message is sent
 	implicateMsg.Process(node2.Details(), node1)
 	time.Sleep(100 * time.Millisecond)
-	receivedMsgNode1 := node1.Transport.ReceivedMessages
+	receivedMsgNode1 := node1.Transport().ReceivedMessages
 	assert.Equal(t, 0, len(receivedMsgNode1))
 
 	// Check 2: *NO* ImplicateInformation is added to Node's state

@@ -47,7 +47,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 		ACSSCount:       1,
 	}
 
-	ephemeralKeypairDealer := common.GenerateKeyPair(TestCurve())
+	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 
 	shards, hashMsg, err := testutils.CreateShardAndHash(
 		dealerNode,
@@ -74,7 +74,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 			acssRoundDetails,
 			shardReceiver,
 			hashMsg,
-			common.CurveName(TestCurve().Name),
+			common.CurveName(testutils.TestCurveName()),
 		)
 		if err != nil {
 			test.Errorf("error creating the ECHO message: %v", err)
@@ -106,7 +106,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 		acssRoundDetails,
 		shardReceiver,
 		hashMsg,
-		common.CurveName(TestCurve().Name),
+		common.CurveName(testutils.TestCurveName()),
 		receiverNode.IsNewNode(),
 	)
 	if err != nil {
@@ -133,7 +133,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 	echoMsgTemp := dacss.DacssEchoMessage{
 		ACSSRoundDetails: acssRoundDetails,
 		Kind:             dacss.DacssEchoMessageType,
-		CurveName:        common.CurveName(TestCurve().Name),
+		CurveName:        common.CurveName(testutils.TestCurveName()),
 		Share:            shardReceiver,
 		Hash:             hashMsg,
 	}

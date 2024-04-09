@@ -49,7 +49,7 @@ func TestRBCAlreadyEnded(test *testing.T) {
 	correctMessage.Process(testNode.Details(), testNode)
 	time.Sleep(2 * time.Second)
 
-	broadcastedMsgs := testNode.Transport.BroadcastedMessages
+	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	assert.Zero(test, len(broadcastedMsgs))
 }
 
@@ -93,7 +93,7 @@ func TestNotVerifiedCorrectly(test *testing.T) {
 
 	assert.NotEqual(test, stateNode.RBCState.Phase, common.Ended)
 
-	broadcastedMsgs := testNode.Transport.BroadcastedMessages
+	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	assert.Zero(test, len(broadcastedMsgs))
 
 	assert.False(test, stateNode.CommitmentSent)
@@ -129,7 +129,7 @@ func TestCommitmentMessageAlreadySent(test *testing.T) {
 	correctMessage.Process(testNode.Details(), testNode)
 	time.Sleep(2 * time.Second)
 
-	broadcastedMsgs := testNode.Transport.BroadcastedMessages
+	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	assert.Zero(test, len(broadcastedMsgs))
 }
 
@@ -161,7 +161,7 @@ func TestCommitmentMessageSentTwice(test *testing.T) {
 	correctMessage.Process(testNode.Details(), testNode)
 	time.Sleep(2 * time.Second)
 
-	broadcastedMsgs := testNode.Transport.BroadcastedMessages
+	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	stateNode, found, err := testNode.State().AcssStore.Get(
 		correctMessage.AcssRoundDetails.ToACSSRoundID(),
 	)
@@ -198,7 +198,7 @@ func TestOutputHappyPath(test *testing.T) {
 	correctMessage.Process(testNode.Details(), testNode)
 	time.Sleep(2 * time.Second)
 
-	broadcastedMsgs := testNode.Transport.BroadcastedMessages
+	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	stateNode, found, err := testNode.State().AcssStore.Get(
 		correctMessage.AcssRoundDetails.ToACSSRoundID(),
 	)

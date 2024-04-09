@@ -56,7 +56,7 @@ func TestDacss(t *testing.T) {
 			}
 
 			//store the init msg for testing
-			initMessages.Store(node.details.GetNodeDetailsID(), initMsg)
+			initMessages.Store(node.Details().GetNodeDetailsID(), initMsg)
 
 			node.ReceiveMessage(node.Details(), InitPssMessage)
 		}(index, n)
@@ -66,7 +66,7 @@ func TestDacss(t *testing.T) {
 
 	// round details for oldNode0 being the dealer
 	//since only one secret is shared, the ACSSCount = 0
-	retrievedMsg, found := initMessages.Load(nodesOld[0].details.GetNodeDetailsID())
+	retrievedMsg, found := initMessages.Load(nodesOld[0].Details().GetNodeDetailsID())
 	if !found {
 		log.WithFields(
 			log.Fields{

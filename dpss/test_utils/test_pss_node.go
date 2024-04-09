@@ -19,11 +19,15 @@ type PssTestNode struct {
 	LongtermKey common.KeyPair // NOTE this key must coincide with the pubkey in the details
 	isFaulty    bool
 
-	Transport *NoSendMockTransport
+	transport *NoSendMockTransport
 
 	//shares of old/new committee
 	//false: old, true: new
 	shares map[bool]map[int64]*big.Int
+}
+
+func (n *PssTestNode) Transport() *NoSendMockTransport {
+	return n.transport
 }
 
 func (n *PssTestNode) State() *common.PSSNodeState {
@@ -59,13 +63,13 @@ func (node *PssTestNode) Params() (n int, k int, t int) {
 }
 
 func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
-	node.Transport.Broadcast(node.Details(), msg)
+	node.transport.Broadcast(node.Details(), msg)
 }
 
 func (node *PssTestNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	log.Debugf("-----sending: from=%d, to=%d", node.Details().Index, n.Index)
-	node.Transport.MsgSentSignal <- struct{}{}
-	node.Transport.Send(node.Details(), n, msg)
+	node.transport.MsgSentSignal <- struct{}{}
+	node.transport.Send(node.Details(), n, msg)
 	return nil
 }
 
@@ -79,19 +83,19 @@ func (n *PssTestNode) PrivateKey() curves.Scalar {
 
 // only register a message was received, no further action
 func (node *PssTestNode) ReceiveMessage(sender common.NodeDetails, pssMessage common.PSSMessage) {
-	node.Transport.Lock()
-	node.Transport.ReceivedMessages = append(node.Transport.ReceivedMessages, pssMessage)
-	node.Transport.Unlock()
+	node.transport.Lock()
+	node.transport.ReceivedMessages = append(node.transport.ReceivedMessages, pssMessage)
+	node.transport.Unlock()
 	// Signal that a msg was received
-	node.Transport.MsgReceivedSignal <- struct{}{}
+	node.transport.MsgReceivedSignal <- struct{}{}
 }
 
 func (n *PssTestNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	var selectedNodes []*PssTestNode
 	if fromNewCommittee {
-		selectedNodes = n.Transport.nodesNew
+		selectedNodes = n.Transport().nodesNew
 	} else {
-		selectedNodes = n.Transport.nodesOld
+		selectedNodes = n.Transport().nodesOld
 	}
 
 	nodes := make(map[common.NodeDetailsID]common.NodeDetails, len(selectedNodes))
@@ -118,7 +122,7 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 			ShareStore:      &common.PSSShareStore{},
 			BatchReconStore: &common.BatchRecStoreMap{},
 		},
-		Transport:   noSendTransport,
+		transport:   noSendTransport,
 		LongtermKey: keypair,
 		isFaulty:    isFaulty,
 

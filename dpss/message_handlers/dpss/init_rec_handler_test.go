@@ -35,7 +35,7 @@ func TestInitRec(test *testing.T) {
 	assert.Equal(
 		test,
 		n,
-		len(receiverNode.Transport.GetSentMessages()),
+		len(receiverNode.Transport().GetSentMessages()),
 	)
 }
 

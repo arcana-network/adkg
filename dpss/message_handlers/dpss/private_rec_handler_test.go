@@ -35,9 +35,9 @@ func TestPrivateRecHandlerProcess(t *testing.T) {
 
 	// Wait for all the expected messages to be received
 	nOld := defaultSetup.OldCommitteeParams.N
-	senderNode.Transport.WaitForMessagesSent(nOld)
+	senderNode.Transport().WaitForMessagesSent(nOld)
 
-	assert.Equal(t, nOld, len(senderNode.Transport.GetSentMessages()))
+	assert.Equal(t, nOld, len(senderNode.Transport().GetSentMessages()))
 }
 
 // tests if the shares does not lie on the interpolatng polynomial then early return is triggred
@@ -66,7 +66,7 @@ func TestInvalidShare(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	//No msg is send
-	assert.Equal(t, 0, len(senderNode.Transport.GetSentMessages()))
+	assert.Equal(t, 0, len(senderNode.Transport().GetSentMessages()))
 
 }
 
@@ -105,7 +105,7 @@ func TestNotEnoughShare(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	//No msg is send
-	assert.Equal(t, 0, len(senderNode.Transport.GetSentMessages()))
+	assert.Equal(t, 0, len(senderNode.Transport().GetSentMessages()))
 }
 
 func getDPSSBatchRecDetails(senderNode *testutils.PssTestNode) *common.DPSSBatchRecDetails {

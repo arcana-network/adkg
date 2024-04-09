@@ -30,7 +30,7 @@ func TestHappyPathHIM(test *testing.T) {
 	// Setup the parties
 	defaultSetup := testutils.DefaultTestSetup()
 	testNode, dealerNode := defaultSetup.GetTwoOldNodesFromTestSetup()
-	transport := testNode.Transport
+	transport := testNode.Transport()
 
 	n, k, t := testNode.Params()
 

@@ -50,7 +50,7 @@ func TestSendReceiveShareRecoveryMsg(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Check 1: ReceiveShareRecoveryMessage was sent to all other nodes from committee
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 7, len(sentMsgs))
 
 	// Check 2: shareRecoveryOngoing set to true
@@ -75,7 +75,7 @@ func TestSenderNotSelfShareRecovery(t *testing.T) {
 	shareRecoveryMessage.Process(node2.Details(), node1)
 	time.Sleep(100 * time.Millisecond)
 	// Check 1: No message was sent
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
 
 	// Check 2: shareRecoveryOngoing not set to true
@@ -149,7 +149,7 @@ func TestNoAcssDataInState(t *testing.T) {
 	shareRecoveryMessage.Process(node1.Details(), node1)
 	time.Sleep(100 * time.Millisecond)
 	// Check 1: No message was sent
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
 
 	// Check 2: acssState still not existing
@@ -179,7 +179,7 @@ func TestAcssDataHashLenZero(t *testing.T) {
 	assert.True(t, acssState.ShareRecoveryOngoing)
 
 	// Check 2: No message was sent
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
 }
 
@@ -200,7 +200,7 @@ func TestShareRecoveryAlreadyTrue(t *testing.T) {
 	shareRecoveryMessage.Process(node1.Details(), node1)
 	time.Sleep(100 * time.Millisecond)
 	// Check No message was sent
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
 }
 
@@ -226,7 +226,7 @@ func TestValidShareOutputFalse(t *testing.T) {
 	assert.True(t, acssState.ShareRecoveryOngoing)
 
 	// Check 2: No message was sent
-	sentMsgs := node1.Transport.GetSentMessages()
+	sentMsgs := node1.Transport().GetSentMessages()
 	assert.Equal(t, 0, len(sentMsgs))
 }
 

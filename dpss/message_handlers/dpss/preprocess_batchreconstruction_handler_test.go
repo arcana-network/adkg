@@ -63,9 +63,9 @@ func TestProcessPreprocessBatchRecMessage(t *testing.T) {
 			testMsg.Process(testNode.Details(), testNode)
 
 			// Wait for all the expected messages to be received
-			testNode.Transport.WaitForMessagesReceived(tc.nr_batches_minus_1 + 1)
+			testNode.Transport().WaitForMessagesReceived(tc.nr_batches_minus_1 + 1)
 
-			assert.Equal(t, tc.nr_batches_minus_1+1, len(testNode.Transport.ReceivedMessages))
+			assert.Equal(t, tc.nr_batches_minus_1+1, len(testNode.Transport().ReceivedMessages))
 		})
 	}
 }

@@ -61,7 +61,7 @@ func TestProcessReadyMessage(test *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	broadcastedMsg := receiverNode.Transport.BroadcastedMessages
+	broadcastedMsg := receiverNode.Transport().BroadcastedMessages
 
 	// There should be just one broadcasted message.
 	assert.Equal(test, 1, len(broadcastedMsg))
@@ -134,7 +134,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 
 	// Test that no broadcast has been sent because there are t + 1 ECHO
 	// messages left.
-	assert.Equal(test, 0, len(receiverNode.Transport.BroadcastedMessages))
+	assert.Equal(test, 0, len(receiverNode.Transport().BroadcastedMessages))
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
 
 	// Simulates the reception of t + 1 ECHO messages
@@ -155,7 +155,7 @@ func TestLateEchoAfterReady(test *testing.T) {
 	)
 	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(test, 1, len(receiverNode.Transport.BroadcastedMessages))
+	assert.Equal(test, 1, len(receiverNode.Transport().BroadcastedMessages))
 	assert.Equal(test, t+1, msgInfo.Count)
 	assert.Equal(test, t+1, stateReceiver.RBCState.CountReady())
 }
