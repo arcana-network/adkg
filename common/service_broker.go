@@ -305,6 +305,34 @@ func (am *ABCIMethods) GetIndexesFromVerifierID(verifier, verifierID, appID stri
 	return
 }
 
+func (am *ABCIMethods) LastUnassignedIndex() (index uint, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_unassigned_index")
+	if methodResponse.Error != nil {
+		return 0, methodResponse.Error
+	}
+	var data uint
+	err = CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return 0, err
+	}
+	index = data
+	return
+}
+
+func (am *ABCIMethods) LastC25519UnassignedIndex() (index uint, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_c25519_unassigned_index")
+	if methodResponse.Error != nil {
+		return 0, methodResponse.Error
+	}
+	var data uint
+	err = CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return 0, err
+	}
+	index = data
+	return
+}
+
 type ChainMethods struct {
 	bus     eventbus.Bus
 	caller  string

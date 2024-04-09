@@ -75,6 +75,10 @@ func (a *ABCIService) Call(method string, args ...interface{}) (interface{}, err
 		return a.ABCI.state.LastCreatedIndex, nil
 	case "last_unassigned_index":
 		return a.ABCI.state.LastUnassignedIndex, nil
+	case "last_c25519_created_index":
+		return a.ABCI.state.C25519State.LastCreatedIndex, nil
+	case "last_c25519_unassigned_index":
+		return a.ABCI.state.C25519State.LastUnassignedIndex, nil
 	case "retrieve_key_mapping":
 		var keyIndex big.Int
 		var curve common.CurveName
