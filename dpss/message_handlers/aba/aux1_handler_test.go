@@ -238,7 +238,7 @@ func TestKeygenAlreadyCompleteAux(t *testing.T) {
 
 	// Set the keygen state to completed
 	state := receiverNode.State()
-	state.ABAStore.Complete(round.ID())
+	state.ABAStore.Complete(round.)
 
 	// Send f+1 Aux1 messages, which normally should trigger sending Aux1 message
 	// but since keygen is marked complete won't trigger broadcast
@@ -253,8 +253,8 @@ func TestKeygenAlreadyCompleteAux(t *testing.T) {
 	assert.Equal(t, 0, len(broadcastedMessages), "No message should have been broadcasted")
 }
 
-func AuxTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, common.RoundDetails) {
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+func AuxTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, common.PSSRoundDetails) {
+	id := common.GeneratePSSID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
@@ -263,13 +263,13 @@ func AuxTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, com
 	leaderIndex := 3
 	leader := nodes[leaderIndex]
 
-	round := common.RoundDetails{
-		ADKGID: id,
-		Dealer: leader.ID(),
+	round := common.PSSRoundDetails{
+		PssID: id,
+		Dealer: leader.Details(),
 		Kind:   "aba",
 	}
 
-	msg, error := NewAux1Message(round.ID(), vote, r, common.CurveName(c.Name))
+	msg, error := NewAux1Message(round, vote, r, common.CurveName(c.Name))
 
 	if error != nil {
 		fmt.Println("cannot create aux1 msg")
