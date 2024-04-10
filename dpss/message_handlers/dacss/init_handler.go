@@ -70,7 +70,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	self.State().ShareStore.Lock()
 	defer self.State().ShareStore.Unlock()
 	self.State().ShareStore.Initialize(len(msg.OldShares))
-	for i, share := range msg.OldShares {
+	for _, share := range msg.OldShares {
 		shareScalar, err := curve.Scalar.SetBytes(share.Value)
 		if err != nil {
 			log.WithFields(
@@ -80,7 +80,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 				},
 			).Error("DacssInitMessage: Process")
 		}
-		self.State().ShareStore.OldShares[i] = shareScalar
+		self.State().ShareStore.OldShares[share.Id] = shareScalar
 	}
 
 	// Step 101: Sample B / (n - 2t) random elements.

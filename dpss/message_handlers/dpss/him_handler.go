@@ -3,6 +3,8 @@
 package dpss
 
 import (
+	"math"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -82,14 +84,24 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 		)
 	}
 
+	self.State().ShareStore.Lock()
+	// Number of old shares that will be transformed, i.e. B.
+	numShares := len(self.State().ShareStore.OldShares)
+	self.State().ShareStore.Unlock()
+
+	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
+
 	hiMatrix := sharing.CreateHIM(
-		n-t,
+		matrixSize,
 		common.CurveFromName(msg.CurveName),
 	)
 
 	// Multiplies the HI matrix by the shares outputted by MVBA. We provide
-	// n - t shares and obtain again n - t shares with the following property:
-	// n - 2t of such shares are hidding truly random values.
+	// (B / (n - 2*t)) * (n - t) shares and obtain again (B / (n - 2*t)) * (n - t)
+	// shares with the following property:
+	// (B / (n - 2*t)) * (n - t) - t of such shares are hidding truly random values.
+	// But notice that (B / (n - 2*t)) * (n - t) - t >= B if and only if B >= n - 2t
+	// which is a reasonable assumption.
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 
 	if err != nil {
@@ -100,8 +112,6 @@ func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSPa
 			},
 		).Error("HIMMessageHandler: Process")
 	}
-	// Number of old shares that will be transformed, i.e. B.
-	numShares := len(self.State().ShareStore.OldShares)
 
 	// From the trully random values, we select B of them to be the masks for
 	// the values {s_i}.

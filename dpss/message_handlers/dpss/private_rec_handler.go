@@ -107,10 +107,8 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		for key, value := range UStore {
 			if count < t+1 {
 				tPlus1Share[key] = value
-			} else if count < 2*t+1 {
-				remainingShare[key] = value
 			} else {
-				break
+				remainingShare[key] = value
 			}
 			count++
 		}
@@ -127,19 +125,24 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		}
 
 		// Evaluate all the points in the polinomial and see if they coincide
+		countCoincidences := 0
 		for key, value := range remainingShare {
 			keyScalar := curve.Scalar.New(key)
 			evaluationResult := interpolatePoly.Evaluate(keyScalar)
 
 			// If the evaluation doesn't coincide return error
 			if evaluationResult.Cmp(value) != 0 {
-				log.WithFields(
-					log.Fields{
-						"Message": "shares does not coincide on the interpolationg polynomial",
-					},
-				).Error("PrivateRecMsg: Process")
-				return
+				countCoincidences++
 			}
+		}
+
+		if countCoincidences < t {
+			log.WithFields(
+				log.Fields{
+					"Message": "shares does not coincide on the interpolationg polynomial",
+				},
+			).Error("PrivateRecMsg: Process")
+			return
 		}
 
 		// If they coincide, send u_i to the all the parties party.
