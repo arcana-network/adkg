@@ -24,7 +24,7 @@ func TestSendEst1(t *testing.T) {
 	// node[n-1] will receive est1 from node0
 	// store already received est messages from f other nodes
 	// then, the message from node0 triggers broadcasting est1 by node[n-1]
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	for i := 1; i < f+1; i++ {
 		store.SetValues("est", r, vote, nodes[i].id)
 	}
@@ -52,7 +52,7 @@ func TestSendAux1(t *testing.T) {
 	// node[n-1] will receive est1 from node0
 	// store already received est messages from 2f other nodes
 	// then, the message from node0 triggers broadcasting aux1 by node[n-1]
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	// mark the EST1 msg as sent
 	store.SetSent("est", r, vote)
 
@@ -69,8 +69,8 @@ func TestSendAux1(t *testing.T) {
 	assert.Equal(t, 1, countBroadcastedAux1Msg, "This node should have broadcasted an Aux1 msg")
 }
 
-func estTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, common.RoundDetails) {
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+func estTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, common.PSSRoundDetails) {
+	id := common.GeneratePSSID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
@@ -79,13 +79,13 @@ func estTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, com
 	leaderIndex := 3
 	leader := nodes[leaderIndex]
 
-	round := common.RoundDetails{
-		ADKGID: id,
-		Dealer: leader.ID(),
+	round := common.PSSRoundDetails{
+		PssID:  id,
+		Dealer: leader.Details(),
 		Kind:   "aba",
 	}
 
-	msg, _ := NewEst1Message(round.ID(), vote, r, common.CurveName(c.Name))
+	msg, _ := NewEst1Message(round, vote, r, common.CurveName(c.Name))
 	return transport, nodes, msg, round
 }
 
@@ -103,7 +103,7 @@ func TestKeygenAlreadyComplete(t *testing.T) {
 
 	// Set the keygen state to completed
 	state := receiverNode.State()
-	state.ABAStore.Complete(round.ID())
+	state.ABAStore.Complete(round.ToRoundID())
 
 	// Send f+1 Est1 messages, which normally should trigger sending Est1 message
 	// but since keygen is marked complete won't trigger broadcast
@@ -130,7 +130,7 @@ func TestEstAlreadyReceived(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 	// node[n-1] received est1 messages from nodes 0 through f-1
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	for i := 0; i < f; i++ {
 		store.SetValues("est", r, vote, nodes[i].id)
 	}

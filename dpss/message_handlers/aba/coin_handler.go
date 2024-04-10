@@ -2,15 +2,14 @@ package aba
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"strconv"
 	"time"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/him"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
 )
@@ -31,7 +30,7 @@ func NewCoinMessage(id common.PSSRoundDetails, data []byte, curve common.CurveNa
 		curve,
 		data,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +52,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), common.DefaultABAStore())
 	if complete {
-		log.Infof("Keygen already complete: %s", m.RoundID)
+		log.Infof("Keygen already complete: %v", m.RoundID)
 		return
 	}
 	store.Lock()
@@ -91,7 +90,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		// Breakout if time since message received has exceeded 10s
 		if time.Since(start) > time.Second*20 {
 			pssState.Unlock()
-			log.Errorf("timeout coin_share message, round=%s", m.RoundID)
+			log.Errorf("timeout coin_share message, round=%v", m.RoundID)
 			return
 		}
 
@@ -106,7 +105,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 	TiSet = kcommon.GetSetBits(n, pssState.T[roundLeader])
 
 	if len(TiSet) == 0 {
-		log.Infof("TiSet == 0 for round: %s, self: %d", m.RoundID, self.Details().Index)
+		log.Infof("TiSet == 0 for round: %v, self: %d", m.RoundID, self.Details().Index)
 		return
 	}
 
@@ -213,12 +212,23 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
 		if n == len(pssState.Decisions) && !pssState.HIMStarted {
-			pssState.HIMStarted = true
-			msg, err := him.NewInitMessage(m.RoundID, m.Curve)
-			if err != nil {
-				return
-			}
-			go self.ReceiveMessage(self.Details(), *msg)
+			// 1) Get list of Keysets voted as 1
+			// 2) Get T[index] from each keyset and union to get T
+			// T := sessionStore.GetTSet(n, f)
+
+			// shares := sessionStore.GetSharesFromT(T)
+			// 3) Get shares and compress
+			// Len(share) = B/n-2t * n-t
+			// Somehow sort and create array from shares
+			// [(1,1), (1,2), (1,3), (2, 1) ....]
+			// (nodeIndex, acssCount) or (acssCount, nodeIndex) ?
+
+			// msg, err := dpss.NewDacssHimMessage(m.RoundID, shares, m.Curve)
+			// if err != nil {
+			// 	return
+			// }
+			// sessionStore.HIMStarted = true
+			// go self.ReceiveMessage(self.Details(), *msg)
 		}
 	}
 }

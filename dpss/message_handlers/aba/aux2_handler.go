@@ -1,13 +1,12 @@
 package aba
 
 import (
-	"encoding/json"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/him"
 )
 
 var Aux2MessageType string = "aba_aux2"
@@ -28,7 +27,7 @@ func NewAux2Message(id common.PSSRoundDetails, v, r int, curve common.CurveName)
 		v,
 		r,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +41,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), common.DefaultABAStore())
 	if complete {
-		log.Infof("Keygen already complete: %s", m.RoundID)
+		log.Infof("Keygen already complete: %v", m.RoundID)
 		return
 	}
 	store.Lock()
@@ -98,7 +97,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 			if w == 2 {
 				// Create a coin
 				coinID := string(m.RoundID.ToRoundID()) + strconv.Itoa(m.R)
-				log.Debugf("Node=%d, Round=%s,CoinID=%s", self.Details().Index, m.RoundID, coinID)
+				log.Debugf("Node=%d, Round=%v,CoinID=%s", self.Details().Index, m.RoundID, coinID)
 				msg, err := NewCoinInitMessage(m.RoundID, coinID, m.Curve)
 				if err != nil {
 					return
@@ -106,41 +105,41 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 				go self.ReceiveMessage(self.Details(), *msg)
 			} else {
 				pssID := m.RoundID.PssID
-				sessionStore, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
+				pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 				if complete {
 					log.Infof("Keygen already complete: %s", pssID)
 					return
 				}
 
-				sessionStore.Lock()
-				defer sessionStore.Unlock()
+				pssState.Lock()
+				defer pssState.Unlock()
 				log.WithFields(log.Fields{
-					"completed":     sessionStore.ABAComplete,
+					"completed":     pssState.ABAComplete,
 					"round":         m.RoundID,
 					"self":          self.Details().Index,
-					"Decisions":     sessionStore.Decisions,
-					"ABAStarted":    sessionStore.ABAStarted,
-					"completeCount": len(sessionStore.Decisions),
-				}).Debug("SessionStore:Aux2Handler")
+					"Decisions":     pssState.Decisions,
+					"ABAStarted":    pssState.ABAStarted,
+					"completeCount": len(pssState.Decisions),
+				}).Debug("pssState:Aux2Handler")
 
 				log.WithFields(log.Fields{
-					"Decisions": sessionStore.Decisions,
-				}).Debugf("Node %d decided on round %s=%d", self.Details().Index, m.RoundID, w)
+					"Decisions": pssState.Decisions,
+				}).Debugf("Node %d decided on round %v=%d", self.Details().Index, m.RoundID, w)
 				leader := m.RoundID.Dealer.Index
 				// Set decision to 0 or 1
-				if _, ok := sessionStore.Decisions[leader]; ok {
+				if _, ok := pssState.Decisions[leader]; ok {
 					return
 				}
-				sessionStore.Decisions[leader] = w
+				pssState.Decisions[leader] = w
 
 				// If one ABA has outputted 1, then any ABA hasn't started yet, vote 0 for that ABA
-				if w == 1 && !sessionStore.ABAComplete {
-					sessionStore.ABAComplete = true
+				if w == 1 && !pssState.ABAComplete {
+					pssState.ABAComplete = true
 					pssID := m.RoundID.PssID
-					log.Debugf("PSSID=%s, decisions=%v,self=%d", pssID, sessionStore.Decisions, self.Details().Index)
+					log.Debugf("PSSID=%s, decisions=%v,self=%d", pssID, pssState.Decisions, self.Details().Index)
 
 					for i := 1; i <= n; i++ {
-						if !Contains(sessionStore.ABAStarted, i) {
+						if !Contains(pssState.ABAStarted, i) {
 							details, err := self.OldNodeDetailsByID(i)
 							if err != nil {
 								continue
@@ -156,20 +155,32 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 					}
 				}
 
-				// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
-				if n == len(sessionStore.Decisions) && !sessionStore.HIMStarted {
+				// If all rounds ABA'd to 0 or 1, set ABA complete to true and send init HIM
+				if n == len(pssState.Decisions) && !pssState.HIMStarted {
 					log.WithFields(log.Fields{
 						"roundID":   m.RoundID,
 						"f":         f,
 						"node":      self.Details().Index,
-						"Decisions": sessionStore.Decisions,
-					}).Debug("starting_key_derivation")
-					msg, err := him.NewInitMessage(m.RoundID, m.Curve)
-					if err != nil {
-						return
-					}
-					sessionStore.HIMStarted = true
-					go self.ReceiveMessage(self.Details(), *msg)
+						"Decisions": pssState.Decisions,
+					}).Debug("starting HIM")
+
+					// 1) Get list of Keysets voted as 1
+					// 2) Get T[index] from each keyset and union to get T
+					// T := sessionStore.GetTSet(n, f)
+
+					// shares := sessionStore.GetSharesFromT(T)
+					// 3) Get shares and compress
+					// Len(share) = B/n-2t * n-t
+					// Somehow sort and create array from shares
+					// [(1,1), (1,2), (1,3), (2, 1) ....]
+					// (nodeIndex, acssCount) or (acssCount, nodeIndex) ?
+
+					// msg, err := dpss.NewDacssHimMessage(m.RoundID, shares, m.Curve)
+					// if err != nil {
+					// 	return
+					// }
+					// sessionStore.HIMStarted = true
+					// go self.ReceiveMessage(self.Details(), *msg)
 				}
 			}
 		} else {

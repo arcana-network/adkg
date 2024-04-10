@@ -29,7 +29,7 @@ func TestProcessInitMessageVote1(t *testing.T) {
 	transport, nodes, msg, round := abaTestSetup(r, vote)
 
 	// Check est "sent" is not yet set to true
-	store, _ := nodes[1].State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := nodes[1].State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	assert.False(t, store.Sent("est", r, vote))
 
 	nodes[1].ReceiveMessage(nodes[1].Details(), *msg)
@@ -70,8 +70,8 @@ func getCountMsg(transport *MockTransport, msgType string) int {
 	return countBroadcasteMsg
 }
 
-func abaTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, common.RoundDetails) {
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+func abaTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, common.PSSRoundDetails) {
+	id := common.GeneratePSSID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
@@ -80,13 +80,13 @@ func abaTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, com
 	leaderIndex := 3
 	leader := nodes[leaderIndex]
 
-	round := common.RoundDetails{
-		ADKGID: id,
-		Dealer: leader.ID(),
+	round := common.PSSRoundDetails{
+		PssID:  id,
+		Dealer: leader.Details(),
 		Kind:   "aba",
 	}
 
-	msg, _ := NewInitMessage(round.ID(), vote, r, common.CurveName(c.Name))
+	msg, _ := NewInitMessage(round, vote, r, common.CurveName(c.Name))
 	return transport, nodes, msg, round
 }
 
@@ -118,7 +118,7 @@ func TestKeygenAlreadyCompleted(t *testing.T) {
 	transport, nodes, msg, round := abaTestSetup(vote, r)
 
 	store := nodes[1].State().ABAStore
-	store.Complete(round.ID())
+	store.Complete(round.ToRoundID())
 
 	nodes[1].ReceiveMessage(nodes[1].Details(), *msg)
 	time.Sleep(1 * time.Second)

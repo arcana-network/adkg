@@ -20,7 +20,7 @@ func TestSendAuxset(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 
-	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 
 	assert.Equal(t, complete, false, "should not be complete")
 
@@ -74,7 +74,7 @@ func TestAuxsetAlreadyReceived(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 	// node[n-1] received Auxset messages from nodes 0 through f-1
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	for i := 0; i < f; i++ {
 		store.SetValues("auxset", r, vote, nodes[i].id)
 	}
@@ -102,7 +102,7 @@ func TestKeygenAlreadyCompleteAuxset(t *testing.T) {
 
 	// Set the keygen state to completed
 	state := receiverNode.State()
-	state.ABAStore.Complete(round.ID())
+	state.ABAStore.Complete(round.ToRoundID())
 
 	// Send f+1 Auxset messages, which normally should trigger sending Auxset message
 	// but since keygen is marked complete won't trigger broadcast
@@ -117,8 +117,8 @@ func TestKeygenAlreadyCompleteAuxset(t *testing.T) {
 	assert.Equal(t, 0, len(broadcastedMessages), "No message should have been broadcasted")
 }
 
-func AuxsetTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, common.RoundDetails) {
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+func AuxsetTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, common.PSSRoundDetails) {
+	id := common.GeneratePSSID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
@@ -127,13 +127,13 @@ func AuxsetTestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, 
 	leaderIndex := 3
 	leader := nodes[leaderIndex]
 
-	round := common.RoundDetails{
-		ADKGID: id,
-		Dealer: leader.ID(),
+	round := common.PSSRoundDetails{
+		PssID:  id,
+		Dealer: leader.Details(),
 		Kind:   "aba",
 	}
 
-	msg, error := NewAuxsetMessage(round.ID(), vote, r, common.CurveName(c.Name))
+	msg, error := NewAuxsetMessage(round, vote, r, common.CurveName(c.Name))
 
 	if error != nil {
 		fmt.Println("cannot create auxset msg")

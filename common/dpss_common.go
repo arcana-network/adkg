@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -233,6 +234,80 @@ type PSSState struct {
 	ABAComplete    bool
 	Decisions      map[int]int
 	HIMStarted     bool
+}
+
+func (state *PSSState) GetTSet(n, t int) []int {
+	keysets := make([][]int, 0)
+	for k, v := range state.Decisions {
+		if v == 1 {
+			keysets = append(keysets, GetSetBits(n, state.T[k]))
+		}
+	}
+
+	T := Union(keysets...)
+	sort.Ints(T)
+	T = T[:(n - t)]
+	return T
+}
+
+func (state *PSSState) GetSharesFromT(T []int) []*sharing.ShamirShare {
+	shares := []*sharing.ShamirShare{}
+	for _, keysetMap := range state.KeysetMap {
+		for nodeIndex, share := range keysetMap.ShareStore {
+			if Contains(T, nodeIndex) {
+				shares = append(shares, share)
+			}
+		}
+	}
+
+	return shares
+}
+
+func Contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func HasBit(n int, pos int) bool {
+	val := n & (1 << pos)
+	return (val > 0)
+}
+
+func GetSetBits(n, val int) []int {
+	l := make([]int, 0)
+	for i := 1; i <= n; i++ {
+		if HasBit(val, i) {
+			l = append(l, i)
+		}
+	}
+	return l
+}
+
+func Union(args ...[]int) []int {
+	if len(args) == 0 {
+		return []int{}
+	}
+
+	a := args[0]
+	m := make(map[int]bool)
+
+	for _, item := range a {
+		m[item] = true
+	}
+
+	for _, s := range args[1:] {
+		for _, item := range s {
+			if _, ok := m[item]; !ok {
+				a = append(a, item)
+				m[item] = true
+			}
+		}
+	}
+	return a
 }
 
 /*

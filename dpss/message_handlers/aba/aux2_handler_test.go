@@ -26,7 +26,7 @@ func TestSendAux2Msg(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 
-	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 
 	assert.Equal(t, complete, false, "should not be complete")
 
@@ -79,7 +79,7 @@ func TestSendAux2Msg(t *testing.T) {
 
 	//check that after sending msg aux value is present
 	assert.Equal(t, Contains(store.Values("aux2", r, vote), nodes[0].id), true)
-	sessionStore, complete := nodes[0].State().SessionStore.GetOrSetIfNotComplete(round.ADKGID, common.DefaultADKGSession())
+	sessionStore, _ := nodes[0].State().PSSStore.GetOrSetIfNotComplete(round.PssID)
 	assert.Equal(t, sessionStore.ABAComplete, false)
 }
 
@@ -95,7 +95,7 @@ func TestAux2AlreadyReceived(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 	// node[n-1] received Aux2 messages from nodes 0 through f-1
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	for i := 0; i < f; i++ {
 		store.SetValues("aux2", r, vote, nodes[i].id)
 	}
@@ -126,7 +126,7 @@ func TestKeygenAlreadyCompleteAux2(t *testing.T) {
 
 	// Set the keygen state to completed
 	state := receiverNode.State()
-	state.ABAStore.Complete(round.ID())
+	state.ABAStore.Complete(round.ToRoundID())
 
 	// Send f+1 Aux2 messages, which normally should trigger sending coinInit message
 	// but since keygen is marked complete won't trigger broadcast

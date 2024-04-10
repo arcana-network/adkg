@@ -2,13 +2,13 @@ package aba
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 )
@@ -29,7 +29,7 @@ func NewCoinInitMessage(id common.PSSRoundDetails, coinID string, curve common.C
 		curve,
 		coinID,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 
 	pssID := m.RoundID.PssID
 
-	sessionStore, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
+	pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(pssID)
 	if complete {
 		log.Infof("pss already complete: %s", pssID)
 		return
@@ -60,9 +60,9 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 	start := time.Now()
 
 	for {
-		sessionStore.Lock()
+		pssState.Lock()
 
-		TiSet := kcommon.GetSetBits(n, sessionStore.T[roundLeader])
+		TiSet := kcommon.GetSetBits(n, pssState.T[roundLeader])
 
 		log.WithFields(log.Fields{
 			"self":   self.Details().Index,
@@ -72,27 +72,27 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 		}).Info("aba_coin")
 
 		if len(TiSet) > 0 {
-			sessionStore.Unlock()
+			pssState.Unlock()
 			break
 		}
 		// Breakout if time since message received has exceeded 20s
 		if time.Since(start) > time.Second*20 {
-			sessionStore.Unlock()
-			log.Errorf("timeout coin_init message, round=%s", m.RoundID)
+			pssState.Unlock()
+			log.Errorf("timeout coin_init message, round=%v", m.RoundID)
 			return
 		}
 
-		sessionStore.Unlock()
+		pssState.Unlock()
 
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	sessionStore.Lock()
-	defer sessionStore.Unlock()
+	pssState.Lock()
+	defer pssState.Unlock()
 
-	TiSet = kcommon.GetSetBits(n, sessionStore.T[roundLeader])
+	TiSet = kcommon.GetSetBits(n, pssState.T[roundLeader])
 	for _, i := range TiSet {
-		share, err := curve.Scalar.SetBytes(sessionStore.KeysetMap[0].ShareStore[i].Value)
+		share, err := curve.Scalar.SetBytes(pssState.KeysetMap[0].ShareStore[i].Value)
 		if err != nil {
 			continue
 		}

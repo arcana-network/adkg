@@ -1,10 +1,9 @@
 package aba
 
 import (
-	"encoding/json"
-
 	"github.com/arcana-network/dkgnode/common"
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 )
 
 var InitMessageType string = "aba_init"
@@ -25,7 +24,7 @@ func NewInitMessage(id common.PSSRoundDetails, v, r int, curve common.CurveName)
 		v,
 		r,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,7 @@ func (m *InitMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), common.DefaultABAStore())
 	if complete {
-		log.Infof("Keygen already complete: %s", m.RoundID)
+		log.Infof("Keygen already complete: %v", m.RoundID)
 		return
 	}
 

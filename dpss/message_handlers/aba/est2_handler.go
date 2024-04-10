@@ -1,9 +1,8 @@
 package aba
 
 import (
-	"encoding/json"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
 )
@@ -26,7 +25,7 @@ func NewEst2Message(id common.PSSRoundDetails, v, r int, curve common.CurveName)
 		v,
 		r,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +39,7 @@ func (m Est2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 
 	store, complete := self.State().ABAStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), common.DefaultABAStore())
 	if complete {
-		log.Infof("Keygen already complete: %s", m.RoundID)
+		log.Infof("Keygen already complete: %v", m.RoundID)
 		return
 	}
 

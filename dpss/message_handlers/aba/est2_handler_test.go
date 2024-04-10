@@ -25,7 +25,7 @@ func TestSendEst2Msg(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 
-	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, complete := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 
 	assert.Equal(t, complete, false, "should not be complete")
 
@@ -80,7 +80,7 @@ func TestEst2AlreadyReceived(t *testing.T) {
 
 	receiverNode := nodes[n-1]
 	// node[n-1] received Est2 messages from nodes 0 through f-1
-	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ID(), common.DefaultABAStore())
+	store, _ := receiverNode.State().ABAStore.GetOrSetIfNotComplete(round.ToRoundID(), common.DefaultABAStore())
 	for i := 0; i < f; i++ {
 		store.SetValues("est2", r, vote, nodes[i].id)
 	}
@@ -108,7 +108,7 @@ func TestKeygenAlreadyCompleteEst2(t *testing.T) {
 
 	// Set the keygen state to completed
 	state := receiverNode.State()
-	state.ABAStore.Complete(round.ID())
+	state.ABAStore.Complete(round.ToRoundID())
 
 	// Send f+1 Est2 messages, which normally should trigger sending NewAux2Message message
 	// but since keygen is marked complete won't trigger broadcast
@@ -123,8 +123,8 @@ func TestKeygenAlreadyCompleteEst2(t *testing.T) {
 	assert.Equal(t, 0, len(broadcastedMessages), "No message should have been broadcasted")
 }
 
-func est2TestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, common.RoundDetails) {
-	id := common.GenerateADKGID(*big.NewInt(int64(1)))
+func est2TestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, common.PSSRoundDetails) {
+	id := common.GeneratePSSID(*big.NewInt(int64(1)))
 
 	log.SetLevel(log.InfoLevel)
 
@@ -133,13 +133,13 @@ func est2TestSetup(r, vote int) (*MockTransport, []*Node, *common.DKGMessage, co
 	leaderIndex := 3
 	leader := nodes[leaderIndex]
 
-	round := common.RoundDetails{
-		ADKGID: id,
-		Dealer: leader.ID(),
+	round := common.PSSRoundDetails{
+		PssID:  id,
+		Dealer: leader.Details(),
 		Kind:   "aba",
 	}
 
-	msg, error := NewEst2Message(round.ID(), vote, r, common.CurveName(c.Name))
+	msg, error := NewEst2Message(round, vote, r, common.CurveName(c.Name))
 
 	if error != nil {
 		fmt.Println("cannot create est2 msg")

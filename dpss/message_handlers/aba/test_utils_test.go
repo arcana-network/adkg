@@ -2,6 +2,7 @@ package aba
 
 import (
 	"crypto/rand"
+	"errors"
 	"math/big"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	acssc "github.com/arcana-network/dkgnode/keygen/common/acss"
 
-	"github.com/arcana-network/dkgnode/keygen/message_handlers/keyderivation"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 
@@ -127,7 +127,7 @@ type Node struct {
 	n            int
 	k            int
 	transport    *MockTransport
-	state        *common.NodeState
+	state        *common.PSSNodeState
 	keypair      common.KeyPair
 	isFaulty     bool
 	messageCount int
@@ -159,7 +159,7 @@ func (node *Node) ProcessABAMessages(sender common.NodeDetails, keygenMessage co
 		}
 		msg.Process(sender, node)
 	case Est1MessageType:
-		log.Debugf("Got %s", Est1MessageType)
+		log.Infof("Got %v", keygenMessage)
 		var msg Est1Message
 		err := bijson.Unmarshal(keygenMessage.Data, &msg)
 		if err != nil {
@@ -228,8 +228,21 @@ func (node *Node) ProcessKeyDerivationMessages(sender common.NodeDetails, keygen
 
 }
 
+func (n *Node) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
+
+	nodes := n.Nodes(false)
+	for _, n := range nodes {
+		if n.Index == id {
+			return n, nil
+		}
+	}
+	return common.NodeDetails{}, errors.New("node not found in old committee")
+}
 func (n *Node) ID() int {
 	return n.id
+}
+func (n *Node) IsNewNode() bool {
+	return false
 }
 
 func (n *Node) AdjustParamN(new_n int) {
@@ -247,42 +260,32 @@ func (n *Node) CurveParams(c string) (curves.Point, curves.Point) {
 	return sharing.CurveParams(c)
 }
 
-func (n *Node) State() *common.NodeState {
+func (n *Node) State() *common.PSSNodeState {
 	return n.state
 }
+func (n *Node) GetPublicKeyFor(idx int, newCommittee bool) curves.Point {
+	return n.PublicKey(idx)
+	// for _, n := range n.transport.nodes {
+	// 	if n.id == idx {
+	// 	}
+	// }
+}
 
-func (n *Node) Cleanup(id common.ADKGID) {
+func (n *Node) Cleanup(id common.PSSID) {
 	n.cleanupKeygenStore(id)
 	n.cleanupABAStore(id)
 	n.cleanupADKGSessionStore(id)
 	// debug.FreeOSMemory()
 }
 
-func (node *Node) cleanupKeygenStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
-		node.state.KeygenStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "acss",
-		}).ID())
-		node.state.KeygenStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "keyset",
-		}).ID())
-	}
+func (node *Node) cleanupKeygenStore(id common.PSSID) {
+	return
 }
-func (node *Node) cleanupABAStore(id common.ADKGID) {
-	for _, n := range node.Nodes() {
-		node.state.ABAStore.Complete((&common.RoundDetails{
-			ADKGID: id,
-			Dealer: n.Index,
-			Kind:   "keyset",
-		}).ID())
-	}
+func (node *Node) cleanupABAStore(id common.PSSID) {
+	return
 }
-func (node *Node) cleanupADKGSessionStore(id common.ADKGID) {
-	node.state.SessionStore.Complete(id)
+func (node *Node) cleanupADKGSessionStore(id common.PSSID) {
+	return
 }
 
 func (n *Node) StoreCompletedShare(index big.Int, si big.Int, c common.CurveName) {
@@ -309,7 +312,7 @@ func (n *Node) Send(receiver common.NodeDetails, msg common.PSSMessage) error {
 	return nil
 }
 
-func (n *Node) Nodes() map[common.NodeDetailsID]common.NodeDetails {
+func (n *Node) Nodes(newCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	return n.transport.nodeDetails
 }
 func (n *Node) GetBatchCount() int {
@@ -324,17 +327,17 @@ func (n *Node) Details() common.NodeDetails {
 }
 
 func (n *Node) ReceiveBFTMessage(msg common.PSSMessage) {
-	if msg.Type == keyderivation.PubKeygenType {
-		var m keyderivation.PubKeygenMessage
-		if err := bijson.Unmarshal(msg.Data, &m); err != nil {
-			log.WithError(err).Infof("ReceiveBFTMessage()")
-			return
-		}
-		adkgid, _ := common.ADKGIDFromRoundID(m.RoundID)
-		log.Debugf("ADKGID=%s", adkgid)
-		res := m.PublicKey.X.Text(16) + m.PublicKey.Y.Text(16)
-		go func() { n.transport.output <- res }()
-	}
+	// if msg.Type == keyderivation.PubKeygenType {
+	// 	var m keyderivation.PubKeygenMessage
+	// 	if err := bijson.Unmarshal(msg.Data, &m); err != nil {
+	// 		log.WithError(err).Infof("ReceiveBFTMessage()")
+	// 		return
+	// 	}
+	// 	adkgid, _ := common.ADKGIDFromRoundID(m.RoundID)
+	// 	log.Debugf("ADKGID=%s", adkgid)
+	// 	res := m.PublicKey.X.Text(16) + m.PublicKey.Y.Text(16)
+	// 	go func() { n.transport.output <- res }()
+	// }
 }
 
 func (n *Node) PrivateKey() curves.Scalar {
@@ -356,10 +359,9 @@ func NewNode(id, n, k int, keypair common.KeyPair, transport *MockTransport, isF
 		id: id,
 		n:  n,
 		k:  k,
-		state: &common.NodeState{
-			KeygenStore:  &common.SharingStoreMap{},
-			SessionStore: &common.ADKGSessionStore{},
-			ABAStore:     &common.ABAStoreMap{},
+		state: &common.PSSNodeState{
+			ABAStore: &common.AbaStateMap{},
+			PSSStore: &common.PSSStateMap{},
 		},
 		transport: transport,
 		keypair:   keypair,
