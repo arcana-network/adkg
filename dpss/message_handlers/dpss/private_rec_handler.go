@@ -131,7 +131,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			evaluationResult := interpolatePoly.Evaluate(keyScalar)
 
 			// If the evaluation doesn't coincide return error
-			if evaluationResult.Cmp(value) != 0 {
+			if evaluationResult.Cmp(value) == 0 {
 				countCoincidences++
 			}
 		}

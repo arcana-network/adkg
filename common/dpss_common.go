@@ -61,13 +61,24 @@ type BatchRecStoreMap struct {
 
 // Stores all the information related to the batch reconstruction protocol for a given round.
 type BatchRecState struct {
-	UStore map[int]curves.Scalar // Stores the shares [u_i] sent by a given party.
+	UStore              map[int]curves.Scalar // Stores the shares [u_i] sent by a given party.
+	ReconstructedUStore map[int]curves.Scalar // Stores the restructured u_i sent by given party
 }
 
 // Counts the ammount of U shares received by the party.
 func (batchState *BatchRecState) CountReceivedU() int {
 	counter := 0
 	for range batchState.UStore {
+		counter++
+	}
+
+	return counter
+}
+
+// Counts the ammount of ReconstructedU shares received by the party.
+func (batchState *BatchRecState) CountReconstructedReceivedU() int {
+	counter := 0
+	for range batchState.ReconstructedUStore {
 		counter++
 	}
 
@@ -103,7 +114,8 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 		}
 	} else {
 		state = &BatchRecState{
-			UStore: make(map[int]curves.Scalar),
+			UStore:              make(map[int]curves.Scalar),
+			ReconstructedUStore: make(map[int]curves.Scalar),
 		}
 	}
 

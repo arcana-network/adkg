@@ -31,7 +31,7 @@ func TestInitRec(test *testing.T) {
 
 	// The ammount of messages sent is n
 	n, _, _ := receiverNode.Params()
-	receiverNode.Transport.WaitForMessagesSent(n)
+	receiverNode.Transport().WaitForMessagesSent(n)
 	assert.Equal(
 		test,
 		n,
@@ -63,7 +63,7 @@ func TestInitRecDiffrerentSender(test *testing.T) {
 	assert.Equal(
 		test,
 		0,
-		len(receiverNode.Transport.GetSentMessages()),
+		len(receiverNode.Transport().GetSentMessages()),
 	)
 }
 

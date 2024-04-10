@@ -20,7 +20,7 @@ func TestPrivateRecHandlerProcess(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	senderNode := defaultSetup.GetSingleOldNodeFromTestSetup()
 
-	testMsg, points, err := getValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
+	testMsg, points, err := GetValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
 	assert.Nil(t, err)
 
 	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
@@ -46,11 +46,14 @@ func TestInvalidShare(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	senderNode := defaultSetup.GetSingleOldNodeFromTestSetup()
 
-	testMsg, points, err := getValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
+	testMsg, points, err := GetValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
 	assert.Nil(t, err)
 
 	// modify the valid points to trigger an early return
 	curve := testutils.TestCurve()
+
+	// corrupt the shares
+	points[1] = curve.Scalar.Random(rand.Reader)
 	points[2] = curve.Scalar.Random(rand.Reader)
 
 	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
@@ -76,18 +79,18 @@ func TestNotEnoughShare(t *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
 	senderNode := defaultSetup.GetSingleOldNodeFromTestSetup()
 	tOld := defaultSetup.OldCommitteeParams.T
-	testMsg, points, err := getValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
+	testMsg, points, err := GetValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
 	assert.Nil(t, err)
 
 	// creating insufficient points from the valid points to trigger an early return
 	insufficientPoints := make(map[int]curves.Scalar)
 	count := 0
 	for key, value := range points {
-		insufficientPoints[key] = value
 		if count == tOld {
 			break
 		}
-		count++
+		insufficientPoints[key] = value
+		count += 1
 	}
 
 	// update the state with insufficient points
@@ -123,7 +126,7 @@ func getDPSSBatchRecDetails(senderNode *testutils.PssTestNode) *common.DPSSBatch
 	return &dpssBatchRecDetails
 }
 
-func getValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup) (*PrivateRecMsg, map[int]curves.Scalar, error) {
+func GetValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup) (*PrivateRecMsg, map[int]curves.Scalar, error) {
 
 	tOld := defaultSetup.OldCommitteeParams.T
 	kOld := defaultSetup.OldCommitteeParams.K
@@ -168,7 +171,7 @@ func getValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSe
 	// valid Private Reconstruction Msg
 	testMsg := PrivateRecMsg{
 		DPSSBatchRecDetails: *getDPSSBatchRecDetails(senderNode),
-		Kind:                InitRecHandlerType,
+		Kind:                PrivateRecHandlerType,
 		curveName:           testutils.TestCurveName(),
 		UShare:              points[senderNode.Details().Index].Bytes(),
 	}
