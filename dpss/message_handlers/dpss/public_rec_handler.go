@@ -13,7 +13,7 @@ type PublicRecMsg struct {
 	DPSSBatchRecDetails common.DPSSBatchRecDetails
 	Kind                string
 	curveName           common.CurveName
-	UShare              []byte
+	ReconstructedUShare []byte
 }
 
 func NewPublicRecMsg(
@@ -49,7 +49,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 
 	// Deserialize the share.
 	curve := common.CurveFromName(msg.curveName)
-	share, err := curve.Scalar.SetBytes(msg.UShare)
+	share, err := curve.Scalar.SetBytes(msg.ReconstructedUShare)
 	if err != nil {
 		log.WithFields(
 			log.Fields{
@@ -67,7 +67,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			recState.ReconstructedUStore[sender.Index] = share
 		},
 	)
-	//TODO: needs to confirm this T + t value
+
 	// Check if there are at least T + t = n - t shares received
 	recState, found, err := self.State().BatchReconStore.Get(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
@@ -146,7 +146,30 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			}
 		}
 
-		//TODO: Send the msg to the next handler
+		// sharing the co-efficients
+		len := len(interpolatePoly.Coefficients)
+		polynomialCoefficient := make([][]byte, len)
+
+		for i := 0; i < len; i++ {
+			polynomialCoefficient[i] = make([]byte, 32)
+			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
+		}
+
+		//sending msg to new committee
+		for _, node := range self.Nodes(!self.IsNewNode()) {
+			localComputationMsg, err := NewLocalComputationMsg(msg.DPSSBatchRecDetails, msg.curveName, polynomialCoefficient)
+
+			if err != nil {
+				log.WithFields(
+					log.Fields{
+						"Error":   err,
+						"Message": "Error constructiong local Reconstruction msg",
+					},
+				).Error("PublicRecMsg: Process")
+				return
+			}
+			go self.Send(node, *localComputationMsg)
+		}
 
 	}
 }

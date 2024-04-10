@@ -2,6 +2,7 @@ package dpss
 
 import (
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: Incomplete
 // Testing the happy path
 func TestPublicRecHandlerProcess(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
@@ -28,6 +28,9 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 	)
 	assert.Nil(t, err)
 	testMsg.Process(senderNode.Details(), senderNode)
+	time.Sleep(2 * time.Second)
+
+	assert.Equal(t, defaultSetup.NewCommitteeParams.N, len(senderNode.Transport().GetSentMessages()))
 
 }
 
@@ -41,11 +44,12 @@ func getValidPublicRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSet
 	}
 
 	// considering the shares & Points from the validPrivateRecMsg itself as the "reconstructed shares"
+	// for unit testing
 	testMsg := PublicRecMsg{
 		DPSSBatchRecDetails: validPrivateRecMsg.DPSSBatchRecDetails,
 		Kind:                PublicRecHandlerType,
 		curveName:           validPrivateRecMsg.curveName,
-		UShare:              validPrivateRecMsg.UShare,
+		ReconstructedUShare: validPrivateRecMsg.UShare,
 	}
 
 	return &testMsg, points, nil
