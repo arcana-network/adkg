@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
+	"gonum.org/v1/gonum/stat/combin"
 )
 
 // Represents a polynomial with coefficients in a field of scalars of a curve.
@@ -227,4 +228,88 @@ func (p *Polynomial) Evaluate(x curves.Scalar) curves.Scalar {
 	}
 
 	return result
+}
+
+// Check a subset of at least `nPoints` from `points` lie in a polynomial of the provided degree.
+// If the checking is affirmative, the function returns the polynomial.
+func CheckPointsLieInPoly(
+	points map[int]curves.Scalar, degree, nPoints int, curve *curves.Curve,
+) (bool, *Polynomial, error) {
+	// Check that the amount of provided points is correct to be able to even
+	// run the check:
+	// 1. You need at least degree + 1 to interpolate a polynomial of a given
+	//    degree.
+	// 2. The number of points that you want to confirm should be less than the amount
+	//    of provided points.
+	if len(points) < degree+1 {
+		return false, nil, errors.New("the amount of provided points is not enought to interpolate a polynomial of that degree")
+	}
+	if len(points) < nPoints {
+		return false, nil, errors.New("the amount of points that you want to check is larger than the number of provided points")
+	}
+
+	// Prepare shares into two arrays, one for the indexes and one for the actual
+	// shares because iterating a map is done in a random way.
+	indexesShares := make([]int, len(points))
+	shares := make([]curves.Scalar, len(points))
+	storeIndex := 0
+	for index, share := range points {
+		indexesShares[storeIndex] = index
+		shares[storeIndex] = share
+		storeIndex++
+	}
+
+	// Generate all possible indexes for interpolation. To interpolate a
+	// degree-d polynomial, we need d + 1 points.
+	possibleInterpolationindexes := combin.Combinations(len(points), degree+1)
+
+	// Check all possible interpolation subsets.
+	for _, interpolationIndexes := range possibleInterpolationindexes {
+		// Extract the points for interpolation.
+		interpolationPoints := make(map[int]curves.Scalar)
+		for interpIndex := range interpolationIndexes {
+			shareIndex := indexesShares[interpIndex]
+			share := shares[interpIndex]
+			interpolationPoints[shareIndex] = share
+		}
+
+		interpolatedPoly, err := InterpolatePolynomial(interpolationPoints, curve)
+		if err != nil {
+			return false, nil, err
+		}
+
+		// Extract the shares that are not in the interpolation points.
+		interpolationIndexesMap := make(map[int]bool)
+		for _, index := range interpolationIndexes {
+			interpolationIndexesMap[index] = true
+		}
+		checkingPoints := make(map[int]curves.Scalar)
+		for index, share := range shares {
+			if !interpolationIndexesMap[index] {
+				checkingPoints[indexesShares[index]] = share
+			}
+		}
+
+		// Confirm that at least nPoints lie in the polynomial
+		matchCounter := 0
+		for x, y := range checkingPoints {
+			xScalar := curve.Scalar.New(x)
+			evaluation := interpolatedPoly.Evaluate(xScalar)
+			if evaluation.Cmp(y) == 0 {
+				matchCounter++
+			}
+		}
+
+		// We check for nPoints - (degree + 1) points to agree with the polynomial.
+		// We remove degree + 1 checkings because it's guaranteed that the
+		// interpolation points lie in the polynomial, if this check passes
+		// numLyingPoints = externalMatchingPoints + interpolationPoints
+		// 				  = matchCounter + degree + 1
+		//                >= nPoints
+		if matchCounter >= nPoints-(degree+1) {
+			return true, interpolatedPoly, nil
+		}
+	}
+
+	return false, nil, nil
 }

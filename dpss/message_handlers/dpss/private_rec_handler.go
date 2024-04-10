@@ -2,7 +2,6 @@ package dpss
 
 import (
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -95,48 +94,22 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	if countU >= 2*t+1 {
 
 		UStore := recState.UStore
-
-		// Separates the shares that will be used to construct the polynomial
-		// from the shares that will be used to confirm the correctness of the
-		// polynomial.
-		tPlus1Share := make(map[int]curves.Scalar)
-		remainingShare := make(map[int]curves.Scalar)
-
-		// Take the first t + 1 shares and interpolate the polynomial
-		count := 0
-		for key, value := range UStore {
-			if count < t+1 {
-				tPlus1Share[key] = value
-			} else {
-				remainingShare[key] = value
-			}
-			count++
-		}
-
-		interpolatePoly, err := common.InterpolatePolynomial(tPlus1Share, curve)
+		doMatch, interpolatedPoly, err := common.CheckPointsLieInPoly(
+			UStore,
+			t,
+			2*t+1,
+			curve,
+		)
 		if err != nil {
 			log.WithFields(
 				log.Fields{
+					"Message": "error during the checking and interpolation of the polynomial",
 					"Error":   err,
-					"Message": "Error trying to interpolate ploynomial with t+1 shares",
 				},
 			).Error("PrivateRecMsg: Process")
 			return
 		}
-
-		// Evaluate all the points in the polinomial and see if they coincide
-		countCoincidences := 0
-		for key, value := range remainingShare {
-			keyScalar := curve.Scalar.New(key)
-			evaluationResult := interpolatePoly.Evaluate(keyScalar)
-
-			// If the evaluation doesn't coincide return error
-			if evaluationResult.Cmp(value) == 0 {
-				countCoincidences++
-			}
-		}
-
-		if countCoincidences < t {
+		if !doMatch {
 			log.WithFields(
 				log.Fields{
 					"Message": "shares does not coincide on the interpolationg polynomial",
@@ -146,7 +119,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		}
 
 		// If they coincide, send u_i to the all the parties party.
-		reconstructedU := interpolatePoly.Coefficients[0]
+		reconstructedU := interpolatedPoly.Coefficients[0]
 		for _, n := range self.Nodes(self.IsNewNode()) {
 			publicReconstructMsg, err := NewPublicRecMsg(msg.DPSSBatchRecDetails, msg.curveName, reconstructedU.Bytes())
 
