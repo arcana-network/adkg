@@ -10,6 +10,7 @@ import (
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
 )
@@ -212,23 +213,31 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
 		if n == len(pssState.Decisions) && !pssState.HIMStarted {
+			log.WithFields(log.Fields{
+				"roundID":   m.RoundID,
+				"f":         f,
+				"node":      self.Details().Index,
+				"Decisions": pssState.Decisions,
+			}).Debug("starting HIM")
+
 			// 1) Get list of Keysets voted as 1
 			// 2) Get T[index] from each keyset and union to get T
-			// T := sessionStore.GetTSet(n, f)
+			T := pssState.GetTSet(n, f)
 
-			// shares := sessionStore.GetSharesFromT(T)
+			curve := common.CurveFromName(m.Curve)
 			// 3) Get shares and compress
 			// Len(share) = B/n-2t * n-t
 			// Somehow sort and create array from shares
 			// [(1,1), (1,2), (1,3), (2, 1) ....]
-			// (nodeIndex, acssCount) or (acssCount, nodeIndex) ?
+			// FIXME: (nodeIndex, acssCount) or (acssCount, nodeIndex) ?
+			shares := pssState.GetSharesFromT(T, curve)
 
-			// msg, err := dpss.NewDacssHimMessage(m.RoundID, shares, m.Curve)
-			// if err != nil {
-			// 	return
-			// }
-			// sessionStore.HIMStarted = true
-			// go self.ReceiveMessage(self.Details(), *msg)
+			msg, err := dpss.NewDacssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)
+			if err != nil {
+				return
+			}
+			pssState.HIMStarted = true
+			go self.ReceiveMessage(self.Details(), *msg)
 		}
 	}
 }

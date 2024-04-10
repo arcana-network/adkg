@@ -250,12 +250,16 @@ func (state *PSSState) GetTSet(n, t int) []int {
 	return T
 }
 
-func (state *PSSState) GetSharesFromT(T []int) []*sharing.ShamirShare {
-	shares := []*sharing.ShamirShare{}
+func (state *PSSState) GetSharesFromT(T []int, curve *curves.Curve) []curves.Scalar {
+	shares := []curves.Scalar{}
 	for _, keysetMap := range state.KeysetMap {
 		for nodeIndex, share := range keysetMap.ShareStore {
 			if Contains(T, nodeIndex) {
-				shares = append(shares, share)
+				s, err := curve.Scalar.SetBytes(share.Value)
+				if err != nil {
+					continue
+				}
+				shares = append(shares, s)
 			}
 		}
 	}
