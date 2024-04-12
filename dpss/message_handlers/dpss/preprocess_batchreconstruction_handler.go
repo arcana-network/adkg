@@ -42,8 +42,6 @@ func NewPreprocessBatchReconstructionMessage(pssRoundDetails common.PSSRoundDeta
 }
 
 func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
-	self.State().ShareStore.Lock()
-	defer self.State().ShareStore.Unlock()
 
 	// This message should only be sent by self
 	if !sender.IsEqual(self.Details()) {
@@ -56,6 +54,7 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 		).Error("PreprocessBatchRecMessage: Process")
 		return
 	}
+	self.State().ShareStore.Lock()
 
 	// locally compute (s_i+r_i) for i in B; shares s_i and shares of random values r_i
 	numShares := len(self.State().ShareStore.OldShares)
@@ -75,6 +74,8 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 	for i := range numShares {
 		ai_values = append(ai_values, self.State().ShareStore.OldShares[i].Add(r_scalars[i]))
 	}
+	self.State().ShareStore.Unlock()
+
 	// run B/(n-2t) BatchReconstruction
 	batchSize := n - 2*t
 	nrBatches := int(math.Ceil(float64(numShares) / float64(batchSize)))

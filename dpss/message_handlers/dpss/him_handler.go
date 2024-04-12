@@ -18,7 +18,7 @@ var DpssHimHandlerType string = "dpss_him"
 // Represents a message for the hyper-invertible matrix computation in Line 103 of the DPSS protocol.
 // We assume the following representation for the r_i shares: [ r_1 | r_2 | r_3 | ... | r_(n-t) ].
 // This representation is done in batches.
-type DacssHimMessage struct {
+type DpssHimMessage struct {
 	PSSRoundDetails common.PSSRoundDetails // Details of the PSS instance.
 	Kind            string                 // Type of the message.
 	CurveName       common.CurveName       // Curve that is being used in the protocol.
@@ -26,14 +26,14 @@ type DacssHimMessage struct {
 }
 
 // Creates a new message to handle the Line 103 of the DPSS protocol.
-func NewDacssHimMatrix(
+func NewDpssHimMatrix(
 	pssRoundDetails common.PSSRoundDetails,
 	shares []curves.Scalar,
 	hash []byte,
 	curve common.CurveName,
 ) (*common.PSSMessage, error) {
 	sharesBytes := sharing.CompressScalars(shares)
-	msg := DacssHimMessage{
+	msg := DpssHimMessage{
 		PSSRoundDetails: pssRoundDetails,
 		Kind:            DpssHimHandlerType,
 		CurveName:       curve,
@@ -55,7 +55,7 @@ func NewDacssHimMatrix(
 }
 
 // Process the message that executes Line 103 of the DPSS protocol.
-func (msg *DacssHimMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	// The message should sent by self.
 	if sender.Index != self.Details().Index {
 		log.WithFields(
