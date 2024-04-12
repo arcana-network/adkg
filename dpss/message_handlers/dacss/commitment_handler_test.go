@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
-	mrand "math/rand"
 	"testing"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -149,7 +148,7 @@ func TestCommitmentMsgRepeatedMessages(test *testing.T) {
 	_, foundCommitment := stateReceiver.FindThresholdCommitment(t + 1)
 	assert.False(test, foundCommitment)
 
-	commitmentHashHex := hex.EncodeToString(commitmentMsg.CommitmentsHash)
+	commitmentHashHex := hex.EncodeToString(commitmentMsg.CommitmentSecretHash)
 	countMsg := stateReceiver.CommitmentCount[commitmentHashHex]
 	assert.Equal(test, 1, countMsg)
 }
@@ -178,20 +177,18 @@ func TestCommitmentModifiedCommitment(test *testing.T) {
 		test.Error("Error creating the commitment message and nodes.")
 	}
 
-	// Change the commitments on purpose in a random position
-	index := mrand.Intn(len(commitments.Commitments))
+	// Change the commitment of the secret on purpose.
 
 	// Replaces the commitment in a random position for another different point
 	// in the curve. Then, change the commitments of the created message by this faked
 	// commitment.
 	newPoint := curves.K256().Point.Random(rand.Reader)
-	for newPoint.Equal(commitments.Commitments[index]) {
+	for newPoint.Equal(commitments.Commitments[0]) {
 		newPoint = curves.K256().Point.Random(rand.Reader)
 	}
-	commitments.Commitments[index] = newPoint
-	compressedFakeCommitment := sharing.CompressCommitments(commitments)
-	hashFakeCommitments := common.HashByte(compressedFakeCommitment)
-	commitmentMsg.CommitmentsHash = hashFakeCommitments
+	commitments.Commitments[0] = newPoint
+	hashFakeCommitments := common.HashByte(commitments.Commitments[0].ToAffineCompressed())
+	commitmentMsg.CommitmentSecretHash = hashFakeCommitments
 
 	// Send the fake message.
 	for _, senderNode := range senderGroup {
@@ -263,10 +260,10 @@ func getCommitmentMessageAndNodesSetup() (DacssCommitmentMessage, *testutils.Pss
 	)
 
 	commitmentMsg := DacssCommitmentMessage{
-		ACSSRoundDetails: acssRoundDetails,
-		CommitmentsHash:  hashCommitments,
-		Kind:             DacssCommitmentMessageType,
-		CurveName:        common.CurveName(curves.K256().Name),
+		ACSSRoundDetails:     acssRoundDetails,
+		CommitmentSecretHash: hashCommitments,
+		Kind:                 DacssCommitmentMessageType,
+		CurveName:            common.CurveName(curves.K256().Name),
 	}
 
 	return commitmentMsg, receiverNode, senderGroup, commitments, nil
