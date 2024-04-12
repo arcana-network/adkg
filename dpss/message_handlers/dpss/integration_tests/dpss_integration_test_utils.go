@@ -26,7 +26,7 @@ func (processor DpssMessageProcessor) ProcessMessages(sender common.NodeDetails,
 
 	switch PssMessage.Type {
 	case dpss.DpssHimHandlerType:
-		testutils.ProcessMessageForType[*dpss.DacssHimMessage](PssMessage.Data, sender, node, dpss.DpssHimHandlerType)
+		testutils.ProcessMessageForType[*dpss.DpssHimMessage](PssMessage.Data, sender, node, dpss.DpssHimHandlerType)
 	case dpss.InitRecHandlerType:
 		testutils.ProcessMessageForType[*dpss.InitRecMessage](PssMessage.Data, sender, node, dpss.InitRecHandlerType)
 	case dpss.PreprocessBatchRecMessageType:
