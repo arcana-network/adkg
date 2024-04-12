@@ -186,7 +186,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.CommitmentSent = true
 			},
 		)
-		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
+		go self.Broadcast(self.IsNewNode(), *commitmentMsg)
 
 		// We need to check here if the conditions for the commitment handler hold here
 		// because this node could have received commitment messages before reaching this point
