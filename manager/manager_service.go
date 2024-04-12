@@ -74,7 +74,7 @@ func (m *ManagerService) Call(method string, args ...interface{}) (result interf
 
 }
 
-//TODO - stdin listener unused for now, consider delete it
+//TODO - stdin listener unused for now, do we need to monitor state of the manager process
 // func stdin_listener(brocker *common.MessageBroker) {
 // 	scanner := bufio.NewScanner(os.Stdin)
 // 	for scanner.Scan() {

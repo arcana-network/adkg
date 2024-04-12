@@ -45,18 +45,7 @@ func (*PssService) ID() string {
 }
 
 func (service *PssService) Start() error {
-	// TODO what needs to be added here?
-
-	ChainMethods := service.broker.ChainMethods()
-	currEpoch := ChainMethods.GetCurrentEpoch()
-	// We'll probably need the currEpochInfo that is retrieved here
-	_, err := ChainMethods.GetEpochInfo(currEpoch, true)
-	if err != nil {
-		return err
-	}
-
 	service.running = true
-
 	return nil
 }
 
@@ -79,18 +68,10 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 	switch method {
 
 	case "trigger_pss":
-		/*
-			1. Abort keygen
-			2. Send start new process msg to manager
-			3. Retrieve old & new committee from smart contract
-			4. Create PssNode
-				PssNode in startup process
-				- should figure out the type it is
-				- must connect to the correct committee
-		*/
+		// TODO - check what to do for the new committee nodes
 		service.pssStatus = RUNNING
 		batchSize := uint(500)
-		// send new process msg to manager
+		// send DpssStart msg to manager to create new child process for new node
 		err := service.broker.ManagerMethods().SendDpssStart()
 		if err != nil {
 			log.Errorf("unable to send DPSS start message: %s", err.Error())
@@ -173,16 +154,20 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			c25519BatchNum += 1
 		}
 
-		// TODO difference between new & old committee?
-		go service.BatchRunDPSS(secpBatchNum, c25519BatchNum, batchSize)
-
+		isNewCommittee, err := service.broker.ChainMethods().IsNewCommittee()
+		if err != nil {
+			log.Errorf("Could not get isNewCommittee %s", err.Error())
+			return nil, err
+		}
+		if !isNewCommittee {
+			// only nodes in old committee need to initiate DPSS
+			go service.BatchRunDPSS(secpBatchNum, c25519BatchNum, batchSize, secpShareNum, c25519ShareNum)
+		}
 	}
-
-	// TODO add stop_pss
 	return nil, nil
 }
 
-func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, batchSize uint) {
+func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, batchSize uint, secpShareNum uint, c25519ShareNum uint) {
 
 	// secp256k1 shares
 	for currentBatch := uint(0); currentBatch < secpBatchNum; currentBatch++ {
@@ -190,6 +175,14 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 		// get old shares list of the batch
 		for i := uint(0); i < batchSize; i++ {
 			index := int64(currentBatch*batchSize + i)
+			if index > int64(secpShareNum) {
+				log.WithFields(log.Fields{
+					"type":            "secp256k1",
+					"last index":      index - 1,
+					"total share num": secpShareNum,
+				}).Debug("Last share added")
+				break
+			}
 			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.SECP256K1)
 			if err != nil {
 				log.Errorf("unable to ertrieve secp256k1 share of index %v: %s", index, err.Error())
@@ -201,11 +194,22 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 			}
 			oldShares = append(oldShares, share)
 		}
-		// Todo: what message to send here?
-		// dacss.NewInitMessage(,oldoldShares,)
 
-		// block until the batch has finished
-		<-service.batchFinChannel
+		if len(oldShares) > 0 {
+			log.WithFields(log.Fields{
+				"type":  "secp256k1",
+				"batch": currentBatch,
+			}).Info("Running DPSS")
+			// Todo: what message to send here?
+			// dacss.NewInitMessage(,oldoldShares,)
+			// block until the batch has finished
+			<-service.batchFinChannel
+			log.WithFields(log.Fields{
+				"type":  "secp256k1",
+				"batch": currentBatch,
+			}).Info("DPSS finished")
+		}
+
 	}
 
 	// ed25519 shares
@@ -214,6 +218,14 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 		// get old shares list of the batch
 		for i := uint(0); i < batchSize; i++ {
 			index := int64(currentBatch*batchSize + i)
+			if index > int64(c25519ShareNum) {
+				log.WithFields(log.Fields{
+					"type":            "ed25519",
+					"last index":      index - 1,
+					"total share num": c25519ShareNum,
+				}).Debug("Last share added")
+				break
+			}
 			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.ED25519)
 			if err != nil {
 				log.Errorf("unable to ertrieve ed25519 share of index %v: %s", index, err.Error())
@@ -225,11 +237,23 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 			}
 			oldShares = append(oldShares, share)
 		}
-		// Todo: what message to send here?
-		// dacss.NewInitMessage(,oldoldShares,)
 
-		// block until the batch has finished
-		<-service.batchFinChannel
+		if len(oldShares) > 0 {
+
+			log.WithFields(log.Fields{
+				"type":  "ed25519",
+				"batch": currentBatch,
+			}).Info("Running DPSS")
+			// Todo: what message to send here?
+			// dacss.NewInitMessage(,oldoldShares,)
+			// block until the batch has finished
+			<-service.batchFinChannel
+			log.WithFields(log.Fields{
+				"type":  "ed25519",
+				"batch": currentBatch,
+			}).Info("DPSS finished")
+		}
+
 	}
 
 }

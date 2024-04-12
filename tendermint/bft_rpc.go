@@ -44,10 +44,15 @@ type AssignmentTx struct {
 	Curve    common.CurveName
 }
 
+type DpssFinTx struct {
+	Epoch string
+}
+
 // mapping of name of struct to id
 var txTypeMap = map[string]byte{
 	getType(AssignmentTx{}):      byte(1),
 	getType(common.DKGMessage{}): byte(2),
+	getType(DpssFinTx{}):         byte(3),
 }
 
 func (wrapper *DefaultBFTTxWrapper) PrepareBFTTx(bftTx interface{}, broker *common.MessageBroker) ([]byte, error) {

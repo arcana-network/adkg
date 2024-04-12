@@ -787,6 +787,20 @@ func (cm *ChainMethods) GetCurrentPssStatus() (pssRunning bool, err error) {
 	return
 }
 
+func (cm *ChainMethods) IsNewCommittee() (isNewCommittee bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "is_new_committee")
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("IsNewCommittee")
+		err = methodResponse.Error
+		return
+	}
+	err = CastOrUnmarshal(methodResponse.Data, &isNewCommittee)
+	if err != nil {
+		return
+	}
+	return
+}
+
 type MethodRequest struct {
 	Caller  string
 	Service string

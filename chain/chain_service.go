@@ -72,7 +72,7 @@ type ChainService struct {
 	tmp2pConnection string
 	p2pConnection   string
 	isRegistered    bool
-	currentEpoch    int // TODO add method to update epoch
+	currentEpoch    int
 	selfEpoch       int // epoch the node belongs to
 	index           int
 	pssRunning      bool
@@ -164,8 +164,11 @@ func (service *ChainService) Start() error {
 
 	go epochNodesMonitor(service, service.selfEpoch)
 
-	// Continuously check whether old committe is replaced by new committee of nodes
+	// continuously check whether old committe is replaced by new committee of nodes
 	go pssFlagMonitor(service)
+
+	// monitor epoch change
+	go epochMonitor(service)
 
 	return nil
 }
@@ -442,11 +445,43 @@ func pssFlagMonitor(e *ChainService) {
 					log.WithError(err).Error("TriggerPss()")
 				}
 
-			} else {
-				// stop PSS
-				// TODO - check if we need this branch
-				continue
 			}
+		}
+
+	}
+}
+
+// epochMonitor monitors epoch change
+// new committee will become current committee
+// nodes in old committee will terminate itself
+func epochMonitor(e *ChainService) {
+	interval := time.NewTicker(10 * time.Second)
+	defer interval.Stop()
+	for range interval.C {
+		new_epoch, err := e.GetCurrentEpoch()
+		if err != nil {
+			log.WithError(err).Error("epochMonitor: can't get current epoch")
+		}
+		if new_epoch != e.currentEpoch {
+			// epoch change
+			log.WithFields(log.Fields{
+				"current epoch": e.currentEpoch,
+				"new epoch":     new_epoch,
+			}).Info("Epoch change")
+			// override epoch
+			e.currentEpoch = new_epoch
+			if e.selfEpoch == e.currentEpoch {
+				// new committee becomes current committee
+				e.isNewCommittee = false
+			}
+			if e.selfEpoch < e.currentEpoch {
+				// old committee should terminate itself
+				log.Info("old node prepares to terminate itself")
+				e.broker.ManagerMethods().SendKillProcess()
+			}
+
+			// TODO - check if we need to do anything else when changing epoch
+
 		}
 
 	}
@@ -572,7 +607,6 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		log.WithField("currentEpoch", chainService.currentEpoch).Debug("ChainService")
 		return chainService.currentEpoch, nil
 	case "get_self_epoch":
-		//TODO - check where do we to replace get_current_epoch with get_self_epoch
 		log.WithField("selfEpoch", chainService.selfEpoch).Debug("ChainService")
 		return chainService.selfEpoch, nil
 	case "validate_epoch_pub_key":
@@ -781,11 +815,12 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		return chainService.GetEpochPssStatus(args0, args1)
 	case "get_current_pss_status":
 		return chainService.IsPssRunning(), nil
+	case "is_new_committee":
+		return chainService.isNewCommittee, nil
 	}
 	return "", nil
 }
 
-// TODO - check when to update current epoch
 // get current epoch from the NodeList contract
 func (e *ChainService) GetCurrentEpoch() (int, error) {
 	opts := e.CallOpts()

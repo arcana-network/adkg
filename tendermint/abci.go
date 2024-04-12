@@ -48,6 +48,10 @@ type KeygenDecision struct {
 	Nodes []int `json:"nodes"`
 }
 
+type DpssFinDecision struct {
+	Nodes []int `json:"nodes"`
+}
+
 type getIndexesQuery struct {
 	Provider string           `json:"provider"`
 	UserID   string           `json:"user_id"`
@@ -98,6 +102,7 @@ type State struct {
 	KeygenPubKeys                  map[string]KeygenPubKey      `json:"keygen_pubkeys"`
 	ConsecutiveFailedPubKeyAssigns uint                         `json:"consecutive_failed_pubkey_assigns"`
 	C25519State                    C25519State                  `json:"c25519_state"`
+	DpssFinDecisions               map[string]DpssFinDecision   `json:"dpss_fin_decisions"`
 }
 
 func (state *State) KeyAvailable(curve common.CurveName) bool {
@@ -137,6 +142,7 @@ func (a *ABCI) NewABCI(broker *common.MessageBroker) *ABCI {
 				LastCreatedIndex:    0,
 				LastUnassignedIndex: 0,
 			},
+			DpssFinDecisions: make(map[string]DpssFinDecision),
 		}
 		abci.info = &AppInfo{
 			Height: 0,
