@@ -66,6 +66,16 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		},
 	).Debug("DACSSCommitmentMessage: Process")
 
+	log.WithFields(
+		log.Fields{
+			"AcssRoundDetails": msg.ACSSRoundDetails.ToACSSRoundID(),
+			"Message":          "trying to access the state using the acss round details",
+		},
+	).Debug("DacssCommitmentMessage: Process")
+
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
+
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
 		log.WithFields(
@@ -85,9 +95,6 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		).Error("DACSSCommitmentMessage: Process")
 		return
 	}
-
-	self.State().AcssStore.Lock()
-	defer self.State().AcssStore.Unlock()
 
 	// Do nothing if the commitment have been already received by the sender.
 	if state.ReceivedCommitments[sender.Index] {
@@ -111,26 +118,43 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 			state.CommitmentCount[commitmentStrEncoding]++
 		},
 	)
-	_, _, t := self.Params()
-	commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
-	if found {
-		// Computes the hash of the own commitment
-		if commitmentHexHash == state.OwnCommitmentsHash {
-			self.State().AcssStore.UpdateAccsState(
-				msg.ACSSRoundDetails.ToACSSRoundID(),
-				func(state *common.AccsState) {
-					state.ValidShareOutput = true
-				},
-			)
 
-			// TODO: Call the message to start MVBA here.
+	// If the RBC hasn't ended, we should not do the check afterwards
+	if state.RBCState.Phase == common.Ended {
+		_, _, t := self.Params()
+		commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
+		if found {
+			// Computes the hash of the own commitment
+			if commitmentHexHash == state.OwnCommitmentsHash {
+				self.State().AcssStore.UpdateAccsState(
+					msg.ACSSRoundDetails.ToACSSRoundID(),
+					func(state *common.AccsState) {
+						state.ValidShareOutput = true
+					},
+				)
+
+				log.WithFields(
+					log.Fields{
+						"Message":   "commitment finished correctly. Start MBVA here",
+						"SelfIdx":   self.Details().Index,
+						"IsNewNode": self.IsNewNode,
+					},
+				).Debug("DacssCommitmentMessage: process")
+			}
+		} else {
+			log.WithFields(
+				log.Fields{
+					"Threshold": t + 1,
+					"Message":   "There is no commitment record surpasing the threshold",
+				},
+			).Info("DACSSCommitmentMessage: Process")
 		}
 	} else {
 		log.WithFields(
 			log.Fields{
-				"Threshold": t + 1,
-				"Message":   "There is no commitment record surpasing the threshold",
+				"RBCState.Phase": state.RBCState.Phase,
+				"Message":        "the RBC has not ended yet",
 			},
-		).Info("DACSSCommitmentMessage: Process")
+		).Debug("DACSSCommitmentMessage: Process")
 	}
 }

@@ -2,7 +2,6 @@ package dpss
 
 import (
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -42,7 +41,6 @@ func NewPublicRecMsg(
 	return &pssMessage, nil
 }
 
-// TODO: Implement.
 func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	self.State().BatchReconStore.Lock()
 	defer self.State().BatchReconStore.Unlock()
@@ -104,49 +102,31 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	if ReconstructedUCount >= T+t {
 		ReconstructedUStore := recState.ReconstructedUStore
 
-		TPlus1Share := make(map[int]curves.Scalar)
-		remainingShare := make(map[int]curves.Scalar)
-
-		// 	Take the first T + 1 u_k values and interpolate a polynomial.
-		count := 0
-		for key, value := range ReconstructedUStore {
-			if count < t+1 {
-				TPlus1Share[key] = value
-			} else {
-				remainingShare[key] = value
-			}
-			count++
-		}
-
-		interpolatePoly, err := common.InterpolatePolynomial(TPlus1Share, curve)
-
+		doMatch, interpolatePoly, err := common.CheckPointsLieInPoly(
+			ReconstructedUStore,
+			T-1,
+			T+t,
+			curve,
+		)
 		if err != nil {
 			log.WithFields(
 				log.Fields{
+					"Message": "error checking that T + t points are in a polynomial of degree T - 1",
 					"Error":   err,
-					"Message": "Error trying to interpolate ploynomial with t+1 shares",
+				},
+			).Error("PublicRecMsg: Process")
+			return
+		}
+		if !doMatch {
+			log.WithFields(
+				log.Fields{
+					"Message": "there are on T + t points that lie in a polynomial of degree T - 1",
 				},
 			).Error("PublicRecMsg: Process")
 			return
 		}
 
-		for key, value := range remainingShare {
-			keyScalar := curve.Scalar.New(key)
-			evaluationResult := interpolatePoly.Evaluate(keyScalar)
-
-			// If the evaluation doesn't coincide return error
-			if evaluationResult.Cmp(value) != 0 {
-
-				log.WithFields(
-					log.Fields{
-						"Message": "shares does not coincide on the interpolationg polynomial",
-					},
-				).Error("PublicRecMsg: Process")
-				return
-			}
-		}
-
-		// sharing the co-efficients
+		// sharing the coefficients
 		len := len(interpolatePoly.Coefficients)
 		polynomialCoefficient := make([][]byte, len)
 

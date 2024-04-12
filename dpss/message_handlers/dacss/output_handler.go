@@ -57,6 +57,9 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
+	self.State().AcssStore.Lock()
+	defer self.State().AcssStore.Unlock()
+
 	// Retrieves the state.
 	state, found, err := self.State().AcssStore.Get(
 		m.AcssRoundDetails.ToACSSRoundID(),
@@ -89,9 +92,6 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		).Info("DACSSOutputMessage: Process")
 		return
 	}
-
-	self.State().AcssStore.Lock()
-	defer self.State().AcssStore.Unlock()
 
 	log.Debugf("acss_output: round=%v, self=%v", m.AcssRoundDetails, self.Details().Index)
 
@@ -171,7 +171,12 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			verifier,
 		)
 		if err != nil {
-			log.Errorf("Error creating the Commitment message: %v", err)
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "error while creating the commitment message",
+				},
+			).Error("DacssOutputMessage: Process")
 			return
 		}
 
@@ -182,6 +187,38 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			},
 		)
 		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
+
+		// We need to check here if the conditions for the commitment handler hold here
+		// because this node could have received commitment messages before reaching this point
+		_, _, t := self.Params()
+		commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
+		if found {
+			// Computes the hash of the own commitment
+			if commitmentHexHash == state.OwnCommitmentsHash {
+				self.State().AcssStore.UpdateAccsState(
+					m.AcssRoundDetails.ToACSSRoundID(),
+					func(state *common.AccsState) {
+						state.ValidShareOutput = true
+					},
+				)
+
+				log.WithFields(
+					log.Fields{
+						"Message":   "commitment finished correctly. Start MBVA here",
+						"SelfIdx":   self.Details().Index,
+						"IsNewNode": self.IsNewNode,
+					},
+				).Debug("DacssOutputMessage: process")
+			}
+		} else {
+			log.WithFields(
+				log.Fields{
+					"Threshold": t + 1,
+					"Message":   "There is no commitment record surpasing the threshold",
+				},
+			).Info("DacssOutputMessage: Process")
+		}
+
 	} else if !verified {
 		log.WithFields(
 			log.Fields{

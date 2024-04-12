@@ -52,7 +52,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	if self.IsNewNode() {
 		log.WithFields(log.Fields{
 			"IsNewNode": self.IsNewNode(),
-			"Message":   "Self is expected to be of the other committee.",
+			"Message":   "Self is expected to be an old node.",
 		}).Error("DACSSInitMessage: Process")
 		return
 	}

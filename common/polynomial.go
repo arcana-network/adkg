@@ -267,7 +267,7 @@ func CheckPointsLieInPoly(
 	for _, interpolationIndexes := range possibleInterpolationindexes {
 		// Extract the points for interpolation.
 		interpolationPoints := make(map[int]curves.Scalar)
-		for interpIndex := range interpolationIndexes {
+		for _, interpIndex := range interpolationIndexes {
 			shareIndex := indexesShares[interpIndex]
 			share := shares[interpIndex]
 			interpolationPoints[shareIndex] = share

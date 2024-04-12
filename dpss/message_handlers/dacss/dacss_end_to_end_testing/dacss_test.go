@@ -18,7 +18,7 @@ import (
 )
 
 func TestDacss(t *testing.T) {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
 	TestSetUp, _ := DacssIntegrationTestSetup()
@@ -40,11 +40,13 @@ func TestDacss(t *testing.T) {
 	// That means that for the single share each node has,
 	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
 	// and shared to both old & new committee
+	pssIdInt := 0            // PssId should be the same for all the init messages.
+	pssDealer := nodesOld[0] // We set the node in position zero to be the deler for DPSS
 	for index, n := range nodesOld {
 		go func(index int, node *testutils.IntegrationTestNode) {
 			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
 			share := sharing.ShamirShare{Id: shares[index].Id, Value: shares[index].Value}
-			initMsg := getTestInitMsgSingleShare(n, *big.NewInt(int64(index)), &share, ephemeralKeypair, TestSetUp.NewCommitteeParams)
+			initMsg := getTestInitMsgSingleShare(pssDealer, *big.NewInt(int64(pssIdInt)), &share, ephemeralKeypair, TestSetUp.NewCommitteeParams)
 
 			pssMsgData, err := bijson.Marshal(initMsg)
 			assert.Nil(t, err)
@@ -95,6 +97,9 @@ func TestDacss(t *testing.T) {
 
 		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
 		assert.Nil(t, err)
+
+		// Check that the valid share output has been set.
+		assert.True(t, state.ValidShareOutput)
 
 		rbcState := state.RBCState.Phase
 		assert.Equal(t, rbcState, common.Ended)

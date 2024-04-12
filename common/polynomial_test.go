@@ -237,12 +237,62 @@ func TestInterpolatePolynomialConstant(test *testing.T) {
 	}
 }
 
+func TestCheckPointLieInPolyHappyPath(test *testing.T) {
+	curve := polyTestCurve()
+
+	// Perform the test multiple times.
+	for range 100 {
+		// Interpolate a random polynomial
+		randomDegree := mrand.Intn(100)
+		interPoints := generateRandomPoints(randomDegree+1, curve)
+		interPoly, err := InterpolatePolynomial(interPoints, curve)
+
+		assert.Nil(test, err)
+
+		doMatch, poly, err := CheckPointsLieInPoly(
+			interPoints,
+			randomDegree,
+			randomDegree+1,
+			curve,
+		)
+		assert.Nil(test, err)
+		assert.NotNil(test, poly)
+		assert.True(test, doMatch)
+		assert.True(test, poly.Equal(interPoly))
+	}
+}
+
+func TestCheckPointLieInLinearErrorInduced(test *testing.T) {
+	curve := polyTestCurve()
+
+	// Run the test multiple times
+	for range 300 {
+		degree := mrand.Intn(15)
+		checkPointsWithError := generateRandomPoints(
+			degree+2,
+			curve,
+		)
+
+		doMatch, _, err := CheckPointsLieInPoly(checkPointsWithError, degree, degree+2, curve)
+		assert.Nil(test, err)
+		assert.False(test, doMatch)
+	}
+}
+
 func generateRandomPoints(length int, curve *curves.Curve) map[int]curves.Scalar {
 	points := make(map[int]curves.Scalar)
 	const MAX_X_AXIS int = 1000
 	const MAX_Y_AXIS int = 1000
+	generatedXValues := make(map[int]bool)
 	for range length {
+		// Generate different random x-axis value. This mechanism ensures the
+		// generation of different x-axis points.
 		randomX := mrand.Intn(MAX_X_AXIS)
+		for generatedXValues[randomX] {
+			randomX = mrand.Intn(MAX_X_AXIS)
+		}
+		generatedXValues[randomX] = true
+
 		randomY := mrand.Intn(MAX_Y_AXIS)
 		randomYScalar := curve.Scalar.New(randomY)
 		points[randomX] = randomYScalar
