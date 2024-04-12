@@ -4,8 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
-	arcanasharing "github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/coinbase/kryptology/pkg/sharing"
+	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -14,33 +13,31 @@ var DacssCommitmentMessageType string = "dacss_commitment"
 
 // Represents a COMMITMENT message as in Line 204, Algorithm 4, DPS paper.
 type DacssCommitmentMessage struct {
-	ACSSRoundDetails common.ACSSRoundDetails // Details of the current round.
-	CommitmentsHash  []byte                  // Hash of the commitments.
-	Kind             string                  // Type of the message.
-	CurveName        common.CurveName        // Curve that is being used.
+	ACSSRoundDetails     common.ACSSRoundDetails // Details of the current round.
+	CommitmentSecretHash []byte                  // Hash of the commitments.
+	Kind                 string                  // Type of the message.
+	CurveName            common.CurveName        // Curve that is being used.
 }
 
 func NewDacssCommitmentMessage(
 	acssRoundDetails common.ACSSRoundDetails,
 	curve common.CurveName,
-	commitments *sharing.FeldmanVerifier,
+	commitmentSecret curves.Point,
 ) (*common.PSSMessage, error) {
 
 	// Concatenate all the commitments in a big list to compute the hash.
-	concatCommitments := arcanasharing.CompressCommitments(commitments)
-	commitmentsHash := common.HashByte(concatCommitments)
+	commitmentSecretHash := common.HashByte(commitmentSecret.ToAffineCompressed())
 	log.WithFields(
 		log.Fields{
-			"ConcatCommitments": concatCommitments,
-			"HashCommitments":   commitmentsHash,
+			"HashCommitmentSecret": commitmentSecret,
 		},
 	).Info("NewDACSSCommitmentMessage")
 
 	m := DacssCommitmentMessage{
-		ACSSRoundDetails: acssRoundDetails,
-		Kind:             DacssCommitmentMessageType,
-		CurveName:        curve,
-		CommitmentsHash:  commitmentsHash,
+		ACSSRoundDetails:     acssRoundDetails,
+		Kind:                 DacssCommitmentMessageType,
+		CurveName:            curve,
+		CommitmentSecretHash: commitmentSecretHash,
 	}
 
 	bytes, err := bijson.Marshal(m)
@@ -114,7 +111,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		msg.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.ReceivedCommitments[sender.Index] = true
-			commitmentStrEncoding := hex.EncodeToString(msg.CommitmentsHash)
+			commitmentStrEncoding := hex.EncodeToString(msg.CommitmentSecretHash)
 			state.CommitmentCount[commitmentStrEncoding]++
 		},
 	)

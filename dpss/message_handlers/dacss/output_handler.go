@@ -159,16 +159,16 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShare = share
 
 				// Line 203, Algorithm 4, DPS paper. Stores the commitment
-				concatCommitments := sharing.CompressCommitments(verifier)
-				hashCommitments := common.HashByte(concatCommitments)
-				state.OwnCommitmentsHash = hex.EncodeToString(hashCommitments)
+				state.OwnCommitmentsHash = hex.EncodeToString(
+					common.HashByte(verifier.Commitments[0].ToAffineCompressed()),
+				)
 			},
 		)
 
 		commitmentMsg, err := NewDacssCommitmentMessage(
 			m.AcssRoundDetails,
 			m.curveName,
-			verifier,
+			verifier.Commitments[0],
 		)
 		if err != nil {
 			log.WithFields(
@@ -186,7 +186,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.CommitmentSent = true
 			},
 		)
-		go self.Broadcast(self.IsNewNode(), *commitmentMsg)
+		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
 
 		// We need to check here if the conditions for the commitment handler hold here
 		// because this node could have received commitment messages before reaching this point
