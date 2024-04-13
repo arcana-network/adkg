@@ -34,7 +34,7 @@ func NewPrivateRecMsg(
 
 	pssMessage := common.CreatePSSMessage(
 		msg.DPSSBatchRecDetails.PSSRoundDetails,
-		msg.Kind,
+		string(msg.Kind),
 		msgBytes,
 	)
 
@@ -120,22 +120,22 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 
 		// If they coincide, send u_i to the all the parties party.
 		reconstructedU := interpolatedPoly.Coefficients[0]
-		for _, n := range self.Nodes(self.IsNewNode()) {
-			publicReconstructMsg, err := NewPublicRecMsg(msg.DPSSBatchRecDetails, msg.curveName, reconstructedU.Bytes())
-
-			if err != nil {
-				log.WithFields(
-					log.Fields{
-						"Error":   err,
-						"Message": "Error constructiong Public Reconstruction msg",
-					},
-				).Error("PrivateRecMsg: Process")
-				return
-			}
-
-			go self.Send(n, *publicReconstructMsg)
-
+		publicReconstructMsg, err := NewPublicRecMsg(
+			msg.DPSSBatchRecDetails,
+			msg.curveName,
+			reconstructedU.Bytes(),
+		)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "Error constructiong Public Reconstruction msg",
+				},
+			).Error("PrivateRecMsg: Process")
+			return
 		}
 
+		// Broadcast to the old committee
+		go self.Broadcast(false, *publicReconstructMsg)
 	}
 }

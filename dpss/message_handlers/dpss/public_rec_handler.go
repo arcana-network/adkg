@@ -135,21 +135,20 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
 		}
 
-		//sending msg to new committee
-		for _, node := range self.Nodes(!self.IsNewNode()) {
-			localComputationMsg, err := NewLocalComputationMsg(msg.DPSSBatchRecDetails, msg.curveName, polynomialCoefficient)
+		localComputationMsg, err := NewLocalComputationMsg(msg.DPSSBatchRecDetails, msg.curveName, polynomialCoefficient)
 
-			if err != nil {
-				log.WithFields(
-					log.Fields{
-						"Error":   err,
-						"Message": "Error constructiong local Reconstruction msg",
-					},
-				).Error("PublicRecMsg: Process")
-				return
-			}
-			go self.Send(node, *localComputationMsg)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "Error constructiong local Reconstruction msg",
+				},
+			).Error("PublicRecMsg: Process")
+			return
 		}
+
+		// Broadcast to the new committee
+		go self.Broadcast(true, *localComputationMsg)
 
 	}
 }

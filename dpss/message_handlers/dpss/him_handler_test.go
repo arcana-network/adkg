@@ -54,7 +54,7 @@ func TestHappyPathHIM(test *testing.T) {
 		Dealer: dealerNode.Details(),
 	}
 
-	msg := DacssHimMessage{
+	msg := DpssHimMessage{
 		PSSRoundDetails: pssRoundDetails,
 		Kind:            DpssHimHandlerType,
 		CurveName:       common.CurveName(testutils.TestCurve().Name),

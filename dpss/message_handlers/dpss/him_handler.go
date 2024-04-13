@@ -16,7 +16,7 @@ import (
 var DpssHimHandlerType string = "dpss_him"
 
 // Represents a message for the hyper-invertible matrix computation in Line 103 of the DPSS protocol.
-// We assume the following representation for the r_i shares: [ r_1 | r_2 | r_3 | ... | r_(n-t) ].
+// We assume the following representation for the r_i shares: [ r_1 | r_2 | r_3 | ... | r_(B / (n - 2*t)) * (n - t) ].
 // This representation is done in batches.
 type DpssHimMessage struct {
 	PSSRoundDetails common.PSSRoundDetails // Details of the PSS instance.
@@ -69,12 +69,21 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 
 	n, _, t := self.Params()
 
+	self.State().ShareStore.Lock()
+	// Number of old shares that will be transformed, i.e. B.
+	numShares := len(self.State().ShareStore.OldShares)
+	self.State().ShareStore.Unlock()
+
+	// Matrix is square
+	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
+
 	// Decompress the shares comming from the MVBA protocol.
 	shares, err := sharing.DecompressScalars(
 		msg.Shares,
 		common.CurveFromName(msg.CurveName),
-		n-t,
+		matrixSize,
 	)
+
 	if err != nil {
 		log.WithFields(
 			log.Fields{
@@ -83,14 +92,6 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 			},
 		)
 	}
-
-	self.State().ShareStore.Lock()
-	// Number of old shares that will be transformed, i.e. B.
-	numShares := len(self.State().ShareStore.OldShares)
-	self.State().ShareStore.Unlock()
-
-	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
-
 	hiMatrix := sharing.CreateHIM(
 		matrixSize,
 		common.CurveFromName(msg.CurveName),

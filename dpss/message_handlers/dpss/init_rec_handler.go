@@ -15,6 +15,7 @@ type InitRecMessage struct {
 	ShareBatch          []byte                     // Share batch that will be reconstructed.
 	Curve               common.CurveName           // Curve that is being used in the computations.
 	Kind                string                     // Type of the message.
+	batchSize           int                        // How many shares are sent
 }
 
 // NewInitRecMessage creates a new InitRecMessage.
@@ -22,11 +23,13 @@ func NewInitRecMessage(
 	dpssBatchRecDetails common.DPSSBatchRecDetails,
 	shareBatch []byte,
 	curve common.CurveName,
+	batchSize int,
 ) (*common.PSSMessage, error) {
 	msg := InitRecMessage{
 		Kind:       InitRecHandlerType,
 		ShareBatch: shareBatch,
 		Curve:      curve,
+		batchSize:  batchSize,
 	}
 
 	msgBytes, err := bijson.Marshal(msg)
@@ -58,8 +61,8 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 	}
 
 	// Deserialize the shares.
-	n, _, t := self.Params()
-	batchSize := n - 2*t
+	n, _, _ := self.Params()
+	batchSize := msg.batchSize
 	shareBatch, err := sharing.DecompressScalars(
 		msg.ShareBatch,
 		common.CurveFromName(msg.Curve),

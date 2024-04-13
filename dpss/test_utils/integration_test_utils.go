@@ -182,11 +182,10 @@ func (t *IntegrationMockTransport) GetBroadcastedMessages() []common.PSSMessage 
 	return t.broadcastedMessages
 }
 
-func (node *IntegrationTestNode) CountReceivedMessages(msgType string) int {
-	receivedMessages := node.Transport().ReceivedMessages
+func (t *IntegrationMockTransport) CountReceivedMessages(msgType string) int {
 	filteredMessages := make([]common.PSSMessage, 0)
 
-	for _, msg := range receivedMessages {
+	for _, msg := range t.ReceivedMessages {
 		if msg.Type == msgType {
 			filteredMessages = append(filteredMessages, msg)
 		}
@@ -204,4 +203,8 @@ func (node *IntegrationTestNode) GetReceivedMessages(msgType string) []common.PS
 		}
 	}
 	return filteredMessages
+}
+
+func (node *IntegrationTestNode) CountReceivedMessages(msgType string) int {
+	return node.Transport().CountReceivedMessages(msgType)
 }

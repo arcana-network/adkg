@@ -97,7 +97,8 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 		initMsg, err := NewInitRecMessage(
 			dpssBatchDetails,
 			compressedBatch,
-			msg.CurveName)
+			msg.CurveName,
+			len(shareBatch))
 
 		if err != nil {
 			log.WithFields(
