@@ -71,12 +71,19 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		// TODO - check what to do for the new committee nodes
 		service.pssStatus = RUNNING
 		batchSize := uint(500)
-		// send DpssStart msg to manager to create new child process for new node
-		err := service.broker.ManagerMethods().SendDpssStart()
+		isNewCommittee, err := service.broker.ChainMethods().IsNewCommittee()
 		if err != nil {
-			log.Errorf("unable to send DPSS start message: %s", err.Error())
+			log.Errorf("Could not get isNewCommittee %s", err.Error())
+			return nil, err
 		}
+		if !isNewCommittee {
+			// send DpssStart msg to manager to create a new child process for new node
+			err := service.broker.ManagerMethods().SendDpssStart()
+			if err != nil {
+				log.Errorf("unable to send DPSS start message: %s", err.Error())
+			}
 
+		}
 		// get self info from ChainService
 		chainMethods := service.broker.ChainMethods()
 		selfIndex := chainMethods.GetSelfIndex()
@@ -154,11 +161,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			c25519BatchNum += 1
 		}
 
-		isNewCommittee, err := service.broker.ChainMethods().IsNewCommittee()
-		if err != nil {
-			log.Errorf("Could not get isNewCommittee %s", err.Error())
-			return nil, err
-		}
 		if !isNewCommittee {
 			// only nodes in old committee need to initiate DPSS
 			go service.BatchRunDPSS(secpBatchNum, c25519BatchNum, batchSize, secpShareNum, c25519ShareNum)
