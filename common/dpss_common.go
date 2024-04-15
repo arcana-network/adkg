@@ -269,8 +269,9 @@ func (store *PSSShareStore) Initialize(storeSize int) {
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
 type PSSRoundDetails struct {
-	PssID  string      // ID for the PSS.
-	Dealer NodeDetails // Index & PubKey of the dealer Node.
+	PssID     string      // ID for the PSS.
+	Dealer    NodeDetails // Index & PubKey of the dealer Node.
+	BatchSize int         // Number of shares that will be converted from one degree to another in one batch.
 }
 
 // ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
