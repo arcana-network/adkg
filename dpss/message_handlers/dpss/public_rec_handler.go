@@ -20,11 +20,11 @@ func NewPublicRecMsg(
 	curve common.CurveName,
 	uShare []byte,
 ) (*common.PSSMessage, error) {
-	msg := PrivateRecMsg{
+	msg := PublicRecMsg{
 		DPSSBatchRecDetails: dpssBatchRecDetails,
-		Kind:                PrivateRecHandlerType,
+		Kind:                PublicRecHandlerType,
 		curveName:           curve,
-		UShare:              uShare,
+		ReconstructedUShare: uShare,
 	}
 
 	msgBytes, err := bijson.Marshal(msg)

@@ -105,7 +105,4 @@ func TestDpss(t *testing.T) {
 		}
 	}
 	assert.True(t, len(publicRecMessages) > 0)
-
-	// It doesn't reach the Public Rec Handler
-	// TODO continue debugging and add assertions
 }
