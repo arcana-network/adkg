@@ -26,7 +26,7 @@ type DpssHimMessage struct {
 }
 
 // Creates a new message to handle the Line 103 of the DPSS protocol.
-func NewDpssHimMatrix(
+func NewDpssHimMessage(
 	pssRoundDetails common.PSSRoundDetails,
 	shares []curves.Scalar,
 	hash []byte,
@@ -69,12 +69,10 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 
 	n, _, t := self.Params()
 
-	self.State().ShareStore.Lock()
 	// Number of old shares that will be transformed, i.e. B.
-	numShares := len(self.State().ShareStore.OldShares)
-	self.State().ShareStore.Unlock()
+	numShares := msg.PSSRoundDetails.BatchSize
 
-	// Matrix is square
+	// Matrix is square. The matrix will be of dimensions matrixSize x matrixSize.
 	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 
 	// Decompress the shares comming from the MVBA protocol.
@@ -115,7 +113,8 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 	}
 
 	// From the trully random values, we select B of them to be the masks for
-	// the values {s_i}.
+	// the values {s_i}. The rValues are the ones that will be used to mask the
+	// secrets.
 	rValues := globalRandomR[:numShares]
 	rValuesBytes := sharing.CompressScalars(rValues)
 

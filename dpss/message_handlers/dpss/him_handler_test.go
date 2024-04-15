@@ -3,7 +3,9 @@ package dpss
 import (
 	"crypto/rand"
 	"errors"
+	"math"
 	"math/big"
+	mrand "math/rand"
 	"slices"
 	"testing"
 	"time"
@@ -34,8 +36,12 @@ func TestHappyPathHIM(test *testing.T) {
 
 	n, k, t := testNode.Params()
 
+	// The number of shares that will be transformed is generated at random.
+	batchSizeRnd := mrand.Intn(20)
+	nRandomShares := int(math.Ceil(float64(batchSizeRnd)/float64(n-2*t))) * (n - t)
+
 	shares, err := generateSharesMultipleSecrets(
-		n-t,
+		nRandomShares,
 		dealerNode.Details().Index,
 		n,
 		k,
@@ -50,8 +56,9 @@ func TestHappyPathHIM(test *testing.T) {
 	// Set the round parameters
 	id := big.NewInt(1)
 	pssRoundDetails := common.PSSRoundDetails{
-		PssID:  common.NewPssID(*id),
-		Dealer: dealerNode.Details(),
+		PssID:     common.NewPssID(*id),
+		Dealer:    dealerNode.Details(),
+		BatchSize: batchSizeRnd,
 	}
 
 	msg := DpssHimMessage{
@@ -71,8 +78,8 @@ func TestHappyPathHIM(test *testing.T) {
 // generates r_1, r_2, ..., r_n and returns the shares [r_1]_i, ...[r_n]_i for
 // a node i.
 func generateSharesMultipleSecrets(nShares, nodeIdx, n, k int, curve *curves.Curve) ([]curves.Scalar, error) {
-	shares := make([]curves.Scalar, 0)
-	for range nShares {
+	shares := make([]curves.Scalar, nShares)
+	for i := range nShares {
 		randomScalar := testutils.TestCurve().Scalar.Random(rand.Reader)
 		_, sharesRandScalar, err := sharing.GenerateCommitmentAndShares(
 			randomScalar,
@@ -98,7 +105,7 @@ func generateSharesMultipleSecrets(nShares, nodeIdx, n, k int, curve *curves.Cur
 			if err != nil {
 				return nil, err
 			}
-			shares = append(shares, shareScalar)
+			shares[i] = shareScalar
 		}
 	}
 	return shares, nil
