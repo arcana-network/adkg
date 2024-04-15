@@ -57,16 +57,16 @@ func (msg *DacssEchoMessage) Fingerprint() string {
 // Process handles the incomming ECHO message.
 func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Debugf("Echo received: Sender=%d, Receiver=%d", sender.Index, self.Details().Index)
-	if sender.Index == self.Details().Index {
-		log.WithFields(
-			log.Fields{
-				"SenderIdx": sender.Index,
-				"SelfIdx":   self.Details().Index,
-				"Message":   "Ignore the echo message from self.",
-			},
-		).Error("DACSSEchoMessage: Process")
-		return // TODO check whether the Echo should indeed be ignored when coming from self
-	}
+	// if sender.Index == self.Details().Index {
+	// 	log.WithFields(
+	// 		log.Fields{
+	// 			"SenderIdx": sender.Index,
+	// 			"SelfIdx":   self.Details().Index,
+	// 			"Message":   "Ignore the echo message from self.",
+	// 		},
+	// 	).Error("DACSSEchoMessage: Process")
+	// 	return // TODO check whether the Echo should indeed be ignored when coming from self
+	// }
 
 	self.State().AcssStore.Lock()
 

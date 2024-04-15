@@ -1,4 +1,4 @@
-package dacss
+package dpss
 
 import (
 	"errors"
@@ -7,7 +7,9 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -79,7 +81,7 @@ func (n *PssTestNode2) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Po
 	nodes := n.Nodes(fromNewCommittee)
 	for _, n := range nodes {
 		if n.Index == idx {
-			pk, err := TestCurve().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
+			pk, err := TTestCurve().NewIdentityPoint().Set(&n.PubKey.X, &n.PubKey.Y)
 			if err != nil {
 				return nil
 			}
@@ -108,7 +110,7 @@ func (n *PssTestNode2) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]com
 func GetSingleNode(isNewCommittee bool, isFaulty bool) (*PssTestNode2, *MockTransport) {
 	nodesOld := []*PssTestNode2{}
 	nodesNew := []*PssTestNode2{}
-	keypair := common.GenerateKeyPair(TestCurve())
+	keypair := common.GenerateKeyPair(TTestCurve())
 	transport := NewMockTransport(nodesOld, nodesNew)
 
 	node := NewEmptyNode(1, keypair, transport, isFaulty, isNewCommittee)
@@ -134,10 +136,11 @@ func NewEmptyNode(index int, keypair common.KeyPair, Transport *MockTransport, i
 		isNewCommittee:      isNewCommittee,
 		committeeTestParams: params,
 		state: &common.PSSNodeState{
-			AcssStore:  &common.AcssStateMap{},
-			ShareStore: &common.PSSShareStore{},
-			ABAStore:   &common.AbaStateMap{},
-			PSSStore:   &common.PSSStateMap{},
+			AcssStore:   &common.AcssStateMap{},
+			ShareStore:  &common.PSSShareStore{},
+			ABAStore:    &common.AbaStateMap{},
+			PSSStore:    &common.PSSStateMap{},
+			KeysetStore: &common.KeysetStateMap{},
 		},
 		Transport:   Transport,
 		LongtermKey: keypair,
@@ -268,7 +271,30 @@ func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMes
 		processDACSSMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
 	case dacss.DacssCommitmentMessageType:
 		processDACSSMessage[*dacss.DacssCommitmentMessage](PssMessage.Data, sender, node, dacss.DacssCommitmentMessageType)
-
+	case keyset.ProposeMessageType:
+		processDACSSMessage[*keyset.ProposeMessage](PssMessage.Data, sender, node, keyset.ProposeMessageType)
+	case keyset.EchoMessageType:
+		processDACSSMessage[*keyset.EchoMessage](PssMessage.Data, sender, node, keyset.EchoMessageType)
+	case keyset.ReadyMessageType:
+		processDACSSMessage[*keyset.ReadyMessage](PssMessage.Data, sender, node, keyset.ReadyMessageType)
+	case keyset.OutputMessageType:
+		processDACSSMessage[*keyset.OutputMessage](PssMessage.Data, sender, node, keyset.OutputMessageType)
+	case aba.InitMessageType:
+		processDACSSMessage[*aba.InitMessage](PssMessage.Data, sender, node, aba.InitMessageType)
+	case aba.Aux1MessageType:
+		processDACSSMessage[*aba.Aux1Message](PssMessage.Data, sender, node, aba.Aux1MessageType)
+	case aba.Aux2MessageType:
+		processDACSSMessage[*aba.Aux2Message](PssMessage.Data, sender, node, aba.Aux2MessageType)
+	case aba.AuxsetMessageType:
+		processDACSSMessage[*aba.AuxsetMessage](PssMessage.Data, sender, node, aba.AuxsetMessageType)
+	case aba.Est1MessageType:
+		processDACSSMessage[*aba.Est1Message](PssMessage.Data, sender, node, aba.Est1MessageType)
+	case aba.Est2MessageType:
+		processDACSSMessage[*aba.Est2Message](PssMessage.Data, sender, node, aba.Est2MessageType)
+	case aba.CoinInitMessageType:
+		processDACSSMessage[*aba.CoinInitMessage](PssMessage.Data, sender, node, aba.CoinInitMessageType)
+	case aba.CoinMessageType:
+		processDACSSMessage[*aba.CoinMessage](PssMessage.Data, sender, node, aba.CoinMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
 	}
@@ -311,10 +337,10 @@ func (node *PssTestNode2) GetReceivedMessages(msgType string) []common.PSSMessag
 	return filteredMessages
 }
 
-func TestCurveName() common.CurveName {
+func TTestCurveName() common.CurveName {
 	return common.SECP256K1
 }
 
-func TestCurve() *curves.Curve {
-	return common.CurveFromName(TestCurveName())
+func TTestCurve() *curves.Curve {
+	return common.CurveFromName(TTestCurveName())
 }

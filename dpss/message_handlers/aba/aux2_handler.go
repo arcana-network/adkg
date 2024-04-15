@@ -1,6 +1,7 @@
 package aba
 
 import (
+	"math"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -165,17 +166,10 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 						"Decisions": pssState.Decisions,
 					}).Debug("starting HIM")
 
-					// 1) Get list of Keysets voted as 1
-					// 2) Get T[index] from each keyset and union to get T
 					T := pssState.GetTSet(n, f)
-
 					curve := common.CurveFromName(m.Curve)
-					// 3) Get shares and compress
-					// Len(share) = B/n-2t * n-t
-					// Somehow sort and create array from shares
-					// [(1,1), (1,2), (1,3), (2, 1) ....]
-					// FIXME: (nodeIndex, acssCount) or (acssCount, nodeIndex) ?
-					shares := pssState.GetSharesFromT(T, curve)
+					alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*f))))
+					shares := pssState.GetSharesFromT(T, alpha, curve)
 
 					msg, err := dpss.NewDacssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)
 					if err != nil {

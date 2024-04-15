@@ -228,7 +228,7 @@ type PSSState struct {
 	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
 	TProposals     map[int]int // nodeIndex => unverified keyset
 	PSSID          PSSID
-	KeysetMap      map[int]*ACSSKeysetMap // [1-alpha]acssCount => nodeIndex => ACCKeysetMap
+	KeysetMap      map[int]*ACSSKeysetMap // acssCount => nodeIndex => ACCKeysetMap
 	KeysetProposed bool
 	ABAStarted     []int
 	ABAComplete    bool
@@ -250,20 +250,19 @@ func (state *PSSState) GetTSet(n, t int) []int {
 	return T
 }
 
-func (state *PSSState) GetSharesFromT(T []int, curve *curves.Curve) []curves.Scalar {
+func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) []curves.Scalar {
 	shares := []curves.Scalar{}
-	for _, keysetMap := range state.KeysetMap {
-		for nodeIndex, share := range keysetMap.ShareStore {
-			if Contains(T, nodeIndex) {
-				s, err := curve.Scalar.SetBytes(share.Value)
-				if err != nil {
-					continue
-				}
-				shares = append(shares, s)
+	for i := range alpha {
+		val := state.KeysetMap[i]
+		for j := range T {
+			s := val.ShareStore[j]
+			share, err := curve.Scalar.SetBytes(s.Value)
+			if err != nil {
+				continue
 			}
+			shares = append(shares, share)
 		}
 	}
-
 	return shares
 }
 
