@@ -43,10 +43,6 @@ func (n *PssTestNode) CurveParams(curveName string) (curves.Point, curves.Point)
 	return sharing.CurveParams(curveName)
 }
 
-func (n *PssTestNode) GetBatchCount() int {
-	return 9
-}
-
 func (n *PssTestNode) IsNewNode() bool {
 	return n.isNewCommittee
 }

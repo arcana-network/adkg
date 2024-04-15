@@ -315,9 +315,6 @@ func (n *Node) Send(receiver common.NodeDetails, msg common.PSSMessage) error {
 func (n *Node) Nodes(newCommittee bool) map[common.NodeDetailsID]common.NodeDetails {
 	return n.transport.nodeDetails
 }
-func (n *Node) GetBatchCount() int {
-	return 10
-}
 
 func (n *Node) Details() common.NodeDetails {
 	return common.NodeDetails{

@@ -224,7 +224,9 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 			T := pssState.GetTSet(n, f)
 			curve := common.CurveFromName(m.Curve)
-			alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*f))))
+			numShares := len(self.State().ShareStore.OldShares)
+
+			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
 			shares := pssState.GetSharesFromT(T, alpha, curve)
 
 			msg, err := dpss.NewDpssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)

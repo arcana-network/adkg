@@ -53,7 +53,6 @@ type PSSParticipant interface {
 	// Get node details by id, only checks in list of old nodes
 	OldNodeDetailsByID(id int) (NodeDetails, error)
 	// Get B
-	GetBatchCount() int
 	// Get (G, H) for specific curve
 	CurveParams(curveName string) (curves.Point, curves.Point)
 }

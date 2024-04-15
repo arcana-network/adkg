@@ -58,10 +58,6 @@ func (n *PssTestNode2) ID() int {
 	return n.details.Index
 }
 
-func (n *PssTestNode2) GetBatchCount() int {
-	return 3
-}
-
 func (n *PssTestNode2) CurveParams(curveName string) (curves.Point, curves.Point) {
 	return sharing.CurveParams(curveName)
 }
