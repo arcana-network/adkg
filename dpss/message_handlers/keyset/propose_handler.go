@@ -1,12 +1,12 @@
 package keyset
 
 import (
-	"encoding/json"
 	"math"
 
 	"github.com/arcana-network/dkgnode/common"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
+	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
@@ -28,7 +28,7 @@ func NewProposeMessage(id common.PSSRoundDetails, d []byte, curve common.CurveNa
 		curve,
 		d,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +63,9 @@ func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSPartic
 	pssState.Lock()
 	defer pssState.Unlock()
 
-	// TODO: deduplicate this v ??
-	alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*t))))
+	numShares := len(self.State().ShareStore.OldShares)
+
+	alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
 	verified := Predicate(kcommon.IntToByteValue(TSet), m.Data)
 
@@ -77,10 +78,10 @@ func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSPartic
 }
 
 func OnKeysetVerified(roundID common.PSSRoundDetails, curve common.CurveName, keyset []byte,
-	sessionStore *common.PSSState, leader int, self common.PSSParticipant) {
+	pssState *common.PSSState, leader int, self common.PSSParticipant) {
 	if leader != self.Details().Index {
 		data := kcommon.ByteToIntValue(keyset)
-		sessionStore.T[int(leader)] = data
+		pssState.T[int(leader)] = data
 	}
 
 	n, k, _ := self.Params()

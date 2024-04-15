@@ -98,6 +98,7 @@ func (m CoinInitMessage) Process(sender common.NodeDetails, self common.PSSParti
 		}
 		uJi = uJi.Add(share)
 	}
+	// FIXME: Maybe something wrong here, in generate or verify
 	// Create proof
 	proof := generateProof(curve, gTilde, uJi, self)
 

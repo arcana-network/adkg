@@ -12,6 +12,7 @@ import (
 
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
 )
@@ -228,7 +229,7 @@ type PSSState struct {
 	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
 	TProposals     map[int]int // nodeIndex => unverified keyset
 	PSSID          PSSID
-	KeysetMap      map[int]*ACSSKeysetMap // acssCount => nodeIndex => ACCKeysetMap
+	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
 	KeysetProposed bool
 	ABAStarted     []int
 	ABAComplete    bool
@@ -254,10 +255,13 @@ func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) [
 	shares := []curves.Scalar{}
 	for i := range alpha {
 		val := state.KeysetMap[i]
-		for j := range T {
+		for _, j := range T {
+			log.Debug("val.ShareStore", val.ShareStore, "curve", curve)
 			s := val.ShareStore[j]
+			log.Debug("s.value", s, j, val.ShareStore)
 			share, err := curve.Scalar.SetBytes(s.Value)
 			if err != nil {
+				log.Error("scalar.setBytes:", err)
 				continue
 			}
 			shares = append(shares, share)
@@ -374,7 +378,7 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 		}
 
 		T = Tset[0]
-		for i := 1; i < threshold; i += 1 {
+		for i := 1; i < alpha; i += 1 {
 			T = T & Tset[i]
 		}
 		if CountBit(T) >= threshold {
@@ -396,8 +400,11 @@ func CountBit(n int) int {
 
 func GetDefaultPSSState(id PSSID) *PSSState {
 	s := PSSState{
-		PSSID:     id,
-		KeysetMap: make(map[int]*ACSSKeysetMap),
+		PSSID:      id,
+		KeysetMap:  make(map[int]*ACSSKeysetMap),
+		T:          make(map[int]int),
+		TProposals: make(map[int]int),
+		Decisions:  make(map[int]int),
 	}
 	return &s
 }

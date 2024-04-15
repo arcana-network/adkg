@@ -3,10 +3,12 @@ package dacss
 import (
 	"crypto/hmac"
 	"encoding/hex"
+	"math"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -84,7 +86,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				"RBCState": state.RBCState.Phase,
 				"Message":  "The RBC state has already finished. Doing an early return",
 			},
-		).Info("DACSSOutputMessage: Process")
+		).Debug("DACSSOutputMessage: Process")
 		return
 	}
 
@@ -108,7 +110,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	_, k, _ := self.Params()
+	n, k, t := self.Params()
 	curve := common.CurveFromName(m.curveName)
 
 	pubKeyPoint, err := common.PointToCurvePoint(self.Details().PubKey, m.curveName)
@@ -200,6 +202,22 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			keysetMap.TPrime = dpsscommon.SetBit(keysetMap.TPrime, dealer.Index)
 			keysetMap.ShareStore[dealer.Index] = share
 			keysetMap.CommitmentStore[dealer.Index] = verifier.Commitments
+
+			// Check proposals and emit
+			numShares := len(self.State().ShareStore.OldShares)
+			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
+			TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
+			for key, v := range pssState.TProposals {
+				if keyset.Predicate(dpsscommon.IntToByteValue(TSet), dpsscommon.IntToByteValue(v)) {
+					dealer, err := self.OldNodeDetailsByID(key)
+					if err != nil {
+						continue
+					}
+					roundID := common.CreatePSSRound(pssState.PSSID, dealer, "keyset")
+					keyset.OnKeysetVerified(roundID, m.curveName, dpsscommon.IntToByteValue(v), pssState, key, self)
+					delete(pssState.TProposals, key)
+				}
+			}
 		}
 
 		commitmentMsg, err := NewDacssCommitmentMessage(

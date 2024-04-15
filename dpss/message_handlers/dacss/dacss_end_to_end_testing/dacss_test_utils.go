@@ -137,7 +137,6 @@ func NewEmptyNode(index int, keypair common.KeyPair, Transport *MockTransport, i
 			AcssStore:  &common.AcssStateMap{},
 			ShareStore: &common.PSSShareStore{},
 			ABAStore:   &common.AbaStateMap{},
-			PSSStore:   &common.PSSStateMap{},
 		},
 		Transport:   Transport,
 		LongtermKey: keypair,

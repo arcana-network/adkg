@@ -164,11 +164,15 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 						"f":         f,
 						"node":      self.Details().Index,
 						"Decisions": pssState.Decisions,
+						"T":         pssState.T,
 					}).Debug("starting HIM")
 
+					// FIXME: Something wrong here, sometime gets pointer nil thingy
 					T := pssState.GetTSet(n, f)
 					curve := common.CurveFromName(m.Curve)
-					alpha := int(math.Ceil(float64(self.GetBatchCount()) / float64((n - 2*f))))
+					numShares := len(self.State().ShareStore.OldShares)
+
+					alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
 					shares := pssState.GetSharesFromT(T, alpha, curve)
 
 					msg, err := dpss.NewDpssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)

@@ -3,10 +3,10 @@ package keyset
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
+	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
@@ -30,7 +30,7 @@ func NewReadyMessage(id common.PSSRoundDetails, s infectious.Share, hash []byte,
 		s,
 		hash,
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -64,12 +64,13 @@ func (m ReadyMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 			EchoStore:     make(map[string]*common.EchoStore),
+			ReadyStore:    []infectious.Share{},
 		},
 	}
 	state, complete := self.State().KeysetStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), defaultKeygen)
 	if complete {
 		// if keygen is complete, ignore and return
-		log.Infof("keygen already complete: %s", m.RoundID)
+		log.Infof("keygen already complete: %v", m.RoundID)
 		return
 	}
 
@@ -78,7 +79,7 @@ func (m ReadyMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 	receivedReady, found := state.RBCState.ReceivedReady[sender.Index]
 	if found && receivedReady {
-		log.Debugf("Already received ready for %s from %d on %d", m.RoundID, sender.Index, self.Details().Index)
+		log.Debugf("Already received ready for %v from %d on %d", m.RoundID, sender.Index, self.Details().Index)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (m ReadyMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		echoStore := state.FindThresholdEchoStore(f + 1)
 		if echoStore != nil {
 			// Broadcast ready message
-			readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Shard, echoStore.HashMessage, m.Curve)
 			if err != nil {
 				log.WithField("error", err).Error("NewKeysetProposeMessage")
 				return
@@ -107,8 +108,8 @@ func (m ReadyMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		return
 	}
 
-	for i := 0; i <= f; i += 1 {
-		log.Debugf("len(readstore)=%d, threshold=%d", len(state.RBCState.ReadyStore), (2*f + 1 + i))
+	for i := range f + 1 {
+		log.Infof("len(readstore)=%d, threshold=%d", len(state.RBCState.ReadyStore), (2*f + 1 + i))
 		if len(state.RBCState.ReadyStore) >= ((2 * f) + 1 + i) {
 			// Create RS encoding
 			fec, err := infectious.NewFEC(f+1, n)

@@ -2,9 +2,9 @@ package keyset
 
 import (
 	"encoding/hex"
-	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/torusresearch/bijson"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/vivint/infectious"
@@ -29,7 +29,7 @@ func NewEchoMessage(id common.PSSRoundDetails, s infectious.Share, hash []byte, 
 		hash,
 	}
 
-	bytes, err := json.Marshal(m)
+	bytes, err := bijson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (m EchoMessage) Process(sender common.NodeDetails, self common.PSSParticipa
 	state, complete := self.State().KeysetStore.GetOrSetIfNotComplete(m.RoundID.ToRoundID(), defaultKeygen)
 	if complete {
 		// if keygen is complete, ignore and return
-		log.Infof("keygen already complete: %s", m.RoundID)
+		log.Infof("keygen already complete: %v", m.RoundID)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (m EchoMessage) Process(sender common.NodeDetails, self common.PSSParticipa
 	// Check if the echo has already been received
 	receivedEcho, found := state.RBCState.ReceivedEcho[sender.Index]
 	if receivedEcho && found {
-		log.Debugf("Already received echo for %s from %d", m.RoundID, sender.Index)
+		log.Debugf("Already received echo for %v from %d", m.RoundID, sender.Index)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (m EchoMessage) Process(sender common.NodeDetails, self common.PSSParticipa
 	// increment the echo messages received
 	echoStore.Count = echoStore.Count + 1
 
-	log.Debugf("Round=%s, EchoCount=%v, self=%v", m.RoundID, echoStore.Count, self.Details().Index)
+	log.Debugf("Round=%v, EchoCount=%v, self=%v", m.RoundID, echoStore.Count, self.Details().Index)
 	_, _, f := self.Params()
 
 	log.Debugf("node=%d, echo_count=%d, required=%d", self.Details().Index, echoStore.Count, (2*f + 1))
@@ -115,7 +115,7 @@ func (m EchoMessage) Process(sender common.NodeDetails, self common.PSSParticipa
 		echoStore := state.FindThresholdEchoStore(f + 1)
 		if echoStore != nil {
 			// Broadcast ready message
-			readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Shard, echoStore.HashMessage, m.Curve)
 			if err != nil {
 				log.WithField("error", err).Error("NewKeysetProposeMessage")
 				return

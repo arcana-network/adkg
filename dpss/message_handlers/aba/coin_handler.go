@@ -75,14 +75,14 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 	for {
 		pssState.Lock()
-
 		TiSet := kcommon.GetSetBits(n, pssState.T[roundLeader])
 
 		log.WithFields(log.Fields{
 			"self":   self.Details().Index,
 			"sender": sender.Index,
-			"round":  m.RoundID,
+			"round":  m.RoundID.PssID,
 			"TiSet":  TiSet,
+			"T":      pssState.T,
 		}).Info("aba_coin")
 
 		if len(TiSet) > 0 {
@@ -111,17 +111,18 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		return
 	}
 
-	// TODO: Recheck this, using the first sample for coin tossing
+	// FIXME: Something wrong here
 	gI := aba.DerivePublicKey(sender.Index, k, curve, TiSet, pssState.KeysetMap[0].CommitmentStore)
 
 	log.WithFields(log.Fields{
-		"self":      self.Details().Index,
-		"sender":    sender.Index,
-		"round":     m.RoundID,
-		"publicKey": gI.ToAffineCompressed(),
-		"T":         pssState.T,
-		"verified":  verify(u, gTilde, gI, curve, self),
-	}).Debug("aba_coin_msg_before_verified")
+		"self":               self.Details().Index,
+		"sender":             sender.Index,
+		"round":              m.RoundID,
+		"publicKey":          gI.ToAffineCompressed(),
+		"T":                  TiSet,
+		"pssState.KeysetMap": pssState.KeysetMap[0].CommitmentStore,
+		"verified":           verify(u, gTilde, gI, curve, self),
+	}).Info("aba_coin_msg_before_verified")
 
 	if verify(u, gTilde, gI, curve, self) {
 		store.SetCoinShare(sender.Index, u.GiTilde)
@@ -281,6 +282,8 @@ func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common
 	hBar := g.Mul(u.Z).Sub(gI.Mul(cBar))
 
 	hTildeBar := gTilde.Mul(u.Z).Sub(u.GiTilde.Mul(cBar))
+
+	log.Infof("COIN:VERIFY: u.H=%x,hBar=%x, u.HTilde=%x, hTildeBar=%x", u.H.ToAffineCompressed(), hBar.ToAffineCompressed(), u.HTilde.ToAffineCompressed(), hTildeBar.ToAffineCompressed())
 
 	if u.H.Equal(hBar) && u.HTilde.Equal(hTildeBar) {
 		return true

@@ -226,9 +226,12 @@ func (node *PssTestNode2) ReceiveMessage(sender common.NodeDetails, PssMessage c
 	switch {
 	case strings.HasPrefix(PssMessage.Type, "dacss"):
 		node.ProcessDACSSMessages(sender, PssMessage)
-
+	case strings.HasPrefix(PssMessage.Type, "keyset"):
+		node.ProcessKeysetMessages(sender, PssMessage)
+	case strings.HasPrefix(PssMessage.Type, "aba"):
+		node.ProcessABAMessages(sender, PssMessage)
 	default:
-		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
+		log.Infof("No handler found. MsgType=%s, self=%d", PssMessage.Type, node.details.Index)
 	}
 }
 
@@ -236,8 +239,8 @@ type MessageProcessor interface {
 	Process(sender common.NodeDetails, node common.PSSParticipant)
 }
 
-func processDACSSMessage[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
-	log.Debugf("Got %s", messageType)
+func processMessage[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
+	log.Infof("Got %s", messageType)
 	var msg T
 	err := bijson.Unmarshal(data, &msg)
 	if err != nil {
@@ -250,51 +253,89 @@ func processDACSSMessage[T MessageProcessor](data []byte, sender common.NodeDeta
 func (node *PssTestNode2) ProcessDACSSMessages(sender common.NodeDetails, PssMessage common.PSSMessage) {
 	switch PssMessage.Type {
 	case dacss.InitMessageType:
-		processDACSSMessage[dacss.InitMessage](PssMessage.Data, sender, node, dacss.InitMessageType)
+		processMessage[dacss.InitMessage](PssMessage.Data, sender, node, dacss.InitMessageType)
 	case dacss.DacssEchoMessageType:
-		processDACSSMessage[dacss.DacssEchoMessage](PssMessage.Data, sender, node, dacss.DacssEchoMessageType)
+		processMessage[dacss.DacssEchoMessage](PssMessage.Data, sender, node, dacss.DacssEchoMessageType)
 	case dacss.ShareMessageType:
-		processDACSSMessage[dacss.DualCommitteeACSSShareMessage](PssMessage.Data, sender, node, dacss.ShareMessageType)
+		processMessage[dacss.DualCommitteeACSSShareMessage](PssMessage.Data, sender, node, dacss.ShareMessageType)
 	case dacss.AcssProposeMessageType:
-		processDACSSMessage[*dacss.AcssProposeMessage](PssMessage.Data, sender, node, dacss.AcssProposeMessageType)
+		processMessage[*dacss.AcssProposeMessage](PssMessage.Data, sender, node, dacss.AcssProposeMessageType)
 	case dacss.AcssReadyMessageType:
-		processDACSSMessage[*dacss.DacssReadyMessage](PssMessage.Data, sender, node, dacss.AcssReadyMessageType)
+		processMessage[*dacss.DacssReadyMessage](PssMessage.Data, sender, node, dacss.AcssReadyMessageType)
 	case dacss.ImplicateExecuteMessageType:
-		processDACSSMessage[*dacss.ImplicateExecuteMessage](PssMessage.Data, sender, node, dacss.ImplicateExecuteMessageType)
+		processMessage[*dacss.ImplicateExecuteMessage](PssMessage.Data, sender, node, dacss.ImplicateExecuteMessageType)
 	case dacss.ImplicateReceiveMessageType:
-		processDACSSMessage[*dacss.ImplicateReceiveMessage](PssMessage.Data, sender, node, dacss.ImplicateReceiveMessageType)
+		processMessage[*dacss.ImplicateReceiveMessage](PssMessage.Data, sender, node, dacss.ImplicateReceiveMessageType)
 	case dacss.ShareRecoveryMessageType:
-		processDACSSMessage[*dacss.ShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ShareRecoveryMessageType)
+		processMessage[*dacss.ShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ShareRecoveryMessageType)
 	case dacss.ReceiveShareRecoveryMessageType:
-		processDACSSMessage[*dacss.ReceiveShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ReceiveShareRecoveryMessageType)
+		processMessage[*dacss.ReceiveShareRecoveryMessage](PssMessage.Data, sender, node, dacss.ReceiveShareRecoveryMessageType)
 	case dacss.DacssOutputMessageType:
-		processDACSSMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
+		processMessage[*dacss.DacssOutputMessage](PssMessage.Data, sender, node, dacss.DacssOutputMessageType)
 	case dacss.DacssCommitmentMessageType:
-		processDACSSMessage[*dacss.DacssCommitmentMessage](PssMessage.Data, sender, node, dacss.DacssCommitmentMessageType)
+		processMessage[*dacss.DacssCommitmentMessage](PssMessage.Data, sender, node, dacss.DacssCommitmentMessageType)
 	case keyset.ProposeMessageType:
-		processDACSSMessage[*keyset.ProposeMessage](PssMessage.Data, sender, node, keyset.ProposeMessageType)
+		processMessage[*keyset.ProposeMessage](PssMessage.Data, sender, node, keyset.ProposeMessageType)
 	case keyset.EchoMessageType:
-		processDACSSMessage[*keyset.EchoMessage](PssMessage.Data, sender, node, keyset.EchoMessageType)
+		processMessage[*keyset.EchoMessage](PssMessage.Data, sender, node, keyset.EchoMessageType)
 	case keyset.ReadyMessageType:
-		processDACSSMessage[*keyset.ReadyMessage](PssMessage.Data, sender, node, keyset.ReadyMessageType)
+		processMessage[*keyset.ReadyMessage](PssMessage.Data, sender, node, keyset.ReadyMessageType)
 	case keyset.OutputMessageType:
-		processDACSSMessage[*keyset.OutputMessage](PssMessage.Data, sender, node, keyset.OutputMessageType)
+		processMessage[*keyset.OutputMessage](PssMessage.Data, sender, node, keyset.OutputMessageType)
 	case aba.InitMessageType:
-		processDACSSMessage[*aba.InitMessage](PssMessage.Data, sender, node, aba.InitMessageType)
+		processMessage[*aba.InitMessage](PssMessage.Data, sender, node, aba.InitMessageType)
 	case aba.Aux1MessageType:
-		processDACSSMessage[*aba.Aux1Message](PssMessage.Data, sender, node, aba.Aux1MessageType)
+		processMessage[*aba.Aux1Message](PssMessage.Data, sender, node, aba.Aux1MessageType)
 	case aba.Aux2MessageType:
-		processDACSSMessage[*aba.Aux2Message](PssMessage.Data, sender, node, aba.Aux2MessageType)
+		processMessage[*aba.Aux2Message](PssMessage.Data, sender, node, aba.Aux2MessageType)
 	case aba.AuxsetMessageType:
-		processDACSSMessage[*aba.AuxsetMessage](PssMessage.Data, sender, node, aba.AuxsetMessageType)
+		processMessage[*aba.AuxsetMessage](PssMessage.Data, sender, node, aba.AuxsetMessageType)
 	case aba.Est1MessageType:
-		processDACSSMessage[*aba.Est1Message](PssMessage.Data, sender, node, aba.Est1MessageType)
+		processMessage[*aba.Est1Message](PssMessage.Data, sender, node, aba.Est1MessageType)
 	case aba.Est2MessageType:
-		processDACSSMessage[*aba.Est2Message](PssMessage.Data, sender, node, aba.Est2MessageType)
+		processMessage[*aba.Est2Message](PssMessage.Data, sender, node, aba.Est2MessageType)
 	case aba.CoinInitMessageType:
-		processDACSSMessage[*aba.CoinInitMessage](PssMessage.Data, sender, node, aba.CoinInitMessageType)
+		processMessage[*aba.CoinInitMessage](PssMessage.Data, sender, node, aba.CoinInitMessageType)
 	case aba.CoinMessageType:
-		processDACSSMessage[*aba.CoinMessage](PssMessage.Data, sender, node, aba.CoinMessageType)
+		processMessage[*aba.CoinMessage](PssMessage.Data, sender, node, aba.CoinMessageType)
+	default:
+		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
+	}
+
+}
+func (node *PssTestNode2) ProcessKeysetMessages(sender common.NodeDetails, PssMessage common.PSSMessage) {
+	switch PssMessage.Type {
+	case keyset.ProposeMessageType:
+		processMessage[*keyset.ProposeMessage](PssMessage.Data, sender, node, keyset.ProposeMessageType)
+	case keyset.EchoMessageType:
+		processMessage[*keyset.EchoMessage](PssMessage.Data, sender, node, keyset.EchoMessageType)
+	case keyset.ReadyMessageType:
+		processMessage[*keyset.ReadyMessage](PssMessage.Data, sender, node, keyset.ReadyMessageType)
+	case keyset.OutputMessageType:
+		processMessage[*keyset.OutputMessage](PssMessage.Data, sender, node, keyset.OutputMessageType)
+	default:
+		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
+	}
+
+}
+func (node *PssTestNode2) ProcessABAMessages(sender common.NodeDetails, PssMessage common.PSSMessage) {
+	switch PssMessage.Type {
+	case aba.InitMessageType:
+		processMessage[*aba.InitMessage](PssMessage.Data, sender, node, aba.InitMessageType)
+	case aba.Aux1MessageType:
+		processMessage[*aba.Aux1Message](PssMessage.Data, sender, node, aba.Aux1MessageType)
+	case aba.Aux2MessageType:
+		processMessage[*aba.Aux2Message](PssMessage.Data, sender, node, aba.Aux2MessageType)
+	case aba.AuxsetMessageType:
+		processMessage[*aba.AuxsetMessage](PssMessage.Data, sender, node, aba.AuxsetMessageType)
+	case aba.Est1MessageType:
+		processMessage[*aba.Est1Message](PssMessage.Data, sender, node, aba.Est1MessageType)
+	case aba.Est2MessageType:
+		processMessage[*aba.Est2Message](PssMessage.Data, sender, node, aba.Est2MessageType)
+	case aba.CoinInitMessageType:
+		processMessage[*aba.CoinInitMessage](PssMessage.Data, sender, node, aba.CoinInitMessageType)
+	case aba.CoinMessageType:
+		processMessage[*aba.CoinMessage](PssMessage.Data, sender, node, aba.CoinMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
 	}
