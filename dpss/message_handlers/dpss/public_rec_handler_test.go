@@ -31,7 +31,7 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 	testMsg.Process(senderNode.Details(), senderNode)
 	time.Sleep(2 * time.Second)
 
-	assert.Equal(t, defaultSetup.NewCommitteeParams.N, len(senderNode.Transport().GetSentMessages()))
+	assert.Equal(t, 1, len(senderNode.Transport().GetBroadcastedMessages()))
 
 }
 
@@ -68,8 +68,8 @@ func TestInvalidShares(t *testing.T) {
 	curve := testutils.TestCurve()
 
 	// corrupt the shares
-	points[1] = curve.Scalar.Random(rand.Reader)
 	points[2] = curve.Scalar.Random(rand.Reader)
+	points[3] = curve.Scalar.Random(rand.Reader)
 
 	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),

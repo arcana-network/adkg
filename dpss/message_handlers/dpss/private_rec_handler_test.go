@@ -34,10 +34,9 @@ func TestPrivateRecHandlerProcess(t *testing.T) {
 	testMsg.Process(senderNode.Details(), senderNode)
 
 	// Wait for all the expected messages to be received
-	nOld := defaultSetup.OldCommitteeParams.N
-	senderNode.Transport().WaitForMessagesSent(nOld)
+	senderNode.Transport().WaitForBroadcastSent(1)
 
-	assert.Equal(t, nOld, len(senderNode.Transport().GetSentMessages()))
+	assert.Equal(t, 1, len(senderNode.Transport().GetBroadcastedMessages()))
 }
 
 // tests if the shares does not lie on the interpolatng polynomial then early return is triggred
@@ -147,6 +146,8 @@ func GetValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSe
 		return nil, nil, err
 	}
 
+	// points will store the points in the database of the user at the moment
+	// of callind the process message.
 	points := make(map[int]curves.Scalar)
 	for i := 0; i < tOld+1; i++ {
 		share, err := curve.Scalar.SetBytes(uShares[i].Value)
@@ -175,6 +176,10 @@ func GetValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSe
 		curveName:           testutils.TestCurveName(),
 		UShare:              points[senderNode.Details().Index].Bytes(),
 	}
+
+	// Delete this point from the set of points because this is the one that will
+	// be sent.
+	delete(points, senderNode.Details().Index)
 
 	return &testMsg, points, nil
 }

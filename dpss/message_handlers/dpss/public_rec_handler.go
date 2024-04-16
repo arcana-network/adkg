@@ -45,27 +45,6 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	self.State().BatchReconStore.Lock()
 	defer self.State().BatchReconStore.Unlock()
 
-	// Deserialize the share.
-	curve := common.CurveFromName(msg.curveName)
-	share, err := curve.Scalar.SetBytes(msg.ReconstructedUShare)
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error while converting the share from bytes to scalar",
-			},
-		).Error("PublicRecMsg: Process")
-		return
-	}
-
-	// Store the reconstructedU in the local state.
-	self.State().BatchReconStore.UpdateBatchRecState(
-		msg.DPSSBatchRecDetails.ToBatchRecID(),
-		func(recState *common.BatchRecState) {
-			recState.ReconstructedUStore[sender.Index] = share
-		},
-	)
-
 	// Check if there are at least T + t = n - t shares received
 	recState, found, err := self.State().BatchReconStore.Get(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
@@ -88,6 +67,40 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		).Error("PublicRecMsg: Process")
 		return
 	}
+
+	// Check if the node already received the reconstructed u from the sender.
+	_, alreadyReceived := recState.ReconstructedUStore[sender.Index]
+	if alreadyReceived {
+		log.WithFields(
+			log.Fields{
+				"AlreadyReceived": alreadyReceived,
+				"Sender":          sender.Index,
+				"Message":         "the node has already received this reconstructed u from the sender",
+			},
+		).Info("PublicRecMesg: Process")
+		return
+	}
+
+	// Deserialize the share.
+	curve := common.CurveFromName(msg.curveName)
+	share, err := curve.Scalar.SetBytes(msg.ReconstructedUShare)
+	if err != nil {
+		log.WithFields(
+			log.Fields{
+				"Error":   err,
+				"Message": "Error while converting the share from bytes to scalar",
+			},
+		).Error("PublicRecMsg: Process")
+		return
+	}
+
+	// Store the reconstructedU in the local state.
+	self.State().BatchReconStore.UpdateBatchRecState(
+		msg.DPSSBatchRecDetails.ToBatchRecID(),
+		func(recState *common.BatchRecState) {
+			recState.ReconstructedUStore[sender.Index] = share
+		},
+	)
 
 	ReconstructedUCount := recState.CountReconstructedReceivedU()
 

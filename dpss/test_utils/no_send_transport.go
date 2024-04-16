@@ -21,14 +21,16 @@ type NoSendMockTransport struct {
 	ReceivedMessages    []common.PSSMessage
 	MsgReceivedSignal   chan struct{}
 	MsgSentSignal       chan struct{}
+	MsgBroadcastSignal  chan struct{}
 	sync.Mutex
 }
 
 func NewNoSendMockTransport(nodesOld, nodesNew []*PssTestNode) *NoSendMockTransport {
 	return &NoSendMockTransport{nodesNew: nodesNew, nodesOld: nodesOld,
-		output:            make(chan string, 100),
-		MsgReceivedSignal: make(chan struct{}, 1001),
-		MsgSentSignal:     make(chan struct{}, 1001),
+		output:             make(chan string, 100),
+		MsgReceivedSignal:  make(chan struct{}, 1001),
+		MsgSentSignal:      make(chan struct{}, 1001),
+		MsgBroadcastSignal: make(chan struct{}, 1001),
 	}
 }
 
@@ -52,6 +54,10 @@ func (transport *NoSendMockTransport) GetSentMessages() []common.PSSMessage {
 	return transport.sentMessages
 }
 
+func (transport *NoSendMockTransport) GetBroadcastedMessages() []common.PSSMessage {
+	return transport.BroadcastedMessages
+}
+
 func (transport *NoSendMockTransport) AssertNoMsgsBroadcast(t *testing.T) {
 	broadcastedMsgs := transport.BroadcastedMessages
 
@@ -67,5 +73,11 @@ func (transport *NoSendMockTransport) WaitForMessagesReceived(count int) {
 func (transport *NoSendMockTransport) WaitForMessagesSent(count int) {
 	for i := 0; i < count; i++ {
 		<-transport.MsgSentSignal
+	}
+}
+
+func (transport *NoSendMockTransport) WaitForBroadcastSent(count int) {
+	for i := 0; i < count; i++ {
+		<-transport.MsgBroadcastSignal
 	}
 }

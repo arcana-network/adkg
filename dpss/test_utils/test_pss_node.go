@@ -63,6 +63,7 @@ func (node *PssTestNode) Params() (n int, k int, t int) {
 }
 
 func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
+	node.transport.MsgBroadcastSignal <- struct{}{}
 	node.transport.Broadcast(node.Details(), msg)
 }
 
