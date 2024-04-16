@@ -171,7 +171,7 @@ func GetValidPrivateRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSe
 	// valid Private Reconstruction Msg
 	testMsg := PrivateRecMsg{
 		DPSSBatchRecDetails: *getDPSSBatchRecDetails(senderNode),
-		Kind:                PrivateRecHandlerType,
+		Kind:                PrivateRecMessageType,
 		curveName:           testutils.TestCurveName(),
 		UShare:              points[senderNode.Details().Index].Bytes(),
 	}

@@ -46,7 +46,7 @@ func TestDpss(t *testing.T) {
 		}
 	}
 
-	// 3. Generate n-t random numbers & Obtain shares for each node for the n-t values
+	// 3. Generate b/(n-2t) * (n-t) random numbers & Obtain shares for each node for the values
 	sharesPerNode := make([][]curves.Scalar, n_old)
 	matrixSize := int(math.Ceil(float64(b)/float64(n_old-2*t_old))) * (n_old - t_old)
 
@@ -83,26 +83,79 @@ func TestDpss(t *testing.T) {
 		msg.Process(node.Details(), node)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
-	broadcastedMsgs := transport.GetBroadcastedMessages()
-	assert.True(t, len(broadcastedMsgs) > 0)
+	// Check step 1: Each HimHandler invocation should send 1 preprocess message
+	// in total we expect n PreProcessMessages
+	sentMsgs := transport.GetSentMessages()
+	preprocessRecMessages := make([]common.PSSMessage, 0)
+
+	for _, msg := range sentMsgs {
+		if msg.Type == dpss.PreprocessBatchRecMessageType {
+			preprocessRecMessages = append(preprocessRecMessages, msg)
+		}
+	}
+	assert.Equal(t, n_old, len(preprocessRecMessages))
+
+	// Check step 2: Each PreprocessBatchRecMessage should send
+	// ceil(B/(n-2t)) InitRecHandlerMessages
+	// 34
+	nrBatches := math.Ceil(float64(b) / float64(n_old-2*t_old))
+
+	receiveMessageMsgs := transport.GetReceivedMessages()
+	assert.True(t, len(receiveMessageMsgs) > 0)
+	initRecMessages := make([]common.PSSMessage, 0)
+
+	for _, msg := range receiveMessageMsgs {
+		if msg.Type == dpss.InitRecHandlerType {
+			initRecMessages = append(initRecMessages, msg)
+		}
+	}
+	nrInitRecMessages := len(initRecMessages)
+	// ceil(B/(n-2t)) * n_old
+	// 34*7 = 238
+	assert.Equal(t, int(nrBatches)*n_old, nrInitRecMessages)
+
+	// Check step 3: From each InitRecHandlerMessage we expect
+	// n_old PrivateRecHandlerMessages to be sent
 	privateRecMessages := make([]common.PSSMessage, 0)
 
-	for _, msg := range broadcastedMsgs {
-		if msg.Type == dpss.PrivateRecHandlerType {
+	for _, msg := range sentMsgs {
+		if msg.Type == dpss.PrivateRecMessageType {
 			privateRecMessages = append(privateRecMessages, msg)
 		}
 	}
-	assert.True(t, len(privateRecMessages) > 0)
+	// ceil(B/(n-2t)) * n_old InitRecHandlerMessage were sent
+	// n_old messages are sent per InitRecHandlerMessage
+	// 238 * 7 = 1666
+	assert.Equal(t, nrInitRecMessages*n_old, len(privateRecMessages))
 
 	// Filter broadcasted messages on the ones that are of type PublicRecMsg
 	publicRecMessages := make([]common.PSSMessage, 0)
+	broadcastedMsgs := transport.GetBroadcastedMessages()
 
 	for _, msg := range broadcastedMsgs {
-		if msg.Type == dpss.PublicRecHandlerType {
+		if msg.Type == dpss.PublicRecMessageType {
 			publicRecMessages = append(publicRecMessages, msg)
 		}
 	}
-	assert.True(t, len(publicRecMessages) > 0)
+
+	// There are ceil(B/(n-2t)) batch rounds
+	// There are n_old nodes
+	// Each old node should broadcast 1 PublicRecMessage per batch round
+	// 34*7 = 238
+	assert.Equal(t, int(nrBatches)*n_old, len(publicRecMessages))
+
+	// Final check: the broadcasted LocalComputationMessages
+	localComputationMessages := make([]common.PSSMessage, 0)
+	for _, msg := range broadcastedMsgs {
+		if msg.Type == dpss.LocalComputationMessageType {
+			localComputationMessages = append(localComputationMessages, msg)
+		}
+	}
+	// Each node, per batch, broadcasts 1 LocalComputationMessage
+	// n_old nodes
+	// ceil(B/(n-2t)) nr of batches
+	assert.Equal(t, int(nrBatches)*n_old, len(localComputationMessages))
+
 }

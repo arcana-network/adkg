@@ -6,7 +6,7 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var PublicRecHandlerType string = "dpss_public_rec"
+var PublicRecMessageType string = "dpss_public_rec"
 
 type PublicRecMsg struct {
 	DPSSBatchRecDetails common.DPSSBatchRecDetails
@@ -22,7 +22,7 @@ func NewPublicRecMsg(
 ) (*common.PSSMessage, error) {
 	msg := PublicRecMsg{
 		DPSSBatchRecDetails: dpssBatchRecDetails,
-		Kind:                PublicRecHandlerType,
+		Kind:                PublicRecMessageType,
 		curveName:           curve,
 		ReconstructedUShare: uShare,
 	}

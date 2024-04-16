@@ -8,7 +8,7 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var LocalComputationHanlderType string = "dpss_local_computation"
+var LocalComputationMessageType string = "dpss_local_computation"
 
 type LocalComputationMsg struct {
 	DPSSBatchRecDetails common.DPSSBatchRecDetails
@@ -24,7 +24,7 @@ func NewLocalComputationMsg(
 ) (*common.PSSMessage, error) {
 	msg := LocalComputationMsg{
 		DPSSBatchRecDetails: dpssBatchRecDetails,
-		Kind:                PrivateRecHandlerType,
+		Kind:                LocalComputationMessageType,
 		curveName:           curve,
 		coefficients:        coefficients,
 	}

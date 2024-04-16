@@ -48,7 +48,7 @@ func getValidPublicRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSet
 	// for unit testing
 	testMsg := PublicRecMsg{
 		DPSSBatchRecDetails: validPrivateRecMsg.DPSSBatchRecDetails,
-		Kind:                PublicRecHandlerType,
+		Kind:                PublicRecMessageType,
 		curveName:           validPrivateRecMsg.curveName,
 		ReconstructedUShare: validPrivateRecMsg.UShare,
 	}
@@ -80,7 +80,7 @@ func TestInvalidShares(t *testing.T) {
 	assert.Nil(t, err)
 	testPublicMsg := PublicRecMsg{
 		DPSSBatchRecDetails: testPrivateMsg.DPSSBatchRecDetails,
-		Kind:                PublicRecHandlerType,
+		Kind:                PublicRecMessageType,
 		curveName:           testPrivateMsg.curveName,
 		ReconstructedUShare: testPrivateMsg.UShare,
 	}
@@ -126,7 +126,7 @@ func TestNotEnoughShares(t *testing.T) {
 
 	testPublicMsg := PublicRecMsg{
 		DPSSBatchRecDetails: testPrivateMsg.DPSSBatchRecDetails,
-		Kind:                PublicRecHandlerType,
+		Kind:                PublicRecMessageType,
 		curveName:           testPrivateMsg.curveName,
 		ReconstructedUShare: testPrivateMsg.UShare,
 	}

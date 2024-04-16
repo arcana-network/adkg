@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"sync"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +37,7 @@ type IntegrationMockTransport struct {
 	broadcastedMessages []common.PSSMessage // Store messages that are broadcasted
 	sentMessages        []common.PSSMessage
 	ReceivedMessages    []common.PSSMessage
+	sync.Mutex
 }
 
 func NewIntegrationMockTransport(nodesOld, nodesNew []*IntegrationTestNode) *IntegrationMockTransport {
@@ -93,7 +96,9 @@ func NewIntegrationTestNode(index int, keypair common.KeyPair, transport *Integr
 
 // Message is stored in ReceivedMessages and passed on to the ProcessMessagesInterface
 func (node *IntegrationTestNode) ReceiveMessage(sender common.NodeDetails, PssMessage common.PSSMessage) {
+	node.NewTransport.Lock()
 	node.NewTransport.ReceivedMessages = append(node.NewTransport.ReceivedMessages, PssMessage) // Save the message
+	node.NewTransport.Unlock()
 	node.MessageCount = node.MessageCount + 1
 	node.ProcessMessagesInterface.ProcessMessages(sender, PssMessage, node)
 }
@@ -108,8 +113,9 @@ func (node *IntegrationTestNode) Send(receiver common.NodeDetails, msg common.PS
 }
 
 func (t *IntegrationMockTransport) Send(sender, receiver common.NodeDetails, msg common.PSSMessage) {
-
+	t.Lock()
 	t.sentMessages = append(t.sentMessages, msg) // Save the message
+	t.Unlock()
 	flag := 0
 
 	for _, n := range t.nodesOld {
@@ -135,7 +141,9 @@ func (t *IntegrationMockTransport) Send(sender, receiver common.NodeDetails, msg
 }
 
 func (t *IntegrationMockTransport) Broadcast(toNewCommittee bool, sender common.NodeDetails, m common.PSSMessage) {
+	t.Lock()
 	t.broadcastedMessages = append(t.broadcastedMessages, m) // Save the message
+	t.Unlock()
 
 	if toNewCommittee {
 		for _, p := range t.nodesNew {

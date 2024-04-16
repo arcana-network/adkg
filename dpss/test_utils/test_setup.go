@@ -17,7 +17,7 @@ func TestCurve() *curves.Curve {
 // to make sure the correct ones are being used
 const DefaultN_old = 7
 const DefaultNrFaulty_old = 0
-const DefaultK_old = 2
+const DefaultK_old = 3
 
 const DefaultN_new = 8
 const DefaultNrFaulty_new = 0

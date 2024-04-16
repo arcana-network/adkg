@@ -6,7 +6,7 @@ import (
 	"github.com/torusresearch/bijson"
 )
 
-var PrivateRecHandlerType string = "dpss_private_rec"
+var PrivateRecMessageType string = "dpss_private_rec"
 
 type PrivateRecMsg struct {
 	DPSSBatchRecDetails common.DPSSBatchRecDetails
@@ -22,7 +22,7 @@ func NewPrivateRecMsg(
 ) (*common.PSSMessage, error) {
 	msg := PrivateRecMsg{
 		DPSSBatchRecDetails: dpssBatchRecDetails,
-		Kind:                PrivateRecHandlerType,
+		Kind:                PrivateRecMessageType,
 		curveName:           curve,
 		UShare:              uShare,
 	}

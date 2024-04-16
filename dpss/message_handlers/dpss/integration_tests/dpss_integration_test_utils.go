@@ -31,9 +31,9 @@ func (processor DpssMessageProcessor) ProcessMessages(sender common.NodeDetails,
 		testutils.ProcessMessageForType[*dpss.InitRecMessage](PssMessage.Data, sender, node, dpss.InitRecHandlerType)
 	case dpss.PreprocessBatchRecMessageType:
 		testutils.ProcessMessageForType[*dpss.PreprocessBatchRecMessage](PssMessage.Data, sender, node, dpss.PreprocessBatchRecMessageType)
-	case dpss.PrivateRecHandlerType:
-		testutils.ProcessMessageForType[*dpss.PrivateRecMsg](PssMessage.Data, sender, node, dpss.PrivateRecHandlerType)
-	case dpss.PublicRecHandlerType:
-		testutils.ProcessMessageForType[*dpss.PublicRecMsg](PssMessage.Data, sender, node, dpss.PublicRecHandlerType)
+	case dpss.PrivateRecMessageType:
+		testutils.ProcessMessageForType[*dpss.PrivateRecMsg](PssMessage.Data, sender, node, dpss.PrivateRecMessageType)
+	case dpss.PublicRecMessageType:
+		testutils.ProcessMessageForType[*dpss.PublicRecMsg](PssMessage.Data, sender, node, dpss.PublicRecMessageType)
 	}
 }
