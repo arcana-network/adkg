@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/arcana-network/dkgnode/common"
 
@@ -21,9 +22,12 @@ type ABCIService struct {
 	socketServer service.Service
 }
 
+// TODO test if this works on all system
+// must remove old socket file
 func cleanupSockFile(p string) {
-	if common.DoesFileExist(p) {
-		_ = os.Remove(p)
+	sock_file := strings.Split(p, "//")[1]
+	if common.DoesFileExist(sock_file) {
+		_ = os.Remove(sock_file)
 	}
 }
 
@@ -43,7 +47,6 @@ func (s *ABCIService) Start() error {
 	s.ABCI = s.ABCI.NewABCI(s.broker)
 	socketAddr := common.GetSocketAddress()
 	cleanupSockFile(socketAddr)
-
 	s.socketServer = server.NewSocketServer(socketAddr, s.ABCI)
 	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(os.Stdout))
 
@@ -72,6 +75,10 @@ func (a *ABCIService) Call(method string, args ...interface{}) (interface{}, err
 		return a.ABCI.state.LastCreatedIndex, nil
 	case "last_unassigned_index":
 		return a.ABCI.state.LastUnassignedIndex, nil
+	case "last_c25519_created_index":
+		return a.ABCI.state.C25519State.LastCreatedIndex, nil
+	case "last_c25519_unassigned_index":
+		return a.ABCI.state.C25519State.LastUnassignedIndex, nil
 	case "retrieve_key_mapping":
 		var keyIndex big.Int
 		var curve common.CurveName

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
 
+	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/secp256k1"
 )
 
@@ -352,8 +354,8 @@ type ConnectionDetailsResult struct {
 }
 
 func GetSocketAddress() string {
-	// return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
-	return "unix://dkg.sock"
+	return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
+	//return "unix://dkg.sock"
 }
 
 func DoesFileExist(fileName string) bool {

@@ -35,9 +35,9 @@ func (service *KeygenService) Start() error {
 	ChainMethods := service.broker.ChainMethods()
 	selfIndex := ChainMethods.GetSelfIndex()
 	selfPubKey := ChainMethods.GetSelfPublicKey()
-	currEpoch := ChainMethods.GetCurrentEpoch()
-	currNodeList := ChainMethods.AwaitCompleteNodeList(currEpoch)
-	currEpochInfo, err := ChainMethods.GetEpochInfo(currEpoch, true)
+	selfEpoch := ChainMethods.GetSelfEpoch()
+	selfNodeList := ChainMethods.AwaitCompleteNodeList(selfEpoch)
+	selfEpochInfo, err := ChainMethods.GetEpochInfo(selfEpoch, true)
 	if err != nil {
 		return err
 	}
@@ -55,10 +55,10 @@ func (service *KeygenService) Start() error {
 	keygenNode, err := NewKeygenNode(
 		service.broker,
 		selfDetails,
-		getCommonNodesFromNodeRefArray(currNodeList),
+		getCommonNodesFromNodeRefArray(selfNodeList),
 		service.bus,
-		int(currEpochInfo.T.Int64()),
-		int(currEpochInfo.K.Int64()),
+		int(selfEpochInfo.T.Int64()),
+		int(selfEpochInfo.K.Int64()),
 		priv,
 	)
 	if err != nil {

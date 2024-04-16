@@ -91,6 +91,32 @@ func (abci *ABCI) validateTx(tx []byte, msgType byte, senderDetails common.NodeD
 			return true, nil
 		}
 		return false, errors.New("tendermint received dkg message with unimplemented method:" + msg.Method)
+	case byte(3):
+		// DPSS ending message should only be sent by new committee
+		log.Debug("Received DPSS ending message in tendermint --validateTx")
+		var parsedTx = DpssFinTx{}
+		if err := bijson.Unmarshal(tx, &parsedTx); err != nil {
+			log.WithError(err).Error("CheckTx:DpssFin")
+			return false, err
+		}
+		// get decision for the epoch
+		decision, ok := abci.state.DpssFinDecisions[parsedTx.Epoch]
+		if ok {
+			// see if the node are already in the decision list
+			alreadyAdded := false
+			for _, v := range decision.Nodes {
+				if v == senderDetails.Index {
+					alreadyAdded = true
+				}
+			}
+
+			if alreadyAdded {
+				log.Error("CheckTx: node already added in DpssFin")
+				return false, errors.New("node already added to DpssFin list")
+			}
+		}
+		return true, nil
+
 	}
 	return false, errors.New("tx type not recognized")
 }
@@ -124,13 +150,12 @@ func getVerifierKey(tx AssignmentTx, partitioned bool) []byte {
 
 func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, senderDetails common.NodeDetails) (bool, *[]abcitypes.EventAttribute, error) {
 	var tags []abcitypes.EventAttribute
-
-	currEpoch := abci.broker.ChainMethods().GetCurrentEpoch()
-	currEpochInfo, err := abci.broker.ChainMethods().GetEpochInfo(currEpoch, false)
+	selfEpoch := abci.broker.ChainMethods().GetSelfEpoch()
+	selfEpochInfo, err := abci.broker.ChainMethods().GetEpochInfo(selfEpoch, false)
 	if err != nil {
 		return false, &tags, fmt.Errorf("could not get current epoch with err: %v", err)
 	}
-	threshold := int(currEpochInfo.K.Int64())
+	threshold := int(selfEpochInfo.K.Int64())
 
 	switch msgType {
 	case byte(1): // Assignment tx
@@ -303,6 +328,57 @@ func (abci *ABCI) ValidateAndUpdateAndTagBFTTx(bftTx []byte, msgType byte, sende
 			return true, &tags, nil
 		}
 		return false, &tags, errors.New("tendermint: unimplemented method:" + msg.Method)
+	case byte(3):
+		// TODO - add sending DpssFinTx in DPSS
+		// DPSS ending message should only be sent by new committee
+		log.Debug("Received DPSS ending message in tendermint --ValidateAndUpdateAndTagBFTTx")
+		var tx DpssFinTx
+		if err := bijson.Unmarshal(bftTx, &tx); err != nil {
+			log.WithError(err).Error("DpssFinTx unmarshal failed")
+			return false, &tags, err
+		}
+
+		// get decision list of the epoch
+		decision, ok := abci.state.DpssFinDecisions[tx.Epoch]
+
+		// If decision exists
+		if ok {
+			alreadyAdded := false
+			for _, v := range decision.Nodes {
+				if v == senderDetails.Index {
+					alreadyAdded = true
+				}
+			}
+
+			if alreadyAdded {
+				// node already in the list
+				log.WithFields(log.Fields{
+					"decision": decision,
+					"epoch":    tx.Epoch,
+					"node":     senderDetails.Index,
+				}).Error("node already added to DpssFin list")
+
+				return false, &tags, errors.New("node already added to DpssFin list")
+			}
+
+			// add node to the list
+			decision.Nodes = append(decision.Nodes, senderDetails.Index)
+			abci.state.DpssFinDecisions[tx.Epoch] = decision
+
+		} else {
+			// if decision does not exist, add to decision
+			abci.state.DpssFinDecisions[tx.Epoch] = DpssFinDecision{
+				Nodes: []int{senderDetails.Index},
+			}
+		}
+
+		log.Infof("DpssFin decisions: current=%d", len(abci.state.KeygenDecisions[tx.Epoch].Nodes))
+		if len(abci.state.DpssFinDecisions[tx.Epoch].Nodes) == int(selfEpochInfo.N.Int64()) {
+			// if all nodes in the new committee has finished DPSS
+			// send dpss ending signal to manager
+			abci.broker.ManagerMethods().SendDpssEnd()
+		}
+
 	}
 	return false, &tags, errors.New("Invalid tx type")
 }

@@ -48,6 +48,10 @@ type KeygenDecision struct {
 	Nodes []int `json:"nodes"`
 }
 
+type DpssFinDecision struct {
+	Nodes []int `json:"nodes"`
+}
+
 type getIndexesQuery struct {
 	Provider string           `json:"provider"`
 	UserID   string           `json:"user_id"`
@@ -98,6 +102,7 @@ type State struct {
 	KeygenPubKeys                  map[string]KeygenPubKey      `json:"keygen_pubkeys"`
 	ConsecutiveFailedPubKeyAssigns uint                         `json:"consecutive_failed_pubkey_assigns"`
 	C25519State                    C25519State                  `json:"c25519_state"`
+	DpssFinDecisions               map[string]DpssFinDecision   `json:"dpss_fin_decisions"`
 }
 
 func (state *State) KeyAvailable(curve common.CurveName) bool {
@@ -137,6 +142,7 @@ func (a *ABCI) NewABCI(broker *common.MessageBroker) *ABCI {
 				LastCreatedIndex:    0,
 				LastUnassignedIndex: 0,
 			},
+			DpssFinDecisions: make(map[string]DpssFinDecision),
 		}
 		abci.info = &AppInfo{
 			Height: 0,
@@ -219,6 +225,16 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 		"LastCreatedIndex":    int(abci.state.LastCreatedIndex),
 		"LastUnassignedIndex": int(abci.state.LastUnassignedIndex),
 	}).Info("EndBlock")
+
+	// if PSS is running, skip adkg
+	pssRunning, err := abci.broker.ChainMethods().GetCurrentPssStatus()
+	if err != nil {
+		log.WithError(err).Error("Could not get current PSS status")
+	}
+	if pssRunning {
+		log.Info("PSS running, ADKG on halt")
+		return abcitypes.ResponseEndBlock{}
+	}
 
 	buffer := abci.broker.ChainMethods().KeyBuffer()
 	var maxKeyInit int
@@ -448,7 +464,7 @@ func authenticateBftTx(tx []byte, broker *common.MessageBroker) (parsedTx Defaul
 		return parsedTx, senderDetails, err
 	}
 
-	curEpoch := broker.ChainMethods().GetCurrentEpoch()
+	curEpoch := broker.ChainMethods().GetSelfEpoch()
 	senderDetails, err = broker.ChainMethods().VerifyDataWithEpoch(parsedTx.PubKey, parsedTx.Signature, parsedTx.GetSerializedBody(), curEpoch)
 	if err != nil {
 		log.Errorf("bfttx not valid: error %v, tx %v", err, parsedTx)

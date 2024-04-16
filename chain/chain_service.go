@@ -32,6 +32,12 @@ import (
 
 const DEFAULT_KEY_BUFFER = 50000
 
+// PSS status used in the contract
+const (
+	PSSRUNNING = 1
+	PSSSTOP    = 0
+)
+
 // map initializations cannot be constant
 var providerList = map[string]bool{
 	"google":       true,
@@ -67,7 +73,10 @@ type ChainService struct {
 	p2pConnection   string
 	isRegistered    bool
 	currentEpoch    int
+	selfEpoch       int // epoch the node belongs to
 	index           int
+	pssRunning      bool
+	isNewCommittee  bool // is the node in new committee in DPSS
 }
 
 type EpochCache struct {
@@ -125,20 +134,41 @@ func (service *ChainService) Start() error {
 		return err
 	}
 	service.nodeList = NodeListContract
-	service.currentEpoch = 1
+	// set self epoch
+	service.selfEpoch = config.GlobalConfig.SelfEpoch
 	service.index = 0
 	service.running = true
 	service.cachedEpochInfo = &EpochCache{}
 	service.nodeRegisterMap = make(map[int]*NodeRegister)
 
+	// set current epoch on chain
+	err = retry.Do(func() error {
+		epoch, err := service.GetCurrentEpoch()
+		if err != nil {
+			return fmt.Errorf("could not get current epoch on chain, %v", err.Error())
+		}
+		service.currentEpoch = epoch
+		return nil
+	})
+	if err != nil {
+		log.WithError(err).Fatal()
+	}
+	// set isNewCommittee true if a node is in a future epoch
+	if service.selfEpoch > service.currentEpoch {
+		service.isNewCommittee = true
+	}
+
 	go whitelistMonitor(service)
 
 	go registerNode(service)
 
-	go currentNodesMonitor(service)
+	go epochNodesMonitor(service, service.selfEpoch)
 
-	// Continuously check whether old committe is replaced by new committee of nodes
+	// continuously check whether old committe is replaced by new committee of nodes
 	go pssFlagMonitor(service)
+
+	// monitor epoch change
+	go epochMonitor(service)
 
 	return nil
 }
@@ -307,7 +337,7 @@ func registerNode(e *ChainService) {
 	}
 	var registered bool
 	err := retry.Do(func() error {
-		res, err := e.IsSelfRegistered(e.currentEpoch)
+		res, err := e.IsSelfRegistered(e.selfEpoch)
 		if err != nil {
 			return fmt.Errorf("could not check if node was registered on node list, %v", err.Error())
 		}
@@ -351,7 +381,7 @@ func registerNode(e *ChainService) {
 		}).Info("RegisteredContractValues")
 
 		_, err := e.RegisterNode(
-			e.currentEpoch,
+			e.selfEpoch,
 			endpoint,
 			e.tmp2pConnection,
 			e.p2pConnection,
@@ -367,7 +397,7 @@ func whitelistMonitor(e *ChainService) {
 	interval := time.NewTicker(10 * time.Second)
 	defer interval.Stop()
 	for range interval.C {
-		isWhitelisted, err := e.nodeList.IsWhitelisted(nil, big.NewInt(int64(e.currentEpoch)), *e.addr)
+		isWhitelisted, err := e.nodeList.IsWhitelisted(nil, big.NewInt(int64(e.selfEpoch)), *e.addr)
 		if err != nil {
 			log.WithError(err).Error("WhitelistMonitor.IsWhitelisted()")
 		}
@@ -379,27 +409,99 @@ func whitelistMonitor(e *ChainService) {
 	}
 }
 
+// moniter if PSS state has changed on chain
+// setup p2p connection with the other committee
+// and trigger PSSService if PSS starts
 func pssFlagMonitor(e *ChainService) {
 	interval := time.NewTicker(10 * time.Second)
 	defer interval.Stop()
 	for range interval.C {
-
-		opts := &bind.CallOpts{}
-		// TODO add CheckPss on contract
-		pssFlag, err := e.nodeList.CheckPss(opts, big.NewInt(int64(e.currentEpoch)))
+		epochInfo, err := e.GetEpochInfo(e.currentEpoch, false)
 		if err != nil {
-			log.WithError(err).Error("CheckPss()")
+			log.WithError(err).Error("could not get epochInfo on chain")
 		}
+		// query pssStatus from currentEpoch to nextEpoch
+		newStatus, err := e.GetEpochPssStatus(e.currentEpoch, int(epochInfo.NextEpoch.Int64()))
+		if err != nil {
+			log.WithError(err).Error("getPssStatus")
+			continue
+		}
+		if newStatus != e.pssRunning {
+			// status change
+			e.pssRunning = newStatus
+			if newStatus {
+				// start PSS
+				if e.isNewCommittee {
+					// connect to the old committee if in new committee
+					go epochNodesMonitor(e, int(epochInfo.PrevEpoch.Int64()))
+				} else {
+					// connect to the new committee if in old committee
+					go epochNodesMonitor(e, int(epochInfo.NextEpoch.Int64()))
+				}
 
-		if pssFlag {
-			log.Info("Pss flag is set. Trigger PSS")
-			// Trigger PSS via PssService
-			err := e.broker.PssMethods().TriggerPss()
-			if err != nil {
-				log.WithError(err).Error("TriggerPss()")
+				log.Info("Pss flag is set. Trigger PSS")
+				err := e.broker.PssMethods().TriggerPss()
+				if err != nil {
+					log.WithError(err).Error("TriggerPss()")
+				}
+
 			}
 		}
+
 	}
+}
+
+// epochMonitor monitors epoch change
+// new committee will become current committee
+// nodes in old committee will terminate itself
+func epochMonitor(e *ChainService) {
+	interval := time.NewTicker(10 * time.Second)
+	defer interval.Stop()
+	for range interval.C {
+		new_epoch, err := e.GetCurrentEpoch()
+		if err != nil {
+			log.WithError(err).Error("epochMonitor: can't get current epoch")
+		}
+		if new_epoch != e.currentEpoch {
+			// epoch change
+			log.WithFields(log.Fields{
+				"current epoch": e.currentEpoch,
+				"new epoch":     new_epoch,
+			}).Info("Epoch change")
+			// override epoch
+			e.currentEpoch = new_epoch
+			if e.selfEpoch == e.currentEpoch {
+				// new committee becomes current committee
+				e.isNewCommittee = false
+			}
+			if e.selfEpoch < e.currentEpoch {
+				// old committee should terminate itself
+				log.Info("old node prepares to terminate itself")
+				e.broker.ManagerMethods().SendKillProcess()
+			}
+
+			// TODO - check if we need to do anything else when changing epoch
+
+		}
+
+	}
+}
+
+// call getPssStatus function on chain
+func (e *ChainService) GetEpochPssStatus(oldEpoch int, newEpoch int) (bool, error) {
+	opts := e.CallOpts()
+	pssStatus_int, err := e.nodeList.GetPssStatus(opts, big.NewInt(int64(oldEpoch)), big.NewInt(int64(newEpoch)))
+	if err != nil {
+		log.WithError(err).Error("GetPssStatus()")
+		return false, err
+	}
+	isRunning := pssStatus_int == big.NewInt(PSSRUNNING)
+	return isRunning, nil
+}
+
+// return pssRunning state stored locally
+func (e *ChainService) IsPssRunning() bool {
+	return e.pssRunning
 }
 
 func (s *ChainService) IsSelfRegistered(epoch int) (bool, error) {
@@ -504,6 +606,9 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 	case "get_current_epoch":
 		log.WithField("currentEpoch", chainService.currentEpoch).Debug("ChainService")
 		return chainService.currentEpoch, nil
+	case "get_self_epoch":
+		log.WithField("selfEpoch", chainService.selfEpoch).Debug("ChainService")
+		return chainService.selfEpoch, nil
 	case "validate_epoch_pub_key":
 		var args0 ethCommon.Address
 		var args1 common.Point
@@ -698,21 +803,33 @@ func (chainService *ChainService) Call(method string, args ...interface{}) (inte
 		_ = common.CastOrUnmarshal(args[0], &args0)
 
 		return chainService.getKeyPartition(args0)
-	case "get_comittee_nodes": // TODO implement
-		var oldComittee bool
-		var epoch int
-		_ = common.CastOrUnmarshal(args[0], &oldComittee)
-		_ = common.CastOrUnmarshal(args[1], &epoch)
-		nodeReferences := make([]common.SerializedNodeReference, 0)
-		if oldComittee {
-			// Retrieve old committee nodes & store in nodeReferences
-		} else {
-			// Retrieve new committee nodes & store in nodeReferences
-		}
+	case "get_epoch_pss_status":
+		var args0, args1 int
+		_ = common.CastOrUnmarshal(args[0], &args0)
+		_ = common.CastOrUnmarshal(args[1], &args1)
 
-		return nodeReferences, nil
+		log.WithFields(log.Fields{
+			"args0": args0,
+			"args1": args1,
+		}).Debug("get_pss_status")
+		return chainService.GetEpochPssStatus(args0, args1)
+	case "get_current_pss_status":
+		return chainService.IsPssRunning(), nil
+	case "is_new_committee":
+		return chainService.isNewCommittee, nil
 	}
 	return "", nil
+}
+
+// get current epoch from the NodeList contract
+func (e *ChainService) GetCurrentEpoch() (int, error) {
+	opts := e.CallOpts()
+	res, err := e.nodeList.CurrentEpoch(opts)
+	if err != nil {
+		return 0, err
+	}
+	epoch := int(res.Int64())
+	return epoch, nil
 }
 
 func (e *ChainService) GetEpochInfo(epoch int, skipCache bool) (common.EpochInfo, error) {
@@ -863,35 +980,38 @@ func (e *ChainService) GetNodeRef(nodeAddress ethCommon.Address) (n *common.Node
 	}, nil
 }
 
-func currentNodesMonitor(e *ChainService) {
+// moniter and connect to nodes in a given epoch
+func epochNodesMonitor(e *ChainService, epoch int) {
 	interval := time.NewTicker(10 * time.Second)
 	defer interval.Stop()
 	for range interval.C {
-		currEpoch := e.broker.ChainMethods().GetCurrentEpoch()
-		currEpochInfo, err := e.GetEpochInfo(currEpoch, true)
+		//currEpoch := e.broker.ChainMethods().GetCurrentEpoch()
+		epochInfo, err := e.GetEpochInfo(epoch, true)
 		if err != nil {
-			log.WithError(err).Error("CurrentNodesMonitor.GetEpochInfo()")
+			log.WithError(err).Error("EpochNodesMonitor.GetEpochInfo()")
 			continue
 		}
 		e.Lock()
-		if _, ok := e.nodeRegisterMap[currEpoch]; !ok {
-			e.nodeRegisterMap[currEpoch] = &NodeRegister{}
+		if _, ok := e.nodeRegisterMap[epoch]; !ok {
+			e.nodeRegisterMap[epoch] = &NodeRegister{}
+			// TODO - maybe we need to delete old committee in the map after DPSS
 		}
 		e.Unlock()
-		currNodeList, err := e.getNodeRefsByEpoch(currEpoch)
+		nodeList, err := e.getNodeRefsByEpoch(epoch)
 		if err != nil {
 			log.WithError(err).Error("CurrentNodesMonitor.getNodeRefsByEpoch()")
 			continue
 		}
-		if currEpochInfo.N.Cmp(big.NewInt(int64(len(currNodeList)))) != 0 {
+		if epochInfo.N.Cmp(big.NewInt(int64(len(nodeList)))) != 0 {
 			log.WithFields(log.Fields{
-				"currNodeList":  currNodeList,
-				"currEpochInfo": currEpochInfo,
-			}).Error("currentNodeList does not equal in length to expected currEpochInfo")
+				"Epoch":     epoch,
+				"NodeList":  nodeList,
+				"EpochInfo": epochInfo,
+			}).Error("nodeList does not equal in length to expected epochInfo")
 			continue
 		}
 		allNodesConnected := true
-		for _, nodeRef := range currNodeList {
+		for _, nodeRef := range nodeList {
 			err = e.broker.P2PMethods().ConnectToP2PNode(nodeRef.P2PConnection, nodeRef.PeerID)
 			if err != nil {
 				log.WithField("address", *nodeRef.Address).Error("CurrentNodesMonitor.ConnectToP2PNode()")
@@ -904,10 +1024,60 @@ func currentNodesMonitor(e *ChainService) {
 		if !allNodesConnected {
 			continue
 		}
-		log.WithField("nodeList", currNodeList).Info("ConnectedToAllNodes")
+		log.WithField("nodeList", nodeList).Info("ConnectedToAllNodes")
 		e.Lock()
-		e.nodeRegisterMap[currEpoch].NodeList = currNodeList
+		e.nodeRegisterMap[epoch].NodeList = nodeList
 		e.Unlock()
 		break
 	}
 }
+
+// TODO - delete this
+// func currentNodesMonitor(e *ChainService) {
+// 	interval := time.NewTicker(10 * time.Second)
+// 	defer interval.Stop()
+// 	for range interval.C {
+// 		//currEpoch := e.broker.ChainMethods().GetCurrentEpoch()
+// 		currEpochInfo, err := e.GetEpochInfo(e.selfEpoch, true)
+// 		if err != nil {
+// 			log.WithError(err).Error("CurrentNodesMonitor.GetEpochInfo()")
+// 			continue
+// 		}
+// 		e.Lock()
+// 		if _, ok := e.nodeRegisterMap[e.selfEpoch]; !ok {
+// 			e.nodeRegisterMap[e.selfEpoch] = &NodeRegister{}
+// 		}
+// 		e.Unlock()
+// 		currNodeList, err := e.getNodeRefsByEpoch(e.selfEpoch)
+// 		if err != nil {
+// 			log.WithError(err).Error("CurrentNodesMonitor.getNodeRefsByEpoch()")
+// 			continue
+// 		}
+// 		if currEpochInfo.N.Cmp(big.NewInt(int64(len(currNodeList)))) != 0 {
+// 			log.WithFields(log.Fields{
+// 				"currNodeList":  currNodeList,
+// 				"currEpochInfo": currEpochInfo,
+// 			}).Error("currentNodeList does not equal in length to expected currEpochInfo")
+// 			continue
+// 		}
+// 		allNodesConnected := true
+// 		for _, nodeRef := range currNodeList {
+// 			err = e.broker.P2PMethods().ConnectToP2PNode(nodeRef.P2PConnection, nodeRef.PeerID)
+// 			if err != nil {
+// 				log.WithField("address", *nodeRef.Address).Error("CurrentNodesMonitor.ConnectToP2PNode()")
+// 				allNodesConnected = false
+// 			}
+// 			if nodeRef.PeerID == e.broker.P2PMethods().ID() {
+// 				e.broker.ChainMethods().SetSelfIndex(int(nodeRef.Index.Int64()))
+// 			}
+// 		}
+// 		if !allNodesConnected {
+// 			continue
+// 		}
+// 		log.WithField("nodeList", currNodeList).Info("ConnectedToAllNodes")
+// 		e.Lock()
+// 		e.nodeRegisterMap[e.selfEpoch].NodeList = currNodeList
+// 		e.Unlock()
+// 		break
+// 	}
+// }

@@ -166,6 +166,13 @@ func (broker *MessageBroker) KeystoreMethods() *KeystoreMethods {
 		service: KEYSTORE_SERVICE_NAME,
 	}
 }
+func (broker *MessageBroker) ManagerMethods() *ManagerMethods {
+	return &ManagerMethods{
+		bus:     broker.bus,
+		caller:  broker.caller,
+		service: KEYSTORE_SERVICE_NAME,
+	}
+}
 
 type KeystoreMethods struct {
 	bus     eventbus.Bus
@@ -295,6 +302,34 @@ func (am *ABCIMethods) GetIndexesFromVerifierID(verifier, verifierID, appID stri
 		return keyIndexes, err
 	}
 	keyIndexes = data
+	return
+}
+
+func (am *ABCIMethods) LastUnassignedIndex() (index uint, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_unassigned_index")
+	if methodResponse.Error != nil {
+		return 0, methodResponse.Error
+	}
+	var data uint
+	err = CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return 0, err
+	}
+	index = data
+	return
+}
+
+func (am *ABCIMethods) LastC25519UnassignedIndex() (index uint, err error) {
+	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_c25519_unassigned_index")
+	if methodResponse.Error != nil {
+		return 0, methodResponse.Error
+	}
+	var data uint
+	err = CastOrUnmarshal(methodResponse.Data, &data)
+	if err != nil {
+		return 0, err
+	}
+	index = data
 	return
 }
 
@@ -460,6 +495,30 @@ func (cm *ChainMethods) GetCurrentEpoch() (epoch int) {
 	})
 	if err != nil || epoch == 0 {
 		log.WithError(err).Fatal("could not get current epoch")
+	}
+	return
+}
+
+func (cm *ChainMethods) GetSelfEpoch() (epoch int) {
+	err := retry.Do(func() error {
+		methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_self_epoch")
+		if methodResponse.Error != nil {
+			return methodResponse.Error
+		}
+		var data int
+		log.WithField("GetSelfEpoch", methodResponse.Data).Debug("ServiceMapper")
+		err := CastOrUnmarshal(methodResponse.Data, &data)
+		if err != nil {
+			return err
+		}
+		if data == 0 {
+			return errors.New("could not get self epoch")
+		}
+		epoch = data
+		return nil
+	})
+	if err != nil || epoch == 0 {
+		log.WithError(err).Fatal("could not get self epoch")
 	}
 	return
 }
@@ -694,22 +753,52 @@ func (cm *ChainMethods) SelfSignData(input []byte) (rawSig []byte) {
 	return
 }
 
-// Retrieve Old Committee or New Committee Nodes (depending on bool oldCommittee)
-func (cm *ChainMethods) GetCommitteeNodes(oldCommittee bool, epoch int) ([]NodeReference, error) {
-	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_old_nodes", oldCommittee, epoch)
+// query PSS status on chain for an epoch
+func (cm *ChainMethods) GetEpochPssStatus(oldEpoch int, newEpoch int) (pssRunning bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_pss_status", oldEpoch, newEpoch)
 	if methodResponse.Error != nil {
-		return nil, methodResponse.Error
+		log.WithError(methodResponse.Error).Error("GetPssStatus")
+		err = methodResponse.Error
+		pssRunning = false
+		return
 	}
-	var data []SerializedNodeReference
-	err := CastOrUnmarshal(methodResponse.Data, &data)
+	err = CastOrUnmarshal(methodResponse.Data, &pssRunning)
 	if err != nil {
-		return nil, err
+		pssRunning = false
+		return
 	}
-	var deserializedData []NodeReference
-	for i := 0; i < len(data); i++ {
-		deserializedData = append(deserializedData, NodeReference{}.Deserialize(data[i]))
+	return
+}
+
+// return current pss status stored in chain service
+func (cm *ChainMethods) GetCurrentPssStatus() (pssRunning bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_current_pss_status")
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("GetCurrentPssStatus")
+		err = methodResponse.Error
+		pssRunning = false
+		return
 	}
-	return deserializedData, nil
+	err = CastOrUnmarshal(methodResponse.Data, &pssRunning)
+	if err != nil {
+		pssRunning = false
+		return
+	}
+	return
+}
+
+func (cm *ChainMethods) IsNewCommittee() (isNewCommittee bool, err error) {
+	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "is_new_committee")
+	if methodResponse.Error != nil {
+		log.WithError(methodResponse.Error).Error("IsNewCommittee")
+		err = methodResponse.Error
+		return
+	}
+	err = CastOrUnmarshal(methodResponse.Data, &isNewCommittee)
+	if err != nil {
+		return
+	}
+	return
 }
 
 type MethodRequest struct {
@@ -1371,4 +1460,42 @@ func (cam *CacheMethods) GetTokenCommitKey(verifier string, tokenCommitment stri
 		log.WithError(err).Fatal("could not check if token commit exists")
 	}
 	return
+}
+
+type ManagerMethods struct {
+	caller  string
+	bus     eventbus.Bus
+	service string
+}
+
+func (mm *ManagerMethods) SendToManager(msg string) error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_to_manager", msg)
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendDpssStart() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_dpss_start")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendDpssEnd() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_dpss_end")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (mm *ManagerMethods) SendKillProcess() error {
+	methodResponse := ServiceMethod(mm.bus, mm.caller, mm.service, "send_kill_process")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
 }
