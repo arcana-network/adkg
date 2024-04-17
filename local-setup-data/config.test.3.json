@@ -5,7 +5,7 @@
     "p2pPort": "1082",
     "tmP2PPort": "26660",
     "tmRPCPort": "26661",
-    "domain": "localhost:8080",
+    "domain": "localhost:8082",
     "TLS": false,
     "dkgContractAddress": "0xe61d744c90d8b24D4C0CF22321107D19A62dC930",
     "selfEpoch": 1,
