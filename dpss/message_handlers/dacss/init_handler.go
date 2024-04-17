@@ -69,6 +69,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	// Store the old shares in the local database
 	self.State().ShareStore.Lock()
 	defer self.State().ShareStore.Unlock()
+
 	self.State().ShareStore.Initialize(len(msg.OldShares))
 	for i, share := range msg.OldShares {
 		shareScalar, err := curve.Scalar.SetBytes(share.Value)
@@ -84,7 +85,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	}
 
 	// Step 101: Sample B / (n - 2t) random elements.
-	nNodes, recThreshold, _ := self.Params()
+	nNodes, _, recThreshold := self.Params()
 
 	// testing is done for 1 share(+1 added)
 	nGenerations := int(math.Ceil(float64(len(msg.OldShares)) / float64((nNodes - 2*recThreshold))))

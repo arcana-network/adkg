@@ -57,7 +57,7 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 	self.State().ShareStore.Lock()
 
 	// locally compute (s_i+r_i) for i in B; shares s_i and shares of random values r_i
-	numShares := len(self.State().ShareStore.OldShares)
+	numShares := msg.PSSRoundDetails.BatchSize
 	r_scalars, err := sharing.DecompressScalars(msg.RValues, common.CurveFromName(msg.CurveName), numShares)
 	if err != nil {
 		log.WithFields(
@@ -109,6 +109,13 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 			).Error("PreprocessBatchRecMessage: Process")
 			return
 		}
+
+		log.WithFields(
+			log.Fields{
+				"BatchRecCount": dpssBatchDetails.BatchRecCount,
+				"Message":       "sending message to start batch reconstruction for a batch",
+			},
+		).Info("PreprocessBatchRecMessage: Process")
 
 		// Send msg
 		go self.ReceiveMessage(self.Details(), *initMsg)

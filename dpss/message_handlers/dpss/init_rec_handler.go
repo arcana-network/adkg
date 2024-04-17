@@ -26,10 +26,11 @@ func NewInitRecMessage(
 	batchSize int,
 ) (*common.PSSMessage, error) {
 	msg := InitRecMessage{
-		Kind:       InitRecHandlerType,
-		ShareBatch: shareBatch,
-		Curve:      curve,
-		batchSize:  batchSize,
+		DPSSBatchRecDetails: dpssBatchRecDetails,
+		Kind:                InitRecHandlerType,
+		ShareBatch:          shareBatch,
+		Curve:               curve,
+		batchSize:           batchSize,
 	}
 
 	msgBytes, err := bijson.Marshal(msg)
@@ -48,6 +49,13 @@ func NewInitRecMessage(
 
 // Process processes a received InitRecMessage
 func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	log.WithFields(
+		log.Fields{
+			"BatchRecCount": msg.DPSSBatchRecDetails.BatchRecCount,
+			"Message":       "running batch of reconstructions",
+		},
+	).Info("InitRecMessage: Process")
+
 	// Check if the sender and receiver are the same party.
 	if !sender.IsEqual(self.Details()) {
 		log.WithFields(
@@ -92,6 +100,14 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 		).Error("InitRecMessage: Process")
 		return
 	}
+
+	// Initialize the inner state as empty.
+	self.State().BatchReconStore.Lock()
+	self.State().BatchReconStore.UpdateBatchRecState(
+		msg.DPSSBatchRecDetails.ToBatchRecID(),
+		func(s *common.BatchRecState) {},
+	)
+	self.State().BatchReconStore.Unlock()
 
 	for _, recvrNode := range self.Nodes(self.IsNewNode()) {
 		shareBytes := uShares[recvrNode.Index-1].Bytes()

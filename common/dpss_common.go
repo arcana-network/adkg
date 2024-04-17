@@ -63,6 +63,8 @@ type BatchRecStoreMap struct {
 type BatchRecState struct {
 	UStore              map[int]curves.Scalar // Stores the shares [u_i] sent by a given party.
 	ReconstructedUStore map[int]curves.Scalar // Stores the restructured u_i sent by given party
+	SentLocalCompMsg    bool                  // Tells wether the node has sent a PrivRecMsg.
+	SentPubMsg          bool                  // Tells wether the node has sent a PubRecMsg.
 }
 
 // Counts the ammount of U shares received by the party.

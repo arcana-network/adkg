@@ -66,8 +66,9 @@ func TestDpss(t *testing.T) {
 	// 4. Send DpssHimMessage with the (B / (n - 2*t)) * (n - t)  shares to each node (old committee)
 	id := big.NewInt(1)
 	pssRoundDetails := common.PSSRoundDetails{
-		PssID:  common.NewPssID(*id),
-		Dealer: oldNodesNetwork[0].Details(),
+		PssID:     common.NewPssID(*id),
+		Dealer:    oldNodesNetwork[0].Details(),
+		BatchSize: b,
 	}
 
 	for i, node := range oldNodesNetwork {
@@ -157,5 +158,4 @@ func TestDpss(t *testing.T) {
 	// n_old nodes
 	// ceil(B/(n-2t)) nr of batches
 	assert.Equal(t, int(nrBatches)*n_old, len(localComputationMessages))
-
 }

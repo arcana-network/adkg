@@ -68,19 +68,6 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		return
 	}
 
-	// Check if the node already received the reconstructed u from the sender.
-	_, alreadyReceived := recState.ReconstructedUStore[sender.Index]
-	if alreadyReceived {
-		log.WithFields(
-			log.Fields{
-				"AlreadyReceived": alreadyReceived,
-				"Sender":          sender.Index,
-				"Message":         "the node has already received this reconstructed u from the sender",
-			},
-		).Info("PublicRecMesg: Process")
-		return
-	}
-
 	// Deserialize the share.
 	curve := common.CurveFromName(msg.curveName)
 	share, err := curve.Scalar.SetBytes(msg.ReconstructedUShare)
@@ -112,7 +99,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	// 	Check that the rest of the u_k values not used in the interpolation lie in the polynomial.
 	// 	If all the u_k values lie in the polynomial, return the coefficients of the polynomial, otherwise return unhappy.
 
-	if ReconstructedUCount >= T+t {
+	if ReconstructedUCount >= T+t && !recState.SentLocalCompMsg {
 		ReconstructedUStore := recState.ReconstructedUStore
 
 		doMatch, interpolatePoly, err := common.CheckPointsLieInPoly(
@@ -159,6 +146,13 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			).Error("PublicRecMsg: Process")
 			return
 		}
+
+		self.State().BatchReconStore.UpdateBatchRecState(
+			msg.DPSSBatchRecDetails.ToBatchRecID(),
+			func(state *common.BatchRecState) {
+				state.SentLocalCompMsg = true
+			},
+		)
 
 		// Broadcast to the new committee
 		go self.Broadcast(true, *localComputationMsg)

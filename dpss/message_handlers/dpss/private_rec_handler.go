@@ -45,6 +45,12 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	self.State().BatchReconStore.Lock()
 	defer self.State().BatchReconStore.Unlock()
 
+	// Initialize state here if it is not initialized in the InitHanlder
+	self.State().BatchReconStore.UpdateBatchRecState(
+		msg.DPSSBatchRecDetails.ToBatchRecID(),
+		func(s *common.BatchRecState) {},
+	)
+
 	// Check if there are at least d + t + 1 = 2t + 1 shares received
 	recState, found, err := self.State().BatchReconStore.Get(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
@@ -65,20 +71,6 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 				"Message": "There is no state associated with the provided ID",
 			},
 		).Error("PrivateRecMsg: Process")
-		return
-	}
-
-	// Check if the node has already a share of u comming from the current
-	// sender.
-	_, alreadyReceived := recState.UStore[sender.Index]
-	if alreadyReceived {
-		log.WithFields(
-			log.Fields{
-				"AlreadyReceived": alreadyReceived,
-				"Sender":          sender.Index,
-				"Message":         "the node has already received this share of u from the sender",
-			},
-		).Info("PrivateMsg: Process")
 		return
 	}
 
@@ -105,7 +97,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 
 	countU := recState.CountReceivedU()
 	_, _, t := self.Params()
-	if countU >= 2*t+1 {
+	if countU >= 2*t+1 && !recState.SentPubMsg {
 
 		UStore := recState.UStore
 		doMatch, interpolatedPoly, err := common.CheckPointsLieInPoly(
@@ -148,6 +140,13 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			).Error("PrivateRecMsg: Process")
 			return
 		}
+
+		self.State().BatchReconStore.UpdateBatchRecState(
+			msg.DPSSBatchRecDetails.ToBatchRecID(),
+			func(state *common.BatchRecState) {
+				state.SentPubMsg = true
+			},
+		)
 
 		// Broadcast to the old committee
 		go self.Broadcast(false, *publicReconstructMsg)
