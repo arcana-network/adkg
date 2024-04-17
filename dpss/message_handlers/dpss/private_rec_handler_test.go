@@ -27,6 +27,8 @@ func TestPrivateRecHandlerProcess(t *testing.T) {
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.UStore = points
+			state.SentLocalCompMsg = false
+			state.SentPubMsg = false
 		},
 	)
 	assert.Nil(t, err)
@@ -59,6 +61,8 @@ func TestInvalidShare(t *testing.T) {
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.UStore = points
+			state.SentPubMsg = false
+			state.SentPubMsg = false
 		},
 	)
 	assert.Nil(t, err)

@@ -44,8 +44,9 @@ func TestProcessPreprocessBatchRecMessage(t *testing.T) {
 
 			pssID := big.NewInt(1)
 			pssRoundDetails := common.PSSRoundDetails{
-				Dealer: testNode.Details(),
-				PssID:  common.NewPssID(*pssID),
+				Dealer:    testNode.Details(),
+				PssID:     common.NewPssID(*pssID),
+				BatchSize: B,
 			}
 
 			testMsg := PreprocessBatchRecMessage{
