@@ -97,7 +97,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 		echoStore := keygen.FindThresholdEchoStore(f + 1)
 		if echoStore != nil {
 			// Broadcast ready message
-			readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
 			if err != nil {
 				log.WithField("error", err).Error("NewKeysetProposeMessage")
 				return
