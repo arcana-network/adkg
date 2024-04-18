@@ -15,7 +15,7 @@ type InitRecMessage struct {
 	ShareBatch          []byte                     // Share batch that will be reconstructed.
 	Curve               common.CurveName           // Curve that is being used in the computations.
 	Kind                string                     // Type of the message.
-	batchSize           int                        // How many shares are sent
+	BatchSize           int                        // How many shares are sent
 }
 
 // NewInitRecMessage creates a new InitRecMessage.
@@ -30,7 +30,7 @@ func NewInitRecMessage(
 		Kind:                InitRecHandlerType,
 		ShareBatch:          shareBatch,
 		Curve:               curve,
-		batchSize:           batchSize,
+		BatchSize:           batchSize,
 	}
 
 	msgBytes, err := bijson.Marshal(msg)
@@ -70,7 +70,7 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 
 	// Deserialize the shares.
 	n, _, _ := self.Params()
-	batchSize := msg.batchSize
+	batchSize := msg.BatchSize
 	shareBatch, err := sharing.DecompressScalars(
 		msg.ShareBatch,
 		common.CurveFromName(msg.Curve),

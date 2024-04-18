@@ -99,6 +99,9 @@ func CompressScalars(shares []curves.Scalar) []byte {
 // Bytes(r_1) || Bytes(r_2) || ... || Bytes(r_n) and returns the array of curve
 // scalars [r_1, ..., r_n].
 func DecompressScalars(sharesBytes []byte, curve *curves.Curve, numShares int) ([]curves.Scalar, error) {
+	if len(sharesBytes) < numShares {
+		return nil, fmt.Errorf("not enough bytes to decompress the shares")
+	}
 	// Trick to get the number of bytes needed to represent a scalar in the
 	// specific curve.
 	rndScalar := curve.Scalar.Random(rand.Reader)

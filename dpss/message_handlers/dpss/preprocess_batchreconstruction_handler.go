@@ -58,6 +58,16 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 
 	// locally compute (s_i+r_i) for i in B; shares s_i and shares of random values r_i
 	numShares := msg.PSSRoundDetails.BatchSize
+	if len(self.State().ShareStore.OldShares) != numShares {
+		log.WithFields(
+			log.Fields{
+				"Message":  "Incorrect number of shares stored in local storage",
+				"Expected": numShares,
+				"Actual":   len(self.State().ShareStore.OldShares),
+			},
+		).Error("PreprocessBatchRecMessage: Process")
+		return
+	}
 	r_scalars, err := sharing.DecompressScalars(msg.RValues, common.CurveFromName(msg.CurveName), numShares)
 	if err != nil {
 		log.WithFields(
@@ -99,7 +109,7 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 		startIdx := i * batchSize
 		endIdx := startIdx + batchSize
 		if endIdx > (numShares - 1) {
-			endIdx = numShares - 1
+			endIdx = numShares
 		}
 		shareBatch := ai_values[startIdx:endIdx]
 		compressedBatch := sharing.CompressScalars(shareBatch)
