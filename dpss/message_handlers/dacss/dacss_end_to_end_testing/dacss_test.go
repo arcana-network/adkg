@@ -46,7 +46,11 @@ func TestDacss(t *testing.T) {
 		go func(index int, node *testutils.IntegrationTestNode) {
 			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
 			share := sharing.ShamirShare{Id: shares[index].Id, Value: shares[index].Value}
-			initMsg := getTestInitMsgSingleShare(pssDealer, *big.NewInt(int64(pssIdInt)), &share, ephemeralKeypair, TestSetUp.NewCommitteeParams)
+			privKeyShare := common.PrivKeyShare{
+				UserIdOwner: "DummyUserId",
+				Share:       share,
+			}
+			initMsg := getTestInitMsgSingleShare(pssDealer, *big.NewInt(int64(pssIdInt)), &privKeyShare, ephemeralKeypair, TestSetUp.NewCommitteeParams)
 
 			pssMsgData, err := bijson.Marshal(initMsg)
 			assert.Nil(t, err)
@@ -143,14 +147,14 @@ func TestDacss(t *testing.T) {
 	assert.Equal(t, reconstructedSecret, *randomSecretShared)
 }
 
-func getTestInitMsgSingleShare(testDealer *testutils.IntegrationTestNode, pssRoundIndex big.Int, share *sharing.ShamirShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
+func getTestInitMsgSingleShare(testDealer *testutils.IntegrationTestNode, pssRoundIndex big.Int, share *common.PrivKeyShare, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) *dacss.InitMessage {
 	roundDetails := common.PSSRoundDetails{
 		PssID:  common.NewPssID(pssRoundIndex),
 		Dealer: testDealer.Details(),
 	}
 	msg := &dacss.InitMessage{
 		PSSRoundDetails:    roundDetails,
-		OldShares:          []sharing.ShamirShare{*share},
+		OldShares:          []common.PrivKeyShare{*share},
 		EphemeralSecretKey: ephemeralKeypair.PrivateKey.Bytes(),
 		EphemeralPublicKey: ephemeralKeypair.PublicKey.ToAffineCompressed(),
 		Kind:               dacss.InitMessageType,

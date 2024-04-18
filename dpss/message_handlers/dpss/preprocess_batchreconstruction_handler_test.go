@@ -58,7 +58,15 @@ func TestProcessPreprocessBatchRecMessage(t *testing.T) {
 
 			testNode.State().ShareStore.Initialize(B)
 			for i := 0; i < B; i++ {
-				testNode.State().ShareStore.OldShares[i] = testutils.TestCurve().Scalar.Random(rand.Reader)
+				shareBytes := testutils.TestCurve().Scalar.Random(rand.Reader).Bytes()
+				sharePrivKey := common.PrivKeyShare{
+					UserIdOwner: "DummyUserID",
+					Share: sharing.ShamirShare{
+						Id:    uint32(testNode.Details().Index),
+						Value: shareBytes,
+					},
+				}
+				testNode.State().ShareStore.OldShares[i] = sharePrivKey
 			}
 
 			testMsg.Process(testNode.Details(), testNode)

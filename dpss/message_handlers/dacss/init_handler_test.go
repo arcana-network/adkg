@@ -29,7 +29,7 @@ func TestProcessInitMessage(test *testing.T) {
 	testDealer := defaultSetup.GetSingleOldNodeFromTestSetup()
 	transport := testDealer.Transport()
 
-	n, k, _ := testDealer.Params()
+	n, k, t := testDealer.Params()
 
 	const N_SECRETS int = 30
 	ephemeralKeypair := common.GenerateKeyPair(testutils.TestCurve())
@@ -44,7 +44,7 @@ func TestProcessInitMessage(test *testing.T) {
 	time.Sleep(time.Second)
 
 	recvMsgAmmount := len(transport.GetSentMessages())
-	realRecvMsgAmmount := N_SECRETS / (n - 2*k)
+	realRecvMsgAmmount := N_SECRETS / (n - 2*t)
 	assert.Equal(test, realRecvMsgAmmount, recvMsgAmmount)
 }
 
@@ -137,9 +137,9 @@ func createTestMsg(testDealer *testutils.PssTestNode, nSecrets, n, k int, epheme
 
 // Creates multiple shares for the node to simulate that the node holds
 // its shares of multiple secrets.
-func generateOldShares(nSecrets, n, k int, curveName common.CurveName) ([]sharing.ShamirShare, error) {
+func generateOldShares(nSecrets, n, k int, curveName common.CurveName) ([]common.PrivKeyShare, error) {
 	curve := common.CurveFromName(curveName)
-	shares := make([]sharing.ShamirShare, nSecrets)
+	shares := make([]common.PrivKeyShare, nSecrets)
 	shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 	if err != nil {
 		return nil, err
@@ -150,7 +150,10 @@ func generateOldShares(nSecrets, n, k int, curveName common.CurveName) ([]sharin
 		if err != nil {
 			return nil, err
 		}
-		shares[i] = *sharesSecret[0]
+		shares[i] = common.PrivKeyShare{
+			UserIdOwner: "userID0",
+			Share:       *sharesSecret[0],
+		}
 	}
 	return shares, nil
 }
