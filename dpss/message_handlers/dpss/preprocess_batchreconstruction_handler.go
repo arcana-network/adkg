@@ -71,8 +71,19 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 	}
 	n, _, t := self.Params()
 	ai_values := make([]curves.Scalar, 0)
+	curve := common.CurveFromName(msg.CurveName)
 	for i := range numShares {
-		ai_values = append(ai_values, self.State().ShareStore.OldShares[i].Add(r_scalars[i]))
+		oldShareScalar, err := curve.Scalar.SetBytes(self.State().ShareStore.OldShares[i].Share.Value)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "error while constructing the scalar from bytes",
+				},
+			).Error("PreprocessBatchRecMessage: Process")
+			return
+		}
+		ai_values = append(ai_values, oldShareScalar.Add(r_scalars[i]))
 	}
 	self.State().ShareStore.Unlock()
 

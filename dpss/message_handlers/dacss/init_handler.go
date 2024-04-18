@@ -6,7 +6,6 @@ import (
 	"math"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/common/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -16,7 +15,7 @@ var InitMessageType string = "dacss_init"
 // Represents the initialization message for the DPSS protocol.
 type InitMessage struct {
 	PSSRoundDetails    common.PSSRoundDetails // ID of the round.
-	OldShares          []sharing.ShamirShare  // Array of shares that will be converted.
+	OldShares          []common.PrivKeyShare  // Array of shares that will be converted.
 	EphemeralSecretKey []byte                 // the dealer's ephemeral secret key at the start of the protocol (Section V(C)hbACSS)
 	EphemeralPublicKey []byte                 // the dealer's ephemeral public key.
 	Kind               string                 // Phase in which we are.
@@ -25,7 +24,7 @@ type InitMessage struct {
 }
 
 // Creates a new initialization message for DPSS.
-func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []sharing.ShamirShare, curve common.CurveName, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
+func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []common.PrivKeyShare, curve common.CurveName, ephemeralKeypair common.KeyPair, newCommitteeParams common.CommitteeParams) (*common.PSSMessage, error) {
 	m := InitMessage{
 		pssRoundDetails,
 		oldShares,
@@ -72,16 +71,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	self.State().ShareStore.Initialize(len(msg.OldShares))
 	for i, share := range msg.OldShares {
-		shareScalar, err := curve.Scalar.SetBytes(share.Value)
-		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error storing the old shares in the local state",
-				},
-			).Error("DacssInitMessage: Process")
-		}
-		self.State().ShareStore.OldShares[i] = shareScalar
+		self.State().ShareStore.OldShares[i] = share
 	}
 
 	// Step 101: Sample B / (n - 2t) random elements.

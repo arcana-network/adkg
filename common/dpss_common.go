@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	ownsharing "github.com/arcana-network/dkgnode/common/sharing"
+
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/coinbase/kryptology/pkg/sharing"
 	"github.com/torusresearch/bijson"
@@ -261,12 +263,22 @@ type ImplicateInformation struct {
 type PSSShareStore struct {
 	sync.Mutex
 	NewShares []curves.Scalar // Map of shares at the end of the protocol.
-	OldShares []curves.Scalar // Map of shares at the beginning of the protocol.
+	OldShares []PrivKeyShare  // Map of shares at the beginning of the protocol.
 }
 
 func (store *PSSShareStore) Initialize(storeSize int) {
 	store.NewShares = make([]curves.Scalar, storeSize)
-	store.OldShares = make([]curves.Scalar, storeSize)
+	store.OldShares = make([]PrivKeyShare, storeSize)
+}
+
+// Returns the UserID for the owners of the shares in the same order that they
+// were provided at the beggining of the protocol.
+func (store *PSSShareStore) GetUserID() []string {
+	result := make([]string, len(store.OldShares))
+	for i, privKeyShare := range store.OldShares {
+		result[i] = privKeyShare.UserIdOwner
+	}
+	return result
 }
 
 // PSSRoundDetails represents all the details in a round for the DPSS protocol.
@@ -357,4 +369,10 @@ func HashAcssData(data AcssData) ([]byte, error) {
 	}
 
 	return HashByte(bytes), nil
+}
+
+// PrivKeyShare represents a share of a private key.
+type PrivKeyShare struct {
+	UserIdOwner string                 // Owner of the private key.
+	Share       ownsharing.ShamirShare // Share of the private key.
 }

@@ -41,8 +41,13 @@ func TestDpss(t *testing.T) {
 		_, shares, _ := sharing.GenerateCommitmentAndShares(secret, uint32(k_old), uint32(n_old), testutils.TestCurve())
 		// Push shares to all nodes
 		for j, node := range oldNodesNetwork {
-			shareScalar, _ := testutils.TestCurve().Scalar.SetBytes(shares[j].Value)
-			node.State().ShareStore.OldShares[i] = shareScalar
+			node.State().ShareStore.OldShares[i] = common.PrivKeyShare{
+				UserIdOwner: "DummyUserID",
+				Share: sharing.ShamirShare{
+					Id:    shares[j].Id,
+					Value: shares[j].Value,
+				},
+			}
 		}
 	}
 
