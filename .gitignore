@@ -10,3 +10,4 @@ dist/
 dist/
 
 .vscode
+venv

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +27,7 @@ const (
 	MSG_DPSS_START = "DPSS_START"
 	MSG_DPSS_END   = "DPSS_END"
 	MSG_SHUT_DOWN  = "KILL_NODE"
-	BIN_NAME       = "./myapp"
+	BIN_NAME       = "./adkgNode"
 	CONFIG_PATH    = "./manager_process/new-node-config"
 )
 
@@ -156,7 +157,9 @@ func startNewNode(binName string, cfgPath string) {
 
 // TODO: add functions to manually start/stop a process
 func main() {
-	go startNewNode(BIN_NAME, CONFIG_PATH)
+	config_path := flag.String("config", CONFIG_PATH, "directory of the config file")
+	flag.Parse()
+	go startNewNode(BIN_NAME, *config_path)
 	stopOnInterrupt()
 	log.Println("Shutting down...")
 

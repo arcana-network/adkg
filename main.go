@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	err := root.GetRootCmd().Execute()
 	if err != nil {
 		log.Fatalf("Could not start node %s", err.Error())

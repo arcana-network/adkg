@@ -170,7 +170,7 @@ func (broker *MessageBroker) ManagerMethods() *ManagerMethods {
 	return &ManagerMethods{
 		bus:     broker.bus,
 		caller:  broker.caller,
-		service: KEYSTORE_SERVICE_NAME,
+		service: MANAGER_SERVICE_NAME,
 	}
 }
 

@@ -140,9 +140,13 @@ func (service *ChainService) Start() error {
 	service.running = true
 	service.cachedEpochInfo = &EpochCache{}
 	service.nodeRegisterMap = make(map[int]*NodeRegister)
-
+	first := true
 	// set current epoch on chain
 	err = retry.Do(func() error {
+		if !first {
+			time.Sleep(10 * time.Second)
+		}
+		first = false
 		epoch, err := service.GetCurrentEpoch()
 		if err != nil {
 			return fmt.Errorf("could not get current epoch on chain, %v", err.Error())
@@ -316,13 +320,14 @@ func (s *ChainService) createTransactionOpts() (*bind.TransactOpts, error) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = 0
+	auth.GasPrice = nil
 
-	gasPrice, err := s.client.SuggestGasPrice(context.Background())
-	if err != nil {
-		log.WithError(err).Error("CreateTransactionOpts.SuggestGasPrice()")
-		return nil, err
-	}
-	auth.GasPrice = gasPrice
+	// TODO delete this. set GasPrice to nil to use gas oracle to prevent gas error
+	// gasPrice, err := s.client.SuggestGasPrice(context.Background())
+	// if err != nil {
+	// 	log.WithError(err).Error("CreateTransactionOpts.SuggestGasPrice()")
+	// 	return nil, err
+	// }
 
 	return auth, nil
 }
@@ -433,7 +438,7 @@ func pssFlagMonitor(e *ChainService) {
 				// start PSS
 				if e.isNewCommittee {
 					// connect to the old committee if in new committee
-					go epochNodesMonitor(e, int(epochInfo.PrevEpoch.Int64()))
+					go epochNodesMonitor(e, e.currentEpoch)
 				} else {
 					// connect to the new committee if in old committee
 					go epochNodesMonitor(e, int(epochInfo.NextEpoch.Int64()))
@@ -495,7 +500,7 @@ func (e *ChainService) GetEpochPssStatus(oldEpoch int, newEpoch int) (bool, erro
 		log.WithError(err).Error("GetPssStatus()")
 		return false, err
 	}
-	isRunning := pssStatus_int == big.NewInt(PSSRUNNING)
+	isRunning := pssStatus_int.Cmp(big.NewInt(PSSRUNNING)) == 0
 	return isRunning, nil
 }
 
