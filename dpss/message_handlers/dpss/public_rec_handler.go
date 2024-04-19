@@ -135,7 +135,14 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
 		}
 
-		localComputationMsg, err := NewLocalComputationMsg(msg.DPSSBatchRecDetails, msg.curveName, polynomialCoefficient)
+		self.State().ShareStore.Lock()
+		localComputationMsg, err := NewLocalComputationMsg(
+			msg.DPSSBatchRecDetails,
+			msg.curveName,
+			polynomialCoefficient,
+			self.State().ShareStore.GetUserIDs(),
+		)
+		self.State().ShareStore.Unlock()
 
 		if err != nil {
 			log.WithFields(

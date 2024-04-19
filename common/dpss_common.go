@@ -273,7 +273,7 @@ func (store *PSSShareStore) Initialize(storeSize int) {
 
 // Returns the UserID for the owners of the shares in the same order that they
 // were provided at the beggining of the protocol.
-func (store *PSSShareStore) GetUserID() []string {
+func (store *PSSShareStore) GetUserIDs() []string {
 	result := make([]string, len(store.OldShares))
 	for i, privKeyShare := range store.OldShares {
 		result[i] = privKeyShare.UserIdOwner

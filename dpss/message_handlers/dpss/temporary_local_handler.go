@@ -15,18 +15,22 @@ type LocalComputationMsg struct {
 	Kind                string
 	curveName           common.CurveName
 	coefficients        [][]byte
+	UserIds             []string
 }
 
 func NewLocalComputationMsg(
 	dpssBatchRecDetails common.DPSSBatchRecDetails,
 	curve common.CurveName,
 	coefficients [][]byte,
+	userIds []string,
+
 ) (*common.PSSMessage, error) {
 	msg := LocalComputationMsg{
 		DPSSBatchRecDetails: dpssBatchRecDetails,
 		Kind:                LocalComputationMessageType,
 		curveName:           curve,
 		coefficients:        coefficients,
+		UserIds:             userIds,
 	}
 
 	msgBytes, err := bijson.Marshal(msg)

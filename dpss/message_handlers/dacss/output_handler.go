@@ -159,6 +159,10 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				state.ReceivedShare = share
 
 				// Line 203, Algorithm 4, DPS paper. Stores the commitment
+				// We just send g^{secret} instead of the commitment of the
+				// complete polynomial because the polynomials for the same
+				// secret will be inherently different for the same secret and
+				// between the old and new committee.
 				state.OwnCommitmentsHash = hex.EncodeToString(
 					common.HashByte(verifier.Commitments[0].ToAffineCompressed()),
 				)
@@ -188,8 +192,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		)
 		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
 
-		// We need to check here if the conditions for the commitment handler hold here
-		// because this node could have received commitment messages before reaching this point
+		// We need to check if the conditions for the commitment handler hold here
+		// because this node could have received commitment messages before reaching this point.
 		_, _, t := self.Params()
 		commitmentHexHash, found := state.FindThresholdCommitment(t + 1)
 		if found {

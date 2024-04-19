@@ -3,6 +3,7 @@ package dpss
 import (
 	"math"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func TestDpss(t *testing.T) {
 		// Push shares to all nodes
 		for j, node := range oldNodesNetwork {
 			node.State().ShareStore.OldShares[i] = common.PrivKeyShare{
-				UserIdOwner: "DummyUserID",
+				UserIdOwner: "DummyUserID" + strconv.Itoa(j),
 				Share: sharing.ShamirShare{
 					Id:    shares[j].Id,
 					Value: shares[j].Value,

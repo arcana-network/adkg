@@ -2,14 +2,17 @@ package dpss
 
 import (
 	"crypto/rand"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/torusresearch/bijson"
 )
 
 // Testing the happy path
@@ -20,6 +23,34 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 
 	testMsg, points, err := getValidPublicRecMsgAndPoints(senderNode, defaultSetup)
 	assert.Nil(t, err)
+
+	nOld, kOld, _ := senderNode.Params()
+
+	// Generate dummy shares for the node. Those shares correspond to shares
+	// provided in the init handler. That means that those shares are shares
+	// of private keys.
+	shares, err := generateSharesMultipleSecrets(
+		100,
+		senderNode.Details().Index,
+		nOld,
+		kOld,
+		testutils.TestCurve(),
+	)
+	assert.Nil(t, err)
+
+	// Initialize the sharing store
+	senderNode.State().ShareStore.Initialize(len(shares))
+
+	// Store the shares of private keys in the local storage.
+	for i, share := range shares {
+		senderNode.State().ShareStore.OldShares[i] = common.PrivKeyShare{
+			UserIdOwner: "DummyID" + strconv.Itoa(i),
+			Share: sharing.ShamirShare{
+				Id:    uint32(senderNode.Details().Index),
+				Value: share.Bytes(),
+			},
+		}
+	}
 
 	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
@@ -32,6 +63,17 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	assert.Equal(t, 1, len(senderNode.Transport().GetBroadcastedMessages()))
+
+	// Check that the message sent in the PublicRecHandler contains the
+	// user IDs in the state of the sender node.
+	for _, message := range senderNode.Transport().GetBroadcastedMessages() {
+		// Get the information of the message.
+		var localCompMsg LocalComputationMsg
+		err := bijson.Unmarshal(message.Data, &localCompMsg)
+		assert.Nil(t, err)
+
+		assert.Equal(t, localCompMsg.UserIds, senderNode.State().ShareStore.GetUserIDs())
+	}
 
 }
 
