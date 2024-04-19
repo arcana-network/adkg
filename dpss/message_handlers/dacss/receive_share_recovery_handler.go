@@ -5,7 +5,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	kryptology "github.com/coinbase/kryptology/pkg/sharing"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
@@ -190,7 +189,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		values := make([]*kryptology.ShamirShare, 0, len(acssState.VerifiedRecoveryShares))
+		values := make([]*sharing.ShamirShare, 0, len(acssState.VerifiedRecoveryShares))
 
 		for _, v := range acssState.VerifiedRecoveryShares {
 			values = append(values, v)
@@ -209,7 +208,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 			log.Errorf("Error obtaining share value for node in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		shareForNode := &kryptology.ShamirShare{
+		shareForNode := &sharing.ShamirShare{
 			Id:    uint32(receiver.Details().Index),
 			Value: evalForNode.Bytes(),
 		}

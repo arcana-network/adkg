@@ -10,7 +10,6 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	ksharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -213,7 +212,7 @@ func TestCommitmentModifiedCommitment(test *testing.T) {
 	)
 }
 
-func getCommitmentMessageAndNodesSetup() (DacssCommitmentMessage, *testutils.PssTestNode, []*testutils.PssTestNode, *ksharing.FeldmanVerifier, error) {
+func getCommitmentMessageAndNodesSetup() (DacssCommitmentMessage, *testutils.PssTestNode, []*testutils.PssTestNode, *sharing.FeldmanVerifier, error) {
 	defaultSetup := testutils.DefaultTestSetup()
 	oldNodes := defaultSetup.GetAllOldNodesFromTestSetup()
 	newNodes := defaultSetup.GetAllNewNodesFromTestSetup()

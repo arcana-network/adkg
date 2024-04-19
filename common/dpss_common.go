@@ -8,10 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	ownsharing "github.com/arcana-network/dkgnode/common/sharing"
-
+	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	"github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
@@ -785,6 +783,6 @@ func HashAcssData(data AcssData) ([]byte, error) {
 
 // PrivKeyShare represents a share of a private key.
 type PrivKeyShare struct {
-	UserIdOwner string                 // Owner of the private key.
-	Share       ownsharing.ShamirShare // Share of the private key.
+	UserIdOwner string              // Owner of the private key.
+	Share       sharing.ShamirShare // Share of the private key.
 }

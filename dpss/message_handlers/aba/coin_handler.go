@@ -111,7 +111,6 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		return
 	}
 
-	// FIXME: Something wrong here
 	gI := aba.DerivePublicKey(sender.Index, k, curve, TiSet, pssState.KeysetMap[0].CommitmentStore)
 
 	log.WithFields(log.Fields{
@@ -122,7 +121,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 		"T":                  TiSet,
 		"pssState.KeysetMap": pssState.KeysetMap[0].CommitmentStore,
 		"verified":           verify(u, gTilde, gI, curve, self),
-	}).Info("aba_coin_msg_before_verified")
+	}).Debug("aba_coin_msg_before_verified")
 
 	if verify(u, gTilde, gI, curve, self) {
 		store.SetCoinShare(sender.Index, u.GiTilde)
@@ -176,7 +175,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			"round":                m.RoundID,
 			"sessionStoreDecision": pssState.Decisions,
 			"Inequality(1==true)":  int(sha256.Sum256(g0Tilde.ToAffineCompressed())[31]) % 2,
-		}).Info("aba_coin")
+		}).Debug("aba_coin")
 
 		if int(sha256.Sum256(g0Tilde.ToAffineCompressed())[31])%2 == 1 {
 			pssState.Decisions[roundLeader] = 1
@@ -211,7 +210,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			"sessionStoreDecision": pssState.Decisions,
 			"CompleteCount":        len(pssState.Decisions),
 			"ABAComplete":          pssState.ABAComplete,
-		}).Info("aba_coin")
+		}).Debug("aba_coin")
 
 		// If all rounds ABA'd to 0 or 1, set ABA complete to true and start key derivation
 		if n == len(pssState.Decisions) && !pssState.HIMStarted {
@@ -220,7 +219,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 				"f":         f,
 				"node":      self.Details().Index,
 				"Decisions": pssState.Decisions,
-			}).Debug("starting HIM")
+			}).Info("starting HIM")
 
 			T := pssState.GetTSet(n, f)
 			curve := common.CurveFromName(m.Curve)
@@ -285,7 +284,7 @@ func verify(u *Unpack, gTilde, gI curves.Point, curve *curves.Curve, self common
 
 	hTildeBar := gTilde.Mul(u.Z).Sub(u.GiTilde.Mul(cBar))
 
-	log.Infof("COIN:VERIFY: u.H=%x,hBar=%x, u.HTilde=%x, hTildeBar=%x", u.H.ToAffineCompressed(), hBar.ToAffineCompressed(), u.HTilde.ToAffineCompressed(), hTildeBar.ToAffineCompressed())
+	log.Debugf("COIN:VERIFY: u.H=%x,hBar=%x, u.HTilde=%x, hTildeBar=%x", u.H.ToAffineCompressed(), hBar.ToAffineCompressed(), u.HTilde.ToAffineCompressed(), hTildeBar.ToAffineCompressed())
 
 	if u.H.Equal(hBar) && u.HTilde.Equal(hTildeBar) {
 		return true

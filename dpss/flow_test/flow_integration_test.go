@@ -63,6 +63,11 @@ func TestFlow(t *testing.T) {
 		}(n)
 	}
 
+	time.Sleep(time.Second * 5)
+
+	// Add conditions to check
+	// expect him message to be sent
+	// expect n-f nodes to have agreed (Check decision and TSet)
 	select {
 	case <-timeout:
 		t.Fatal("Test didn't finish in time")

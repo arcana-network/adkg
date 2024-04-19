@@ -12,7 +12,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	ksharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/torusresearch/bijson"
@@ -349,7 +348,7 @@ func constructFakeMessage(correctMsg DacssOutputMessage, numParties int) (
 		randomPoint = testutils.TestCurve().Point.Random(rand.Reader)
 	}
 	uncompressedCommitmnets[randomIdx] = randomPoint
-	fakeCommitments := ksharing.FeldmanVerifier{
+	fakeCommitments := sharing.FeldmanVerifier{
 		Commitments: uncompressedCommitmnets,
 	}
 	fakeCompressedComm := sharing.CompressCommitments(

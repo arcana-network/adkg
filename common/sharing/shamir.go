@@ -91,20 +91,20 @@ func (s Shamir) getPolyAndShares(secret curves.Scalar, reader io.Reader) ([]*Sha
 }
 
 // TODO this is duplicate code, but should be here in common folder
-func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*sharing.FeldmanVerifier, error) {
+func verifierFromCommits(k int, c []byte, curve *curves.Curve) (*FeldmanVerifier, error) {
 
 	commitment, err := DecompressCommitments(k, c, curve)
 	if err != nil {
 		return nil, err
 	}
-	verifier := new(sharing.FeldmanVerifier)
+	verifier := new(FeldmanVerifier)
 	verifier.Commitments = commitment
 	return verifier, nil
 }
 
 // TODO this is (almost) duplicate code, but should be here in common folder
 // Predicate verifies if the share fits the polynomial commitments
-func Predicate(secret_point curves.Point, cipher []byte, commits []byte, k int, curve *curves.Curve) (*sharing.ShamirShare, *sharing.FeldmanVerifier, bool) {
+func Predicate(secret_point curves.Point, cipher []byte, commits []byte, k int, curve *curves.Curve) (*ShamirShare, *FeldmanVerifier, bool) {
 	keyBytes := secret_point.ToAffineCompressed()
 
 	// Hash the serialized point to derive a symmetric key.
@@ -115,7 +115,7 @@ func Predicate(secret_point curves.Point, cipher []byte, commits []byte, k int, 
 		log.Errorf("Error while decrypting share: err=%s", err)
 		return nil, nil, false
 	}
-	share := sharing.ShamirShare{Id: binary.BigEndian.Uint32(shareBytes[:4]), Value: shareBytes[4:]}
+	share := ShamirShare{Id: binary.BigEndian.Uint32(shareBytes[:4]), Value: shareBytes[4:]}
 	log.Debugf("share: id=%d, val=%v", share.Id, share.Value)
 	verifier, err := verifierFromCommits(k, commits, curve)
 	if err != nil {
@@ -289,8 +289,8 @@ func (s Shamir) interpolatePoint(xs []curves.Scalar, ys []curves.Point) (curves.
 
 // GenerateCommitmentAndShares generates a commitment and shares for a given secret
 // using the provided parameters.
-func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (*sharing.FeldmanVerifier, []*sharing.ShamirShare, error) {
-	f, err := sharing.NewFeldman(k, n, curve)
+func GenerateCommitmentAndShares(secret curves.Scalar, k, n uint32, curve *curves.Curve) (*FeldmanVerifier, []*ShamirShare, error) {
+	f, err := NewFeldman(k, n, curve)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gen_commitment_and_shares: %w", err)
 	}
