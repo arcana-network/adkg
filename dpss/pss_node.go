@@ -4,9 +4,12 @@ import (
 	"strconv"
 
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 )
 
 // PSSNode represents a node participating in the DPSS protocol.
@@ -16,7 +19,7 @@ type PSSNode struct {
 	state             common.PSSNodeState
 	OldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
 	NewCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
-	details           common.NodeDetails
+	NodeDetails       common.NodeDetails
 }
 
 // Creates a new PSSNode
@@ -45,6 +48,8 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, old
 
 	// Creates the new node.
 	newPSSNode := &PSSNode{
+		PssNodeTransport: *transport,
+		state:            common.PSSNodeState{},
 		BaseNode: common.NewBaseNode(
 			&broker,
 			nodeDetails,
@@ -53,6 +58,7 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, old
 		),
 		OldCommitteeNodes: oldCommitteeNetwork,
 		NewCommitteeNodes: newCommiteeNetwork,
+		NodeDetails:       nodeDetails,
 	}
 
 	transport.Init()
@@ -68,7 +74,7 @@ func getPSSProtocolPrefix(epoch int) PSSProtocolPrefix {
 
 // IsNewNode determines if the current node belongs to the new committee.
 func (node *PSSNode) IsNewNode() bool {
-	nodeDetails := node.details
+	nodeDetails := node.NodeDetails
 	_, found := node.NewCommitteeNodes.Nodes[nodeDetails.ToNodeDetailsID()]
 	return found
 }
@@ -132,9 +138,70 @@ func (node *PSSNode) Nodes(fromNewCommittee bool) map[common.NodeDetailsID]commo
 	}
 }
 
-// FIXME: Implement this as long as we implement the DPSS protocol.
-func (node *PSSNode) ProcessMessage(senderDetails common.NodeDetails, message common.PSSMessage) error {
+type MessageProcessor interface {
+	Process(sender common.NodeDetails, node common.PSSParticipant)
+}
+
+// General function to process messages of a given type:
+// does the unmarshalling and calls the Process function of the message
+func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
+	log.Debugf("Got %s", messageType)
+	var msg T
+	err := bijson.Unmarshal(data, &msg)
+	if err != nil {
+		log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", messageType)
+		return
+	}
+	msg.Process(sender, node)
+}
+
+func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PSSMessage) error {
+
+	switch message.Type {
+	case dacss.InitMessageType:
+		log.Info("AN INITMSG WAS RECEIVED")
+		ProcessMessageForType[dacss.InitMessage](message.Data, sender, node, dacss.InitMessageType)
+	case dacss.DacssEchoMessageType:
+		ProcessMessageForType[dacss.DacssEchoMessage](message.Data, sender, node, dacss.DacssEchoMessageType)
+	case dacss.ShareMessageType:
+		ProcessMessageForType[dacss.DualCommitteeACSSShareMessage](message.Data, sender, node, dacss.ShareMessageType)
+	case dacss.AcssProposeMessageType:
+		ProcessMessageForType[*dacss.AcssProposeMessage](message.Data, sender, node, dacss.AcssProposeMessageType)
+	case dacss.AcssReadyMessageType:
+		ProcessMessageForType[*dacss.DacssReadyMessage](message.Data, sender, node, dacss.AcssReadyMessageType)
+	case dacss.ImplicateExecuteMessageType:
+		ProcessMessageForType[*dacss.ImplicateExecuteMessage](message.Data, sender, node, dacss.ImplicateExecuteMessageType)
+	case dacss.ImplicateReceiveMessageType:
+		ProcessMessageForType[*dacss.ImplicateReceiveMessage](message.Data, sender, node, dacss.ImplicateReceiveMessageType)
+	case dacss.ShareRecoveryMessageType:
+		ProcessMessageForType[*dacss.ShareRecoveryMessage](message.Data, sender, node, dacss.ShareRecoveryMessageType)
+	case dacss.ReceiveShareRecoveryMessageType:
+		ProcessMessageForType[*dacss.ReceiveShareRecoveryMessage](message.Data, sender, node, dacss.ReceiveShareRecoveryMessageType)
+	case dacss.DacssOutputMessageType:
+		ProcessMessageForType[*dacss.DacssOutputMessage](message.Data, sender, node, dacss.DacssOutputMessageType)
+	case dacss.DacssCommitmentMessageType:
+		ProcessMessageForType[*dacss.DacssCommitmentMessage](message.Data, sender, node, dacss.DacssCommitmentMessageType)
+	case dpss.DpssHimHandlerType:
+		ProcessMessageForType[*dpss.DpssHimMessage](message.Data, sender, node, dpss.DpssHimHandlerType)
+	case dpss.InitRecHandlerType:
+		ProcessMessageForType[*dpss.InitRecMessage](message.Data, sender, node, dpss.InitRecHandlerType)
+	case dpss.PreprocessBatchRecMessageType:
+		ProcessMessageForType[*dpss.PreprocessBatchRecMessage](message.Data, sender, node, dpss.PreprocessBatchRecMessageType)
+	case dpss.PrivateRecMessageType:
+		ProcessMessageForType[*dpss.PrivateRecMsg](message.Data, sender, node, dpss.PrivateRecMessageType)
+	case dpss.PublicRecMessageType:
+		ProcessMessageForType[*dpss.PublicRecMsg](message.Data, sender, node, dpss.PublicRecMessageType)
+	default:
+		log.Infof("No handler found. MsgType=%s", message.Type)
+	}
 	return nil
+}
+
+func (node *PSSNode) ReceiveMessage(sender common.NodeDetails, msg common.PSSMessage) {
+	err := node.PssNodeTransport.Receive(sender, msg)
+	if err != nil {
+		log.WithError(err).Error("PSSNode:ReceiveMessage")
+	}
 }
 
 // FIXME: Implement this as long as we implement the DPSS protocol.
@@ -144,7 +211,7 @@ func (node *PSSNode) ProcessBroadcastMessage(message common.PSSMessage) error {
 
 // Details returns the details of the node, namely, its index and public key.
 func (node *PSSNode) Details() common.NodeDetails {
-	return node.details
+	return node.NodeDetails
 }
 
 //TODO: Do we need this?
