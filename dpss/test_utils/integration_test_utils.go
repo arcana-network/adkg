@@ -6,7 +6,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
-	"github.com/torusresearch/bijson"
 )
 
 // Definition of a testNode meant for Integration testing
@@ -159,23 +158,6 @@ func (t *IntegrationMockTransport) Broadcast(toNewCommittee bool, sender common.
 		}
 	}
 
-}
-
-type MessageProcessor interface {
-	Process(sender common.NodeDetails, node common.PSSParticipant)
-}
-
-// General function to process messages of a given type:
-// does the unmarshalling and calls the Process function of the message
-func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
-	log.Debugf("Got %s", messageType)
-	var msg T
-	err := bijson.Unmarshal(data, &msg)
-	if err != nil {
-		log.WithError(err).Errorf("Could not unmarshal: MsgType=%s", messageType)
-		return
-	}
-	msg.Process(sender, node)
 }
 
 func (t *IntegrationMockTransport) GetSentMessages() []common.PSSMessage {

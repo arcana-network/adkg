@@ -46,6 +46,9 @@ func (tp *PssNodeTransport) streamHandler(streamMessage common.StreamMessage) {
 
 // TODO check whether this impl is correct
 func (tp *PssNodeTransport) Receive(senderDetails common.NodeDetails, msg common.PSSMessage) error {
+	log.WithFields(log.Fields{
+		"method": common.Stringify(msg.Type),
+	}).Debug("pss_transport")
 	return tp.PSSNode.ProcessMessage(senderDetails, msg)
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +41,10 @@ func New(bus eventbus.Bus) *PssService {
 	return keygenService
 }
 
+func (pssService *PssService) SetNode(pssNode *PSSNode) {
+	pssService.pssNode = pssNode
+}
+
 func (*PssService) ID() string {
 	return common.PSS_SERVICE_NAME
 }
@@ -68,6 +73,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 	switch method {
 
 	case "trigger_pss":
+		log.Info("PSS WAS TRIGGERED")
 		// TODO - check what to do for the new committee nodes
 		service.pssStatus = RUNNING
 		batchSize := uint(500)
@@ -116,6 +122,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		oldNodeList := chainMethods.AwaitCompleteNodeList(oldEpoch)
 		newNodeList := chainMethods.AwaitCompleteNodeList(newEpoch)
 
+		log.Info("CREATING PSS NODE")
 		// create a PSSNode
 		pssNode, err := NewPSSNode(*service.broker,
 			selfDetails,
@@ -131,12 +138,12 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			log.Errorf("Could not create pssNode in trigger_pss %s", err.Error())
 			return nil, err
 		}
-		service.pssNode = pssNode
+		service.SetNode(pssNode)
 
 		// get total assigned share num for secp256k1
 		secpShareNum, err := service.broker.ABCIMethods().LastUnassignedIndex()
 		if err != nil {
-			log.Errorf("Could not get share numebr %s", err.Error())
+			log.Errorf("Could not get share number %s", err.Error())
 			return nil, err
 		}
 		secpShareNum -= 1
@@ -150,7 +157,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		// get total assigned share num for c25519
 		c25519ShareNum, err := service.broker.ABCIMethods().LastC25519UnassignedIndex()
 		if err != nil {
-			log.Errorf("Could not get share numebr %s", err.Error())
+			log.Errorf("Could not get share number %s", err.Error())
 			return nil, err
 		}
 		c25519ShareNum -= 1
@@ -163,16 +170,50 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 		if !isNewCommittee {
 			// only nodes in old committee need to initiate DPSS
-			go service.BatchRunDPSS(secpBatchNum, c25519BatchNum, batchSize, secpShareNum, c25519ShareNum)
+			log.Infof("OLD NODE NEEDS TO START DPSS FLOW c25519BatchNum: %v, batchSize: %v, secpShareNum: %v, c25519ShareNum: %v", c25519BatchNum, batchSize, secpShareNum, c25519ShareNum)
+			// TODO remove this until `go service.BatchRunDPSS`. It's only for easier testing
+			roundDetails := common.PSSRoundDetails{
+				PssID:  common.NewPssID(uint64(1)),
+				Dealer: service.pssNode.NodeDetails,
+			}
+			shares := make([]common.PrivKeyShare, 0)
+			ephemeralKeypair := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
+
+			createdMsgBytes, _ := dacss.NewInitMessage(
+				roundDetails,
+				shares,
+				common.SECP256K1,
+				ephemeralKeypair,
+				common.CommitteeParams{N: int(newEpochInfo.N.Int64()),
+					K: int(newEpochInfo.K.Int64()),
+					T: int(newEpochInfo.T.Int64())},
+			)
+
+			log.Info("TEST - SENDING INIT MSG")
+			go service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
+			log.Info("ACTUAL CALL")
+			go service.BatchRunDPSS(secpBatchNum,
+				c25519BatchNum,
+				batchSize,
+				secpShareNum,
+				c25519ShareNum,
+				int(newEpochInfo.N.Int64()),
+				int(newEpochInfo.K.Int64()),
+				int(newEpochInfo.T.Int64()))
 		}
 	}
 	return nil, nil
 }
 
-func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, batchSize uint, secpShareNum uint, c25519ShareNum uint) {
+func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, batchSize uint, secpShareNum uint, c25519ShareNum uint,
+	new_N int, new_K int, new_T int) {
+
+	// TODO make more generalized and call for both secp and c25519
+	// as of now only in secp256k1 the message handlers are triggered
 
 	// secp256k1 shares
 	for currentBatch := uint(0); currentBatch < secpBatchNum; currentBatch++ {
+		// FIXME oldShares needs to be accompanied by the userId
 		var oldShares []sharing.ShamirShare
 		// get old shares list of the batch
 		for i := uint(0); i < batchSize; i++ {
@@ -202,8 +243,34 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 				"type":  "secp256k1",
 				"batch": currentBatch,
 			}).Info("Running DPSS")
-			// Todo: what message to send here?
-			// dacss.NewInitMessage(,oldoldShares,)
+
+			// FIXME placeholder
+			roundDetails := common.PSSRoundDetails{
+				PssID:  common.NewPssID(uint64(currentBatch)),
+				Dealer: service.pssNode.NodeDetails,
+			}
+
+			// FIXME replace with `oldShares` once it has the right type
+			shares := make([]common.PrivKeyShare, len(oldShares))
+
+			// FIXME placeholder
+			ephemeralKeypair := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
+
+			// FIXME how do we know the new comittee params
+			createdMsgBytes, err := dacss.NewInitMessage(
+				roundDetails,
+				shares,
+				common.SECP256K1,
+				ephemeralKeypair,
+				common.CommitteeParams{N: new_N, K: new_K, T: new_T},
+			)
+
+			if err != nil {
+				// TODO
+			}
+
+			service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
+
 			// block until the batch has finished
 			<-service.batchFinChannel
 			log.WithFields(log.Fields{

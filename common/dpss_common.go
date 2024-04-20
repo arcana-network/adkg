@@ -2,7 +2,6 @@ package common
 
 import (
 	"errors"
-	"math/big"
 	"strconv"
 	"strings"
 	"sync"
@@ -288,6 +287,13 @@ type PSSRoundDetails struct {
 	BatchSize int         // Number of shares that will be converted from one degree to another in one batch.
 }
 
+func (pssRoundDetails PSSRoundDetails) ToString() string {
+	return strings.Join([]string{
+		string(pssRoundDetails.Dealer.ToNodeDetailsID()),
+		string(pssRoundDetails.PssID),
+	}, Delimiter1)
+}
+
 // ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
 type ACSSRoundID string
 
@@ -299,8 +305,7 @@ type ACSSRoundDetails struct {
 func (acssRoundDetails *ACSSRoundDetails) ToACSSRoundID() ACSSRoundID {
 	// Convert ACSSRoundDetails to a string representation to be used as an ID
 	return ACSSRoundID(strings.Join([]string{
-		string(acssRoundDetails.PSSRoundDetails.Dealer.ToNodeDetailsID()),
-		string(acssRoundDetails.PSSRoundDetails.PssID),
+		acssRoundDetails.PSSRoundDetails.ToString(),
 		strconv.Itoa(acssRoundDetails.ACSSCount),
 	}, Delimiter1))
 }
@@ -320,8 +325,7 @@ func (details *DPSSBatchRecDetails) ToBatchRecID() BatchRecID {
 	return BatchRecID(
 		strings.Join(
 			[]string{
-				string(details.PSSRoundDetails.Dealer.ToNodeDetailsID()),
-				string(details.PSSRoundDetails.PssID),
+				details.PSSRoundDetails.ToString(),
 				strconv.Itoa(details.BatchRecCount),
 			},
 			Delimiter2,
@@ -354,8 +358,8 @@ func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPssID(index big.Int) string {
-	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
+func NewPssID(index uint64) string {
+	return strings.Join([]string{"PSS", strconv.FormatUint(index, 10)}, Delimiter3)
 }
 
 func HashAcssData(data AcssData) ([]byte, error) {
