@@ -126,7 +126,10 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 	// Extract the correct share
 	senderPubkeyHex := common.PointToHex(PK_j)
-	share_j := msg.AcssData.ShareMap[senderPubkeyHex]
+	share_jAndHmac := msg.AcssData.ShareMap[senderPubkeyHex]
+
+	share_j, _ := sharing.Extract(share_jAndHmac)
+
 	commitments := msg.AcssData.Commitments
 
 	// Check Predicate for share

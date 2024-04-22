@@ -175,8 +175,12 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 		}
 
 		// Encryption is done with symmetric key Ki = PKi ^ SKd (pubkey of receiver, secret key of sender)
-		// TODO this encryption doesn't do MAC, is that needed
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
+
+		cipherShare, hmac, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, privateKey)
+
+		//combine the ciphers and hmac
+		cipherShare = sharing.Combine(cipherShare, hmac)
+
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 			return

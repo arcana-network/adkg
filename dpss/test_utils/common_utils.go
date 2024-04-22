@@ -76,7 +76,7 @@ func ComputeReedSolomonShardsAndHash(
 			return []infectious.Share{}, []byte{}, errors.New("Public key is nil")
 		}
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			dealerEphemeralKey.PrivateKey,
@@ -86,7 +86,10 @@ func ComputeReedSolomonShardsAndHash(
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 			return []infectious.Share{}, []byte{}, errors.New("Can't been able to encrypt the shares")
 		}
-		log.Debugf("CIPHER_SHARE=%v", cipherShare)
+		log.Debugf("CIPHER_SHARE=%v, HMAC=%v", cipherShare, hmacTag)
+
+		// combining the encrypted shares and hmac tag
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}

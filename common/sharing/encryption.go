@@ -1,10 +1,13 @@
 package sharing
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"io"
 
@@ -16,12 +19,23 @@ import (
 // TODO tests
 
 // Combine the keys to create a shared key and encrypt the message (symmetric encryption)
-func EncryptSymmetricCalculateKey(msg []byte, public curves.Point, priv curves.Scalar) ([]byte, error) {
+// Also returns the hmac of the msg
+func EncryptSymmetricCalculateKey(msg []byte, public curves.Point, priv curves.Scalar) ([]byte, []byte, error) {
 	key, err := CalculateSharedKey(public, priv)
 	if err != nil || key == nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return EncryptSymmetric(msg, key)
+	cipher, err := EncryptSymmetric(msg, key)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	finalMAC, err := GetHmacTag(cipher, key.ToAffineCompressed())
+
+	if err != nil {
+		return nil, nil, err
+	}
+	return cipher, finalMAC, nil
 }
 
 func CalculateSharedKey(public curves.Point, priv curves.Scalar) (curves.Point, error) {
@@ -103,4 +117,75 @@ func Decrypt(hashedKey [32]byte, encryptedMsg []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
+}
+
+// generates hmac
+// takes msg bytes and hash bytes of the symmetric key
+func GetHmacTag(msg, key []byte) ([]byte, error) {
+
+	//create hmac
+	// hamc using sha256 and hash of the symmetric key
+	mac := hmac.New(sha256.New, sha256.New().Sum(key))
+
+	if mac.Size() != sha256.New().Size() {
+		return nil, errors.New("size not equal")
+	}
+
+	if mac.BlockSize() != sha256.New().BlockSize() {
+		return nil, errors.New("BlockSize not equal")
+	}
+
+	mac.Write(msg)
+	finalMAC := mac.Sum(nil)
+
+	return finalMAC, nil
+}
+
+// The combine and Extract function is needed to combine and extract the encrypted shares and the hmacTag
+
+// combines two byte array of arbitrary length
+func Combine(arr1, arr2 []byte) []byte {
+
+	// Create buffer to store the combined arrays
+	var buf bytes.Buffer
+
+	// Write the length of the first array as a 4-byte integer
+	binary.Write(&buf, binary.LittleEndian, uint32(len(arr1)))
+
+	// Write the first array
+	buf.Write(arr1)
+
+	// Write the length of the second array as a 4-byte integer
+	binary.Write(&buf, binary.LittleEndian, uint32(len(arr2)))
+
+	// Write the second array
+	buf.Write(arr2)
+
+	// Return the combined array
+	return buf.Bytes()
+}
+
+// extracts the byte arrays from the combined array
+func Extract(combined []byte) ([]byte, []byte) {
+	// Create reader from combined array
+	reader := bytes.NewReader(combined)
+
+	// Read the length of the first array
+	var len1 uint32
+	binary.Read(reader, binary.LittleEndian, &len1)
+
+	// Read the first array
+	arr1 := make([]byte, len1)
+	reader.Read(arr1)
+
+	// Read the length of the second array
+	var len2 uint32
+	binary.Read(reader, binary.LittleEndian, &len2)
+
+	// Read the second array
+	arr2 := make([]byte, len2)
+	reader.Read(arr2)
+
+	// Return the extracted arrays
+	return arr1, arr2
 }

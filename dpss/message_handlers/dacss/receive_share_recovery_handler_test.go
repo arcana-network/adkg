@@ -286,7 +286,7 @@ func TestDealerPubkeyWrongConversion(t *testing.T) {
 	for _, share := range shares {
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, _, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
@@ -422,7 +422,7 @@ func TestPredicateForShareFails(t *testing.T) {
 	compressedCommitments := sharing.CompressCommitments(commitment)
 	shareMap := make(map[string][]byte, n)
 	for _, share := range shares {
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, _, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			// All shares get encrypted under dealers key, so predicate will fail
 			ephemeralKeypairDealer.PublicKey,
@@ -526,7 +526,7 @@ func getMsgData(dealer *testutils.PssTestNode) (common.KeyPair, common.AcssData,
 	for _, share := range shares {
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
@@ -537,6 +537,7 @@ func getMsgData(dealer *testutils.PssTestNode) (common.KeyPair, common.AcssData,
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := common.PointToHex(nodePublicKey)
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 

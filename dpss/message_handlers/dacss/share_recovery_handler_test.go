@@ -114,7 +114,7 @@ func TestNoAcssDataInState(t *testing.T) {
 	for _, share := range shares {
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
@@ -125,6 +125,7 @@ func TestNoAcssDataInState(t *testing.T) {
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := common.PointToHex(nodePublicKey)
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 	msgData := common.AcssData{
@@ -252,7 +253,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 	for _, share := range shares {
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
@@ -263,6 +264,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := common.PointToHex(nodePublicKey)
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 	msgData := common.AcssData{

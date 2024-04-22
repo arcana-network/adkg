@@ -23,8 +23,16 @@ func TestEncryption(t *testing.T) {
 		assert.Nil(t, err)
 
 		//encrypting with dealer's private key and node's public key
-		cipher, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
+		cipher, hmacTag, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
 		assert.Nil(t, err)
+
+		sharedKey, err := CalculateSharedKey(NodePublicKey, DealerSecretKey)
+		assert.Nil(t, err)
+
+		CalculatedhmacTag, err := GetHmacTag(cipher, sharedKey.ToAffineCompressed())
+		assert.Nil(t, err)
+
+		assert.Equal(t, hmacTag, CalculatedhmacTag)
 
 		//decryption with dealer's public key and node's private key
 		decryptCipher, err := DecryptSymmetricCalculateKey(cipher, DealerPublicKey, NodeSecretKey)
@@ -43,7 +51,7 @@ func TestEncryption(t *testing.T) {
 		assert.Nil(t, err)
 
 		//encrypting with dealer's private key and node's public key
-		cipher, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
+		cipher, _, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
 		assert.Nil(t, err)
 
 		//decryption with dealer's public key and node's private key
@@ -60,7 +68,7 @@ func TestEncryption(t *testing.T) {
 		assert.Nil(t, err)
 
 		//encrypting with dealer's private key and node's public key
-		cipher, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
+		cipher, _, err := EncryptSymmetricCalculateKey(plainText, NodePublicKey, DealerSecretKey)
 		assert.Nil(t, err)
 
 		//decryption with dealer's public key and node's private key
@@ -117,7 +125,7 @@ func TestPredicate(t *testing.T) {
 			return
 		}
 
-		cipherShare, err := EncryptSymmetricCalculateKey(share.Bytes(), NodesPublicKey[i], DealerSecretKey)
+		cipherShare, _, err := EncryptSymmetricCalculateKey(share.Bytes(), NodesPublicKey[i], DealerSecretKey)
 
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)

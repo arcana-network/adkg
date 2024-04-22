@@ -4,12 +4,13 @@ import (
 	"encoding/hex"
 	"reflect"
 
+	"crypto/hmac"
+
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
-	"github.com/torusresearch/bijson"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
 )
 
@@ -166,7 +167,23 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	hexPubKey := hex.EncodeToString(pubKeyPoint.ToAffineCompressed())
-	_, _, verified := sharing.Predicate(key, msg.Data.ShareMap[hexPubKey][:],
+
+	encryptedShare, ExpectedHmac := sharing.Extract(msg.Data.ShareMap[hexPubKey][:])
+
+	calculatedHMAC, err := sharing.GetHmacTag(encryptedShare, key.ToAffineCompressed())
+
+	if err != nil {
+		log.Errorf("AcssProposeMessage: error calculating HMAC: %v", err)
+		return
+	}
+
+	result := hmac.Equal(calculatedHMAC, ExpectedHmac)
+
+	// if !result {
+	// 	log.Errorf("AcssProposeMessage: calculated hmac is different from the expected: %v", err)
+	// 	return
+	// }
+	_, _, verified := sharing.Predicate(key, encryptedShare,
 		msg.Data.Commitments[:], k, common.CurveFromName(msg.CurveName))
 
 	//If verified, means the share is encrypted correctly and is valid wrt commitments
@@ -174,7 +191,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// If verified:
 	// - save in node's state that shares were validated
 	// - send echo to each node
-	if verified {
+	if verified && result {
 
 		// Starts the RBC protocol.
 		// Create Reed-Solomon encoding. This is part of the RBC protocol.

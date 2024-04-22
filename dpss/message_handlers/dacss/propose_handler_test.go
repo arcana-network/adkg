@@ -246,12 +246,13 @@ func getTestValidProposeMsg(SingleNode *testutils.PssTestNode, defaultSetup *tes
 			log.Errorf("Couldn't obtain public key for node with id=%v", share.Id)
 		}
 
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, DealerEphemeralKey.PrivateKey)
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, DealerEphemeralKey.PrivateKey)
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := hex.EncodeToString(nodePublicKey.ToAffineCompressed())
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 	msgData := common.AcssData{

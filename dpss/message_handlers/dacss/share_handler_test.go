@@ -1,6 +1,7 @@
 package dacss
 
 import (
+	"crypto/hmac"
 	"encoding/hex"
 	"log"
 	"math/big"
@@ -83,7 +84,13 @@ func TestStartDualAcss(t *testing.T) {
 	pubkeyOldNode2 := testDealer.GetPublicKeyFor(2, false)
 	share_node2 := sentShares_old[hex.EncodeToString(pubkeyOldNode2.ToAffineCompressed())]
 	symm_key2, _ := sharing.CalculateSharedKey(pubkeyOldNode2, ephemeralKeypair.PrivateKey)
-	_, _, verified_old := sharing.Predicate(symm_key2, share_node2, sentCommitments_old, defaultSetup.OldCommitteeParams.K, testutils.TestCurve())
+
+	encryptedShare, hmacTag := sharing.Extract(share_node2)
+	calculatedHMAC, err := sharing.GetHmacTag(encryptedShare, symm_key2.ToAffineCompressed())
+	assert.Nil(t, err)
+	isEqual := hmac.Equal(hmacTag, calculatedHMAC)
+	assert.True(t, isEqual)
+	_, _, verified_old := sharing.Predicate(symm_key2, encryptedShare, sentCommitments_old, defaultSetup.OldCommitteeParams.K, testutils.TestCurve())
 	assert.True(t, verified_old)
 
 	// 5. Check: Shares were correctly encrypted for node 3 of new committee
@@ -91,7 +98,14 @@ func TestStartDualAcss(t *testing.T) {
 	share_node3 := sentShares_new[hex.EncodeToString(pubkeyNewNode3.ToAffineCompressed())]
 
 	symm_key3, _ := sharing.CalculateSharedKey(pubkeyNewNode3, ephemeralKeypair.PrivateKey)
-	_, _, verified_new := sharing.Predicate(symm_key3, share_node3, sentCommitments_new, defaultSetup.NewCommitteeParams.K, testutils.TestCurve())
+
+	encryptedShare, hmacTag = sharing.Extract(share_node3)
+	calculatedHMAC, err = sharing.GetHmacTag(encryptedShare, symm_key3.ToAffineCompressed())
+	assert.Nil(t, err)
+	isEqual = hmac.Equal(hmacTag, calculatedHMAC)
+	assert.True(t, isEqual)
+
+	_, _, verified_new := sharing.Predicate(symm_key3, encryptedShare, sentCommitments_new, defaultSetup.NewCommitteeParams.K, testutils.TestCurve())
 	assert.True(t, verified_new)
 }
 

@@ -1,6 +1,7 @@
 package dacss
 
 import (
+	"crypto/hmac"
 	"encoding/hex"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -144,7 +145,23 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	share, verifier, verified := sharing.Predicate(key, msgData.ShareMap[hexPubKey], msgData.Commitments, k, curve)
+	encryptedShare, ExpectedHmac := sharing.Extract(msgData.ShareMap[hexPubKey][:])
+
+	calculatedHMAC, err := sharing.GetHmacTag(encryptedShare, key.ToAffineCompressed())
+
+	if err != nil {
+		log.Errorf("AcssProposeMessage: error calculating HMAC: %v", err)
+		return
+	}
+
+	result := hmac.Equal(calculatedHMAC, ExpectedHmac)
+
+	if !result {
+		log.Errorf("AcssProposeMessage: calculated hmac is different from the expected: %v", err)
+		return
+	}
+
+	share, verifier, verified := sharing.Predicate(key, encryptedShare, msgData.Commitments, k, curve)
 
 	if verified && !state.CommitmentSent {
 		log.Debugf("acss_verified: share=%v", *share)

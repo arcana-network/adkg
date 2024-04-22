@@ -363,7 +363,7 @@ func TestPredicatePasses(t *testing.T) {
 	for _, share := range shares {
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
-		cipherShare, _ := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, _ := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
@@ -374,7 +374,7 @@ func TestPredicatePasses(t *testing.T) {
 		}
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := hex.EncodeToString(nodePublicKey.ToAffineCompressed())
-
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 	msgData := common.AcssData{
@@ -461,12 +461,13 @@ func getCorruptedAcssData(dealer *testutils.PssTestNode, ephemeralKeypairDealer 
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), dealer.IsNewNode())
 
 		cipherShare := []byte{}
+		hmacTag := []byte{}
 		if share.Id == uint32(nodeOfCorruptShare.Details().Index) {
 			bytes := make([]byte, 33)
 			_, _ = rand.Read(bytes)
 			cipherShare = bytes
 		} else {
-			cipherShare, _ = sharing.EncryptSymmetricCalculateKey(
+			cipherShare, hmacTag, _ = sharing.EncryptSymmetricCalculateKey(
 				share.Bytes(),
 				nodePublicKey,
 				ephemeralKeypairDealer.PrivateKey,
@@ -479,6 +480,7 @@ func getCorruptedAcssData(dealer *testutils.PssTestNode, ephemeralKeypairDealer 
 		log.Debugf("CIPHER_SHARE=%v", cipherShare)
 		pubkeyHex := hex.EncodeToString(nodePublicKey.ToAffineCompressed())
 
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 	msgData := common.AcssData{

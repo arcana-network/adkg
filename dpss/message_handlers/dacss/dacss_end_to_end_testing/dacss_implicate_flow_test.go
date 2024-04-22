@@ -47,12 +47,13 @@ func TestTriggerImplicateFlow(t *testing.T) {
 		// The receiving nodes are in new committee
 		nodePublicKey := dealer.GetPublicKeyFor(int(share.Id), true)
 
-		cipherShare, _ := sharing.EncryptSymmetricCalculateKey(
+		cipherShare, hmacTag, _ := sharing.EncryptSymmetricCalculateKey(
 			share.Bytes(),
 			nodePublicKey,
 			ephemeralKeypairDealer.PrivateKey,
 		)
-
+		//combine the hmac and encrypted shares
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		pubkeyHex := common.PointToHex(nodePublicKey)
 		shareMap[pubkeyHex] = cipherShare
 	}

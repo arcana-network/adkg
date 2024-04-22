@@ -252,12 +252,13 @@ func generateCorrectOutputMessage(
 		}
 
 		// Encryption is done with symmetric key Ki = PKi ^ SKd (pubkey of receiver, secret key of sender)
-		cipherShare, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, dealerEphemeralKeys.PrivateKey)
+		cipherShare, hmacTag, err := sharing.EncryptSymmetricCalculateKey(share.Bytes(), nodePublicKey, dealerEphemeralKeys.PrivateKey)
 		if err != nil {
 			log.Errorf("Error while encrypting secret share, err=%v", err)
 			return DacssOutputMessage{}, err
 		}
 		pubkeyHex := common.PointToHex(nodePublicKey)
+		cipherShare = sharing.Combine(cipherShare, hmacTag)
 		shareMap[pubkeyHex] = cipherShare
 	}
 

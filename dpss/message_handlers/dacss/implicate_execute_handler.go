@@ -140,6 +140,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	}
 
 	// Check Predicate for share
+	share, _ = sharing.Extract(share)
 	_, _, verified := sharing.Predicate(K_i_d, share, commitments, k, common.CurveFromName(msg.CurveName))
 
 	// If the Predicate checks out, the Implicate flow was started for no reason
