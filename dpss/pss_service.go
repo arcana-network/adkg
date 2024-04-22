@@ -146,7 +146,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			log.Errorf("Could not get share number %s", err.Error())
 			return nil, err
 		}
-		secpShareNum -= 1
 		// calculate batch needed
 		ceil := (secpShareNum % batchSize) != 0
 		secpBatchNum := secpShareNum / batchSize
@@ -160,7 +159,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			log.Errorf("Could not get share number %s", err.Error())
 			return nil, err
 		}
-		c25519ShareNum -= 1
 		// calculate batch needed
 		ceil = (c25519ShareNum % batchSize) != 0
 		c25519BatchNum := c25519ShareNum / batchSize

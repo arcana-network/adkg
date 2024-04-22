@@ -14,9 +14,9 @@ import (
 
 // PSSNode represents a node participating in the DPSS protocol.
 type PSSNode struct {
-	PssNodeTransport PssNodeTransport
+	PssNodeTransport *PssNodeTransport
 	common.BaseNode
-	state             common.PSSNodeState
+	state             *common.PSSNodeState
 	OldCommitteeNodes common.NodeNetwork // Set of nodes belonging to the old committee.
 	NewCommitteeNodes common.NodeNetwork // Set of nodes belonging to the new committee.
 	NodeDetails       common.NodeDetails
@@ -48,8 +48,12 @@ func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, old
 
 	// Creates the new node.
 	newPSSNode := &PSSNode{
-		PssNodeTransport: *transport,
-		state:            common.PSSNodeState{},
+		PssNodeTransport: transport,
+		state: &common.PSSNodeState{
+			AcssStore:       &common.AcssStateMap{},
+			ShareStore:      &common.PSSShareStore{},
+			BatchReconStore: &common.BatchRecStoreMap{},
+		},
 		BaseNode: common.NewBaseNode(
 			&broker,
 			nodeDetails,
@@ -226,7 +230,7 @@ func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 }
 
 func (node *PSSNode) State() *common.PSSNodeState {
-	return &node.state
+	return node.state
 }
 
 // TODO implement other functions of PSSParticipant interface
