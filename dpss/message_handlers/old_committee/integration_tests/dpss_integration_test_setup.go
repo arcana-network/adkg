@@ -1,4 +1,4 @@
-package dpss
+package old_committee
 
 import (
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"

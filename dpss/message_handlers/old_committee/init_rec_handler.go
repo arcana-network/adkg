@@ -1,4 +1,4 @@
-package dpss
+package old_committee
 
 import (
 	"github.com/arcana-network/dkgnode/common"

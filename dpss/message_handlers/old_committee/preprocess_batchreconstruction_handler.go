@@ -1,4 +1,4 @@
-package dpss
+package old_committee
 
 import (
 	"math"

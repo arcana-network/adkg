@@ -1,4 +1,4 @@
-package dpss
+package old_committee
 
 import (
 	"math"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	"github.com/stretchr/testify/assert"
@@ -81,9 +81,9 @@ func TestDpss(t *testing.T) {
 		// Per node we have to send
 		// (B / (n - 2*t)) * (n - t) shares
 		compressedShares := sharing.CompressScalars(sharesPerNode[i])
-		msg := dpss.DpssHimMessage{
+		msg := old_committee.DpssHimMessage{
 			PSSRoundDetails: pssRoundDetails,
-			Kind:            dpss.DpssHimHandlerType,
+			Kind:            old_committee.DpssHimHandlerType,
 			CurveName:       common.CurveName(testutils.TestCurve().Name),
 			Shares:          compressedShares,
 		}
@@ -98,7 +98,7 @@ func TestDpss(t *testing.T) {
 	preprocessRecMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range sentMsgs {
-		if msg.Type == dpss.PreprocessBatchRecMessageType {
+		if msg.Type == old_committee.PreprocessBatchRecMessageType {
 			preprocessRecMessages = append(preprocessRecMessages, msg)
 		}
 	}
@@ -114,7 +114,7 @@ func TestDpss(t *testing.T) {
 	initRecMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range receiveMessageMsgs {
-		if msg.Type == dpss.InitRecHandlerType {
+		if msg.Type == old_committee.InitRecHandlerType {
 			initRecMessages = append(initRecMessages, msg)
 		}
 	}
@@ -128,7 +128,7 @@ func TestDpss(t *testing.T) {
 	privateRecMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range sentMsgs {
-		if msg.Type == dpss.PrivateRecMessageType {
+		if msg.Type == old_committee.PrivateRecMessageType {
 			privateRecMessages = append(privateRecMessages, msg)
 		}
 	}
@@ -142,7 +142,7 @@ func TestDpss(t *testing.T) {
 	broadcastedMsgs := transport.GetBroadcastedMessages()
 
 	for _, msg := range broadcastedMsgs {
-		if msg.Type == dpss.PublicRecMessageType {
+		if msg.Type == old_committee.PublicRecMessageType {
 			publicRecMessages = append(publicRecMessages, msg)
 		}
 	}
@@ -156,7 +156,7 @@ func TestDpss(t *testing.T) {
 	// Final check: the broadcasted LocalComputationMessages
 	localComputationMessages := make([]common.PSSMessage, 0)
 	for _, msg := range broadcastedMsgs {
-		if msg.Type == dpss.LocalComputationMessageType {
+		if msg.Type == old_committee.LocalComputationMessageType {
 			localComputationMessages = append(localComputationMessages, msg)
 		}
 	}

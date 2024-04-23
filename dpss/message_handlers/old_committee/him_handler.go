@@ -1,6 +1,6 @@
 // Handler in charge of processing the messages that use an hyperinvertible
 // matrix.
-package dpss
+package old_committee
 
 import (
 	"math"

@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"math/big"
 	"strconv"
 	"strings"
 	"sync"
@@ -358,8 +359,8 @@ func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPssID(index uint64) string {
-	return strings.Join([]string{"PSS", strconv.FormatUint(index, 10)}, Delimiter3)
+func NewPssID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
 }
 
 func HashAcssData(data AcssData) ([]byte, error) {

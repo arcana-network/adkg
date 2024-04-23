@@ -5,7 +5,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -23,10 +23,16 @@ type PSSNode struct {
 }
 
 // Creates a new PSSNode
-func NewPSSNode(broker common.MessageBroker, nodeDetails common.NodeDetails, oldCommittee []common.NodeDetails,
-	newCommittee []common.NodeDetails, bus eventbus.Bus, tOldCommittee int, kOldCommittee int,
-	tNewCommittee int, kNewCommittee int, privateKey curves.Scalar) (*PSSNode, error) {
-	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
+func NewPSSNode(broker common.MessageBroker,
+	nodeDetails common.NodeDetails,
+	oldCommittee []common.NodeDetails,
+	newCommittee []common.NodeDetails,
+	bus eventbus.Bus,
+	tOldCommittee int, kOldCommittee int,
+	tNewCommittee int, kNewCommittee int,
+	privateKey curves.Scalar,
+	epoch int) (*PSSNode, error) {
+	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(epoch), "dpss-transport")
 
 	// Creates the committees
 	oldCommitteeNetwork := common.NodeNetwork{
@@ -185,16 +191,16 @@ func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PS
 		ProcessMessageForType[*dacss.DacssOutputMessage](message.Data, sender, node, dacss.DacssOutputMessageType)
 	case dacss.DacssCommitmentMessageType:
 		ProcessMessageForType[*dacss.DacssCommitmentMessage](message.Data, sender, node, dacss.DacssCommitmentMessageType)
-	case dpss.DpssHimHandlerType:
-		ProcessMessageForType[*dpss.DpssHimMessage](message.Data, sender, node, dpss.DpssHimHandlerType)
-	case dpss.InitRecHandlerType:
-		ProcessMessageForType[*dpss.InitRecMessage](message.Data, sender, node, dpss.InitRecHandlerType)
-	case dpss.PreprocessBatchRecMessageType:
-		ProcessMessageForType[*dpss.PreprocessBatchRecMessage](message.Data, sender, node, dpss.PreprocessBatchRecMessageType)
-	case dpss.PrivateRecMessageType:
-		ProcessMessageForType[*dpss.PrivateRecMsg](message.Data, sender, node, dpss.PrivateRecMessageType)
-	case dpss.PublicRecMessageType:
-		ProcessMessageForType[*dpss.PublicRecMsg](message.Data, sender, node, dpss.PublicRecMessageType)
+	case old_committee.DpssHimHandlerType:
+		ProcessMessageForType[*old_committee.DpssHimMessage](message.Data, sender, node, old_committee.DpssHimHandlerType)
+	case old_committee.InitRecHandlerType:
+		ProcessMessageForType[*old_committee.InitRecMessage](message.Data, sender, node, old_committee.InitRecHandlerType)
+	case old_committee.PreprocessBatchRecMessageType:
+		ProcessMessageForType[*old_committee.PreprocessBatchRecMessage](message.Data, sender, node, old_committee.PreprocessBatchRecMessageType)
+	case old_committee.PrivateRecMessageType:
+		ProcessMessageForType[*old_committee.PrivateRecMsg](message.Data, sender, node, old_committee.PrivateRecMessageType)
+	case old_committee.PublicRecMessageType:
+		ProcessMessageForType[*old_committee.PublicRecMsg](message.Data, sender, node, old_committee.PublicRecMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", message.Type)
 	}

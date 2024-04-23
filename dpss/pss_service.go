@@ -124,6 +124,12 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 		log.Info("CREATING PSS NODE")
 		// create a PSSNode
+		var epochForNode int
+		if isNewCommittee {
+			epochForNode = newEpoch
+		} else {
+			epochForNode = oldEpoch
+		}
 		pssNode, err := NewPSSNode(*service.broker,
 			selfDetails,
 			getCommonNodesFromNodeRefArray(oldNodeList),
@@ -133,7 +139,8 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			int(oldEpochInfo.K.Int64()),
 			int(newEpochInfo.T.Int64()),
 			int(newEpochInfo.K.Int64()),
-			priv)
+			priv,
+			epochForNode)
 		if err != nil {
 			log.Errorf("Could not create pssNode in trigger_pss %s", err.Error())
 			return nil, err
@@ -168,28 +175,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 		if !isNewCommittee {
 			// only nodes in old committee need to initiate DPSS
-			log.Infof("OLD NODE NEEDS TO START DPSS FLOW c25519BatchNum: %v, batchSize: %v, secpShareNum: %v, c25519ShareNum: %v", c25519BatchNum, batchSize, secpShareNum, c25519ShareNum)
-			// TODO remove this until `go service.BatchRunDPSS`. It's only for easier testing
-			roundDetails := common.PSSRoundDetails{
-				PssID:  common.NewPssID(uint64(1)),
-				Dealer: service.pssNode.NodeDetails,
-			}
-			shares := make([]common.PrivKeyShare, 0)
-			ephemeralKeypair := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
-
-			createdMsgBytes, _ := dacss.NewInitMessage(
-				roundDetails,
-				shares,
-				common.SECP256K1,
-				ephemeralKeypair,
-				common.CommitteeParams{N: int(newEpochInfo.N.Int64()),
-					K: int(newEpochInfo.K.Int64()),
-					T: int(newEpochInfo.T.Int64())},
-			)
-
-			log.Info("TEST - SENDING INIT MSG")
-			go service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
-			log.Info("ACTUAL CALL")
 			go service.BatchRunDPSS(secpBatchNum,
 				c25519BatchNum,
 				batchSize,
@@ -244,7 +229,7 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 
 			// FIXME placeholder
 			roundDetails := common.PSSRoundDetails{
-				PssID:  common.NewPssID(uint64(currentBatch)),
+				PssID:  common.NewPssID(*big.NewInt(int64(currentBatch))),
 				Dealer: service.pssNode.NodeDetails,
 			}
 

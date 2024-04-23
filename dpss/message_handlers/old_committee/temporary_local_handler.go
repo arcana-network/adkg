@@ -1,7 +1,7 @@
 // NOTE: This file is for testing the public reconstruction handler
 // creating a dummy msg to pass in the public_rec_handler
 
-package dpss
+package old_committee
 
 import (
 	"github.com/arcana-network/dkgnode/common"
