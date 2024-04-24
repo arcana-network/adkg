@@ -16,8 +16,9 @@ const (
 )
 
 type ManagerService struct {
-	bus    eventbus.Bus
-	broker *common.MessageBroker
+	running bool
+	bus     eventbus.Bus
+	broker  *common.MessageBroker
 }
 
 func New(bus eventbus.Bus) *ManagerService {
@@ -32,7 +33,7 @@ func (m *ManagerService) ID() string {
 }
 
 func (m *ManagerService) Start() error {
-	//go stdin_listener(m.broker)
+	m.running = true
 	log.Info("Manager service running.")
 	return nil
 }
@@ -41,7 +42,7 @@ func (m *ManagerService) Stop() error {
 	return nil
 }
 func (m *ManagerService) IsRunning() bool {
-	return true
+	return m.running
 }
 
 func (m *ManagerService) Call(method string, args ...interface{}) (result interface{}, err error) {

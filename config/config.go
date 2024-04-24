@@ -59,10 +59,9 @@ func ConfigFromFile(configPath string) (*Config, error) {
 	return config, nil
 }
 
-// TODO use port in config
 func UseIPAdressInListenAddress(config *Config) {
-	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:26656", config.IPAddress)
-	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/1080", config.IPAddress)
+	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:%s", config.IPAddress, config.TMP2PPort)
+	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/%s", config.IPAddress, config.P2PPort)
 }
 
 func ReadConfigJson(configPath string) (*Config, error) {
@@ -80,10 +79,11 @@ func ReadConfigJson(configPath string) (*Config, error) {
 		log.WithError(err).Error("DecodeConfig")
 		return nil, fmt.Errorf("error reading config: %w", err)
 	}
+	config.TMP2PListenAddress = fmt.Sprintf("tcp://%s:%s", config.IPAddress, config.TMP2PPort)
+	config.P2PListenAddress = fmt.Sprintf("/ip4/%s/tcp/%s", config.IPAddress, config.P2PPort)
 	return config, nil
 }
 
-// TODO use port in default_values.go
 func GetDefaultConfig() *Config {
 	config := &Config{
 		TMP2PListenAddress: "tcp://0.0.0.0:26656",

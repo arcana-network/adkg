@@ -353,9 +353,9 @@ type ConnectionDetailsResult struct {
 	P2PConnection   string `json:"p2p_connection"`
 }
 
+// GetSocketAddress creates socket address for a node based on its BasePath
 func GetSocketAddress() string {
 	return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
-	//return "unix://dkg.sock"
 }
 
 func DoesFileExist(fileName string) bool {

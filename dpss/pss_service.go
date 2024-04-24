@@ -198,6 +198,7 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 	for currentBatch := uint(0); currentBatch < secpBatchNum; currentBatch++ {
 		// FIXME oldShares needs to be accompanied by the userId
 		var oldShares []sharing.ShamirShare
+		id := service.broker.ChainMethods().GetSelfIndex()
 		// get old shares list of the batch
 		for i := uint(0); i < batchSize; i++ {
 			index := int64(currentBatch*batchSize + i)
@@ -213,7 +214,6 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 			if err != nil {
 				log.Errorf("unable to ertrieve secp256k1 share of index %v: %s", index, err.Error())
 			}
-			id := service.broker.ChainMethods().GetSelfIndex()
 			share := sharing.ShamirShare{
 				Id:    uint32(id),
 				Value: si.Bytes(),

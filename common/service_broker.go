@@ -305,6 +305,7 @@ func (am *ABCIMethods) GetIndexesFromVerifierID(verifier, verifierID, appID stri
 	return
 }
 
+// LastUnassignedIndex returns the last unassigned secp256k1 key share index
 func (am *ABCIMethods) LastUnassignedIndex() (index uint, err error) {
 	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_unassigned_index")
 	if methodResponse.Error != nil {
@@ -319,6 +320,7 @@ func (am *ABCIMethods) LastUnassignedIndex() (index uint, err error) {
 	return
 }
 
+// LastC25519UnassignedIndex returns the last unassigned ed25519 key share index
 func (am *ABCIMethods) LastC25519UnassignedIndex() (index uint, err error) {
 	methodResponse := ServiceMethod(am.bus, am.caller, am.service, "last_c25519_unassigned_index")
 	if methodResponse.Error != nil {
@@ -753,7 +755,7 @@ func (cm *ChainMethods) SelfSignData(input []byte) (rawSig []byte) {
 	return
 }
 
-// query PSS status on chain for an epoch
+// GetEpochPssStatus queries the PSS status from oldEpoch to newEpoch on chain
 func (cm *ChainMethods) GetEpochPssStatus(oldEpoch int, newEpoch int) (pssRunning bool, err error) {
 	methodResponse := ServiceMethod(cm.bus, cm.caller, cm.service, "get_pss_status", oldEpoch, newEpoch)
 	if methodResponse.Error != nil {

@@ -49,7 +49,6 @@ func Start(conf *config.Config) {
 		keystore.New(bus),
 		manager.New(bus),
 	}
-	//go fakeManagerService()
 
 	for _, s := range services {
 		err := serviceRegistry.RegisterService(s)

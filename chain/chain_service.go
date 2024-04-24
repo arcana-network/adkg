@@ -353,7 +353,7 @@ func registerNode(e *ChainService) {
 		log.WithError(err).Fatal()
 	}
 
-	externalAddr := "tcp://" + config.GlobalConfig.IPAddress + ":" + strings.Split(config.GlobalConfig.TMP2PListenAddress, ":")[2]
+	externalAddr := "tcp://" + config.GlobalConfig.IPAddress + ":" + config.GlobalConfig.TMP2PPort
 	tmp2pNodeKey := e.broker.TendermintMethods().GetNodeKey()
 	p2pHostAddress := e.broker.P2PMethods().GetHostAddress()
 	splitP2PHostAddr := strings.Split(p2pHostAddress, "/")
@@ -492,7 +492,7 @@ func epochMonitor(e *ChainService) {
 	}
 }
 
-// call getPssStatus function on chain
+// GetEpochPssStatus calls getPssStatus function on chain
 func (e *ChainService) GetEpochPssStatus(oldEpoch int, newEpoch int) (bool, error) {
 	opts := e.CallOpts()
 	pssStatus_int, err := e.nodeList.GetPssStatus(opts, big.NewInt(int64(oldEpoch)), big.NewInt(int64(newEpoch)))
