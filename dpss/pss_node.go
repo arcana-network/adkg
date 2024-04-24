@@ -105,9 +105,8 @@ func (node *PSSNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Poin
 	return nil
 }
 
-// Params return the parameters for the network of the old or new committee
-// according to the fromNewCommittee flag. It returns the parameters in a tuple
-// with the following order:
+// Returns the parameters for the network for the committee this node is part of.
+// Parameters:
 //   - n: number of nodes in the committee.
 //   - k: number of corrupt nodes in the committee.
 //   - t: the reconstruction threshold in that committee.
@@ -155,7 +154,7 @@ type MessageProcessor interface {
 // General function to process messages of a given type:
 // does the unmarshalling and calls the Process function of the message
 func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDetails, node common.PSSParticipant, messageType string) {
-	log.Debugf("Got %s", messageType)
+	log.Debugf("Received %s", messageType)
 	var msg T
 	err := bijson.Unmarshal(data, &msg)
 	if err != nil {
@@ -165,11 +164,11 @@ func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDe
 	msg.Process(sender, node)
 }
 
+// ProcessMessage unmarshals the message and calls the appropriate handler for incoming message.
 func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PSSMessage) error {
 
 	switch message.Type {
 	case dacss.InitMessageType:
-		log.Info("AN INITMSG WAS RECEIVED")
 		ProcessMessageForType[dacss.InitMessage](message.Data, sender, node, dacss.InitMessageType)
 	case dacss.DacssEchoMessageType:
 		ProcessMessageForType[dacss.DacssEchoMessage](message.Data, sender, node, dacss.DacssEchoMessageType)
@@ -207,6 +206,7 @@ func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PS
 	return nil
 }
 
+// ReceiveMessage passes on the message to the transport layer.
 func (node *PSSNode) ReceiveMessage(sender common.NodeDetails, msg common.PSSMessage) {
 	err := node.PssNodeTransport.Receive(sender, msg)
 	if err != nil {
@@ -214,29 +214,17 @@ func (node *PSSNode) ReceiveMessage(sender common.NodeDetails, msg common.PSSMes
 	}
 }
 
-// FIXME: Implement this as long as we implement the DPSS protocol.
-func (node *PSSNode) ProcessBroadcastMessage(message common.PSSMessage) error {
-	return nil
-}
-
 // Details returns the details of the node, namely, its index and public key.
 func (node *PSSNode) Details() common.NodeDetails {
 	return node.NodeDetails
 }
-
-//TODO: Do we need this?
-// func GenerateDPSSRoundID(rindex, noOfRandoms big.Int) common.PSSRoundID {
-// 	index := strings.Join([]string{rindex.Text(16), noOfRandoms.Text(16)}, common.Delimiter2)
-// 	return common.PSSRoundID(strings.Join([]string{"DPSS", index}, common.Delimiter3))
-// }
 
 // Send sends a message to the node that has certain public key and index.
 func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	return node.PssNodeTransport.Send(n, msg)
 }
 
+// returns the state of the node.
 func (node *PSSNode) State() *common.PSSNodeState {
 	return node.state
 }
-
-// TODO implement other functions of PSSParticipant interface
