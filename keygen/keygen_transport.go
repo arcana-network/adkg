@@ -1,17 +1,14 @@
 package keygen
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/arcana-network/dkgnode/eventbus"
-	"github.com/avast/retry-go"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/secp256k1"
 )
 
 func (tp *KeygenTransport) Receive(senderDetails common.NodeDetails, keygenMessage common.DKGMessage) error {
@@ -99,46 +96,20 @@ func (tp *KeygenTransport) Send(nodeDetails common.NodeDetails, keygenMessage co
 	}).Debug("KeygenTransport:Send()")
 
 	pubKey := tp.KeygenNode.Details().PubKey
+	msgType := "transportKeygenMessage"
+	broker := tp.broker
+	protocolId := protocol.ID(tp.Prefix)
 	if nodeDetails.PubKey.X.Cmp(&pubKey.X) == 0 && nodeDetails.PubKey.Y.Cmp(&pubKey.Y) == 0 {
 		return tp.Receive(nodeDetails, keygenMessage)
 	}
-
-	// get recipient details
-	nodeReference := tp.broker.ChainMethods().GetNodeDetailsByAddress(common.PointToEthAddress(common.Point(nodeDetails.PubKey)))
 	byt, err := bijson.Marshal(keygenMessage)
 	if err != nil {
 		return err
 	}
-	p2pMsg := tp.broker.P2PMethods().NewP2PMessage(secp256k1.HashToString(byt), false, byt, "transportKeygenMessage")
-	log.WithField("P2P connection string", nodeReference.P2PConnection).Debug()
-	peerID, err := common.GetPeerIDFromP2pListenAddress(nodeReference.P2PConnection)
-	if err != nil {
-		return err
-	}
-	// sign the data
-	signature, err := tp.broker.P2PMethods().SignP2PMessage(&p2pMsg)
-	if err != nil {
-		return errors.New("failed to sign p2p Message" + err.Error())
-	}
-	p2pMsg.Sign = signature
-	err = retry.Do(func() error {
-		err := tp.broker.P2PMethods().SendP2PMessage(*peerID, protocol.ID(tp.Prefix), &p2pMsg)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"peerID":     peerID,
-				"protocolID": protocol.ID(tp.Prefix),
-			}).WithError(err).Debug("error when sending p2p message")
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error("Could not send the p2p message, failed after retries " + err.Error())
-		return err
-	}
 
-	return nil
+	return common.SendForMessageType(broker, nodeDetails, byt, msgType, protocolId)
 }
+
 func (tp *KeygenTransport) Sign(s []byte) ([]byte, error) {
 	k := tp.broker.ChainMethods().GetSelfPrivateKey()
 	return common.ECDSASignBytes(s, &k), nil
