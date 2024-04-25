@@ -43,6 +43,9 @@ func NewPublicRecMsg(
 
 func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	self.State().BatchReconStore.Lock()
+
+	// Holding the lock until the end given that the Batch Rec. store is
+	// accessed until the end of the function.
 	defer self.State().BatchReconStore.Unlock()
 
 	// Check if there are at least T + t = n - t shares received

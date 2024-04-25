@@ -47,7 +47,10 @@ func TestRBCAlreadyEnded(test *testing.T) {
 	)
 
 	correctMessage.Process(testNode.Details(), testNode)
-	time.Sleep(2 * time.Second)
+
+	// We wait here. We can't use the message signal channels because no message
+	// is sent here.
+	time.Sleep(1 * time.Second)
 
 	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	assert.Zero(test, len(broadcastedMsgs))
@@ -83,6 +86,9 @@ func TestNotVerifiedCorrectly(test *testing.T) {
 	assert.Nil(test, err)
 
 	fakeMessage.Process(testNode.Details(), testNode)
+
+	// We wait here. We can't use the signal and channels mechanism because no
+	// message is sent in this case.
 	time.Sleep(2 * time.Second)
 
 	stateNode, found, err := testNode.State().AcssStore.Get(
@@ -127,6 +133,9 @@ func TestCommitmentMessageAlreadySent(test *testing.T) {
 	)
 
 	correctMessage.Process(testNode.Details(), testNode)
+
+	// We wait here. We can't use the signal and channels mechanism because no
+	// message is sent in this case.
 	time.Sleep(2 * time.Second)
 
 	broadcastedMsgs := testNode.Transport().BroadcastedMessages
@@ -159,6 +168,9 @@ func TestCommitmentMessageSentTwice(test *testing.T) {
 	// Send the Output message twice
 	correctMessage.Process(testNode.Details(), testNode)
 	correctMessage.Process(testNode.Details(), testNode)
+
+	// We wait here. We can't use the signal and channels mechanism because no
+	// message is sent in this case.
 	time.Sleep(2 * time.Second)
 
 	broadcastedMsgs := testNode.Transport().BroadcastedMessages
@@ -196,7 +208,8 @@ func TestOutputHappyPath(test *testing.T) {
 	assert.Nil(test, err)
 
 	correctMessage.Process(testNode.Details(), testNode)
-	time.Sleep(2 * time.Second)
+
+	dealerNode.Transport().WaitForBroadcastSent(1)
 
 	broadcastedMsgs := testNode.Transport().BroadcastedMessages
 	stateNode, found, err := testNode.State().AcssStore.Get(

@@ -43,6 +43,9 @@ func NewPrivateRecMsg(
 
 func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	self.State().BatchReconStore.Lock()
+
+	// Holding the lock until the end of the function because the Batch Rec.
+	// state is being used until the end of the function.
 	defer self.State().BatchReconStore.Unlock()
 
 	// Initialize state here if it is not initialized in the InitHanlder

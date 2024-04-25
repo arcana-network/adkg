@@ -68,7 +68,8 @@ func TestInvalidShare(t *testing.T) {
 	assert.Nil(t, err)
 	testMsg.Process(senderNode.Details(), senderNode)
 
-	// Wait for all the expected messages to be received
+	// Given that there is no message sent, we cannot use the signal/channel
+	// strategy. We need to wait.
 	time.Sleep(2 * time.Second)
 
 	//No msg is send
@@ -107,7 +108,8 @@ func TestNotEnoughShare(t *testing.T) {
 	assert.Nil(t, err)
 	testMsg.Process(senderNode.Details(), senderNode)
 
-	// Wait for all the expected messages to be received
+	// Given that there is no message sent, we cannot use the signal/channel
+	// strategy. We need to wait.
 	time.Sleep(2 * time.Second)
 
 	//No msg is send

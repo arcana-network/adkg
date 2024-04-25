@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -32,6 +33,7 @@ func TestInitRec(test *testing.T) {
 	// The ammount of messages sent is n
 	n, _, _ := receiverNode.Params()
 	receiverNode.Transport().WaitForMessagesSent(n)
+
 	assert.Equal(
 		test,
 		n,
@@ -59,7 +61,11 @@ func TestInitRecDiffrerentSender(test *testing.T) {
 
 	recMessage.Process(senderNode.Details(), receiverNode)
 
-	// The ammount of messages sent is n
+	// There is no message sent, therefore we cannot use the strategy of
+	// signal/channel. We need to wait.
+	time.Sleep(2 * time.Second)
+
+	// The ammount of messages sent is 0
 	assert.Equal(
 		test,
 		0,

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -161,6 +162,10 @@ func TestSenderNotSelfPreProcess(t *testing.T) {
 	// Send message from node1 to node2, which triggers early return
 	testMsg.Process(testNode1.Details(), testNode2)
 
+	// There is no message sent, therefore we cannot use the strategy of
+	// signal/channel. We need to wait.
+	time.Sleep(2 * time.Second)
+
 	assert.Equal(t, 0, len(testNode1.Transport().ReceivedMessages))
 }
 
@@ -203,6 +208,10 @@ func TestRvaluesInvalid(t *testing.T) {
 	}
 
 	testMsg.Process(testNode.Details(), testNode)
+
+	// There is no message sent, therefore we cannot use the strategy of
+	// signal/channel. We need to wait.
+	time.Sleep(2 * time.Second)
 
 	// Since the Rvalues are invalid, there should be an early return in Process
 	assert.Equal(t, 0, len(testNode.Transport().ReceivedMessages))
@@ -255,6 +264,10 @@ func TestNotEnoughSharesInState(t *testing.T) {
 	}
 
 	testMsg.Process(testNode.Details(), testNode)
+
+	// There is no message sent, therefore we cannot use the strategy of
+	// signal/channel. We need to wait.
+	time.Sleep(2 * time.Second)
 
 	// Early return because there are not enough shares in the state
 	assert.Equal(t, 0, len(testNode.Transport().ReceivedMessages))

@@ -54,7 +54,8 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 	receiver.State().AcssStore.Lock()
 
-	// Holding the lock until the end given that the ACSS state is accessed until the end of the function.
+	// Holding the lock until the end given that the ACSS state is accessed
+	// until the end of the function.
 	defer receiver.State().AcssStore.Unlock()
 
 	acssState, found, err := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())

@@ -231,10 +231,11 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 				EchoDatabase:   make(map[string]*EchoStore),
 				IsReadyMsgSent: false,
 			},
-			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
-			RandomSecretShared:     make(map[ACSSRoundID]*curves.Scalar),
-			ReceivedCommitments:    make(map[int]bool),
-			CommitmentCount:        make(map[string]int),
+			VerifiedRecoveryShares:    make(map[int]*sharing.ShamirShare),
+			RandomSecretShared:        make(map[ACSSRoundID]*curves.Scalar),
+			ReceivedCommitments:       make(map[int]bool),
+			CommitmentCount:           make(map[string]int),
+			ImplicateInformationSlice: make([]ImplicateInformation, 0),
 		}
 	}
 

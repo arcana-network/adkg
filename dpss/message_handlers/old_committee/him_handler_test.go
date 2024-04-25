@@ -8,7 +8,6 @@ import (
 	mrand "math/rand"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -69,7 +68,7 @@ func TestHappyPathHIM(test *testing.T) {
 	}
 
 	msg.Process(testNode.Details(), testNode)
-	time.Sleep(2 * time.Second)
+	transport.WaitForMessagesSent(1)
 
 	assert.Equal(test, 1, len(transport.GetSentMessages()))
 }
