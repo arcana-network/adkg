@@ -57,6 +57,8 @@ Steps:
 func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the state is used until the end of the function.
 	defer self.State().AcssStore.Unlock()
 
 	// First check whether the sharemap for this acss round has already been stored

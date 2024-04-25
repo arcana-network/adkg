@@ -65,7 +65,6 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	}
 
 	self.State().AcssStore.Lock()
-	defer self.State().AcssStore.Unlock()
 
 	// At this point we should have the ACSS data hash for this acss round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
@@ -92,6 +91,8 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 		log.Errorf("Received shareMap is incorrect for Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
+
+	self.State().AcssStore.Unlock()
 
 	curve := common.CurveFromName(msg.CurveName)
 

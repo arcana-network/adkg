@@ -45,6 +45,10 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Given that the state is used in the last "if" statement of the function
+	// it is better to hold the lock until the end of the function and not
+	// unlocking it inside the if.
 	defer self.State().AcssStore.Unlock()
 
 	// Retrieve the ACSS state for the specific ACSS round

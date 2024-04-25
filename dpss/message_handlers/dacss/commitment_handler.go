@@ -71,6 +71,8 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 	).Debug("DacssCommitmentMessage: Process")
 
 	self.State().AcssStore.Lock()
+
+	// Use defer because the state is needed until the end of the function.
 	defer self.State().AcssStore.Unlock()
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())

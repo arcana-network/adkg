@@ -52,6 +52,8 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer given that the ACSS state is used until the end of the function
 	defer self.State().AcssStore.Unlock()
 
 	// Check whether the shares were already received. If so, ignore the message
@@ -89,12 +91,6 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
 	// hbACSS Algorithm 1, line 401 (continued, upon initially receive IMPLICATE, couldn't proceed because of missing data).
 	// Reference https://eprint.iacr.org/2021/159.pdf
-	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-
-	if err != nil {
-		log.Errorf("Error getting the state state: %v", err)
-		return
-	}
 
 	if len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes

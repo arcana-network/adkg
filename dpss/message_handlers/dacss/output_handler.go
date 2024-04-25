@@ -59,6 +59,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the ACSS state is being used until the end.
 	defer self.State().AcssStore.Unlock()
 
 	// Retrieves the state.

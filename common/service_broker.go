@@ -52,6 +52,8 @@ func (iterator *Iterator) Value() (val interface{}) {
 	return iterator.Val
 }
 
+// EpochInfo describes the adversarial parameters for the protocol execution in
+// the epoch as well as a reference to the next and previous epochs.
 type EpochInfo struct {
 	Id        big.Int
 	N         big.Int

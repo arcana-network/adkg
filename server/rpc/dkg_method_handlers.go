@@ -227,6 +227,7 @@ func (c *CommitmentRequestResultData) FromString(data string) (bool, error) {
 	return true, nil
 }
 
+// Examples of verifiers: google.com, facebook.com.
 func getVerifierClientID(broker *common.MessageBroker, appID, verifier string) (string, error) {
 	params, err := broker.ChainMethods().GetClientIDViaVerifier(appID, verifier)
 	if err != nil {
@@ -235,6 +236,7 @@ func getVerifierClientID(broker *common.MessageBroker, appID, verifier string) (
 	return params.ClientID, nil
 }
 
+// This function will handle the call of key assign.
 func (h KeyAssignHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 	var p KeyAssignParams
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {

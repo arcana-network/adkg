@@ -58,6 +58,8 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	log.Debugf("Received Ready message from sender=%d on %d", sender.Index, p.Details().Index)
 
 	p.State().AcssStore.Lock()
+
+	// Using defer given that  the state is used until the end of the function.
 	defer p.State().AcssStore.Unlock()
 
 	// Get state from node

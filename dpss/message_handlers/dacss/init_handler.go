@@ -67,6 +67,8 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	// Store the old shares in the local database
 	self.State().ShareStore.Lock()
+
+	// Using defer because the state is accessed until the end of the function.
 	defer self.State().ShareStore.Unlock()
 
 	self.State().ShareStore.Initialize(len(msg.OldShares))

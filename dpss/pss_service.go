@@ -239,6 +239,7 @@ func (service *PssService) StartNextPSSBatch() {
 			}
 
 			// FIXME replace with `oldShares` once it has the right type
+			// TODO: Fill this array.
 			shares := make([]common.PrivKeyShare, len(oldShares))
 
 			// FIXME placeholder

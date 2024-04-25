@@ -69,6 +69,8 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the ACSS state is used until the end of the protocol.
 	defer self.State().AcssStore.Unlock()
 
 	acssState, isStored, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
