@@ -89,6 +89,13 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 				log.Errorf("unable to send DPSS start message: %s", err.Error())
 			}
 
+			// TODO remove this, only for quick testing
+			// db.AddTestShare(service.broker.DBMethods())
+
+			err = service.broker.DBMethods().StoreCompletedPSSShare(*big.NewInt(0), *big.NewInt(456), *big.NewInt(789), common.SECP256K1)
+			if err != nil {
+				log.Errorf("unable to store secp256k1 share: %s", err.Error())
+			}
 		}
 		// get self info from ChainService
 		chainMethods := service.broker.ChainMethods()
@@ -149,6 +156,8 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 		// get total assigned share num for secp256k1
 		secpShareNum, err := service.broker.ABCIMethods().LastUnassignedIndex()
+		// TODO remove, this is only for quick testing
+		secpShareNum, err := uint(1), nil //service.broker.ABCIMethods().LastUnassignedIndex()
 		if err != nil {
 			log.Errorf("Could not get share number %s", err.Error())
 			return nil, err
@@ -250,12 +259,13 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 
 			if err != nil {
 				// TODO
+				log.Errorf("Couldn't create dacss Init message %s", err.Error())
 			}
 
-			service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
+			go service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
 
 			// block until the batch has finished
-			<-service.batchFinChannel
+			// <-service.batchFinChannel
 			log.WithFields(log.Fields{
 				"type":  "secp256k1",
 				"batch": currentBatch,

@@ -34,6 +34,7 @@ type Config struct {
 	PasswordlessUrl    string `json:"passwordlessUrl"`
 	OAuthUrl           string `json:"oauthUrl"`
 	GlobalKeyCertPool  string `json:"globalKeyCertPool"`
+	ChainId            string `json:"chainId"`
 }
 
 func (c *Config) VerifyRequired() error {
@@ -98,6 +99,7 @@ func GetDefaultConfig() *Config {
 		P2PPort:            DefaultP2PPort,
 		TMP2PPort:          DefaultTmP2PPort,
 		TMRPCPort:          DefaultTmRPCPort,
+		ChainId:            "test-net-1",
 	}
 	return config
 }

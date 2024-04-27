@@ -1017,6 +1017,11 @@ func epochNodesMonitor(e *ChainService, epoch int) {
 		}
 		allNodesConnected := true
 		for _, nodeRef := range nodeList {
+			// E: could it be they are connected to different nodes?
+			// 16091 time="2024-04-26T17:52:49-06:00" level=info msg=ConnectedToAllNodes nodeList="[0xc000532320 0xc00018a690 0xc001122730]"
+			// 16189 time="2024-04-26T17:54:40-06:00" level=info msg=ConnectedToAllNodes nodeList="[0xc000820410 0xc0005ca1e0 0xc0011b9e00]"
+			// 16189 time="2024-04-26T17:54:40-06:00" level=info msg=ConnectedToAllNodes nodeList="[0xc001688780 0xc0005ca500 0xc0005ca820]"
+			// 16091 time="2024-04-26T17:54:50-06:00" level=info msg=ConnectedToAllNodes nodeList="[0xc0007dc640 0xc00061e640 0xc0005325f0]"
 			err = e.broker.P2PMethods().ConnectToP2PNode(nodeRef.P2PConnection, nodeRef.PeerID)
 			if err != nil {
 				log.WithField("address", *nodeRef.Address).Error("CurrentNodesMonitor.ConnectToP2PNode()")
@@ -1025,11 +1030,37 @@ func epochNodesMonitor(e *ChainService, epoch int) {
 			if nodeRef.PeerID == e.broker.P2PMethods().ID() {
 				e.broker.ChainMethods().SetSelfIndex(int(nodeRef.Index.Int64()))
 			}
+			// TODO remove this, it's just for testing
+			// Send a test msg
+			p2pMsg := e.broker.P2PMethods().NewP2PMessage(secp256k1.HashToString([]byte{}), false, []byte{}, "test-msg")
+
+			signature, err := e.broker.P2PMethods().SignP2PMessage(&p2pMsg)
+			if err != nil {
+				// return errors.New("failed to sign p2p Message" + err.Error())
+				log.Error("failed to sign p2p Message" + err.Error())
+			}
+			p2pMsg.Sign = signature
+
+			/*
+				This is to check that when the node says to be "connected" to the other nodes,
+				it can actually send them a msg.
+				And it actually gives an error:
+					18486 2024-04-26T19:17:19.186-0600      DEBUG   swarm2  swarm/limiter.go:73     [limiter] freeing FD token; waiting: 0; consuming: 1
+					18486 2024-04-26T19:17:19.186-0600      DEBUG   swarm2  swarm/limiter.go:100    [limiter] freeing peer token; peer 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC; addr: /ip4/192.167.10.13/tcp/1082; active for peer: 1; waiting on peer limit: 0
+					18486 2024-04-26T19:17:19.186-0600      DEBUG   swarm2  swarm/swarm_dial.go:277 network for 16Uiu2HAm2W4Ad8JCVxhsaDvpfw1yEbY6xE8PhaTkbZeXhWJsnzw5 finished dialing 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC
+					18486 2024-04-26T19:17:19.186-0600      DEBUG   swarm2  swarm/limiter.go:201    [limiter] clearing all peer dials: 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC
+					18486 time="2024-04-26T19:17:19-06:00" level=error msg="failed to create stream" error="failed to dial: failed to dial 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC: all dials failed\n  * [/ip4/192.167.10.13/tcp/1082] dial tcp4 0.0.0.0:1080->192.167.10.13:1082: i/o timeout"
+			*/
+			e.broker.P2PMethods().SendP2PMessage(nodeRef.PeerID, "test", &p2pMsg)
 		}
 		if !allNodesConnected {
 			continue
 		}
 		log.WithField("nodeList", nodeList).Info("ConnectedToAllNodes")
+		// Log all the PeerIDs we're connected to
+		for _, nodeRef := range nodeList {
+			log.WithField("PeerID", nodeRef.PeerID).Info("ConnectedToPeerID")
+		}
 		e.Lock()
 		e.nodeRegisterMap[epoch].NodeList = nodeList
 		e.Unlock()

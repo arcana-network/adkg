@@ -183,7 +183,7 @@ func getValidatorsAndPeerFromNodeList(nodeList []common.NodeReference) ([]string
 }
 func createGenesisDoc(validators []tmtypes.GenesisValidator) tmtypes.GenesisDoc {
 	genesisDoc := tmtypes.GenesisDoc{
-		ChainID:     "test-net-1",
+		ChainID:     config.GlobalConfig.ChainId, //"test-net-1",
 		GenesisTime: time.Unix(1578036594, 0),
 		Validators:  validators,
 	}
