@@ -1232,6 +1232,14 @@ func (pm *PssMethods) TriggerPss() error {
 	return nil
 }
 
+func (pm *PssMethods) StartNextPSSBatch() error {
+	methodResponse := ServiceMethod(pm.bus, pm.caller, pm.service, "start_next_pss_batch")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
 type TendermintMethods struct {
 	caller  string
 	bus     eventbus.Bus

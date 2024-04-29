@@ -190,6 +190,8 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			// start the first batch
 			service.StartNextPSSBatch()
 		}
+	case "start_next_pss_batch":
+		service.StartNextPSSBatch()
 	}
 	return nil, nil
 }
