@@ -75,7 +75,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	acssState, isStored, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithField("error", err).Error("DacssEchoMessage - Process()")
+		common.LogStateRetrieveError("DacssEchoMessage", "Process", err)
 		return
 	}
 	if isStored {
@@ -109,10 +109,13 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	_, _, t := self.Params()
 
-	acssState, _, err = self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
+	acssState, found, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithField("error", err).Error("DacssEchoMessage - Process()")
+		common.LogStateRetrieveError("DacssEchoMessage", "Process", err)
 		return
+	}
+	if !found {
+		common.LogStateNotFoundError("DacssEchoMessage", "Proces", found)
 	}
 	// This deals with Line 11 of the RBC protocol. If the ECHO count for the
 	// received message is 2t + 1, then send the READY message.
@@ -125,7 +128,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	if msgRegistry.Count >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, m.Share, m.Hash, m.CurveName)
 		if err != nil {
-			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
 		self.State().AcssStore.UpdateAccsState(
@@ -142,7 +145,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	if acssState.RBCState.CountReady() >= t+1 && msgRegistry.Count >= t+1 {
 		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgRegistry.Shard, m.Hash, m.CurveName)
 		if err != nil {
-			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
 		self.State().AcssStore.UpdateAccsState(

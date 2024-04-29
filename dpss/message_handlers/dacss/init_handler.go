@@ -102,6 +102,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), acssRoundDetails, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey, msg.NewCommitteeParams)
 		if err != nil {
+			common.LogErrorNewMessage("InitMessageHandler", "Process", ShareMessageType, err)
 			return
 		}
 		//NOTE: since the msg is sent to self, we can keep the EmephemeralKeypair in the msg

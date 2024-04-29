@@ -53,7 +53,12 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 
 	// Retrieve the ACSS state for the specific ACSS round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found {
+	if err != nil {
+		common.LogStateRetrieveError("ShareRecoveryHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ShareRecoveryHandler", "Process", found)
 		return
 	}
 
@@ -95,7 +100,7 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 
 		receiveShareRecoveryMsg, err := NewReceiveShareRecoveryMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), proof, msg.AcssData)
 		if err != nil {
-			log.Errorf("Error in creating ReceiveShareRecoveryMessage for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			common.LogErrorNewMessage("ShareRecoverHandler", "Process", ShareRecoveryMessageType, err)
 			return
 		}
 

@@ -122,12 +122,7 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 			len(shareBatch))
 
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error while creating the InitRecMessage",
-				},
-			).Error("PreprocessBatchRecMessage: Process")
+			common.LogErrorNewMessage("PreprocessBatchRecHandler", "Process", InitRecHandlerType, err)
 			return
 		}
 

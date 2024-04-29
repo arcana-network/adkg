@@ -42,10 +42,6 @@ func NewDacssCommitmentMessage(
 
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error":   err,
-			"Message": "Error while converting the message into bytes",
-		}).Error("DACSSCommitmentMessage: NewDacssCommitmentMessage")
 		return nil, err
 	}
 
@@ -77,21 +73,11 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state of the node.",
-			},
-		).Error("DACSSCommitmentMessage: Process")
+		common.LogStateRetrieveError("DacssCommitmentHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "State not found",
-			},
-		).Error("DACSSCommitmentMessage: Process")
+		common.LogStateNotFoundError("DacssCommitmentHandler", "Process", found)
 		return
 	}
 

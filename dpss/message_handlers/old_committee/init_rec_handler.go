@@ -117,12 +117,7 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 			shareBytes,
 		)
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Message": "Error while constructing the PSS Message",
-					"Error":   err,
-				},
-			).Error("InitRecMessage: Process")
+			common.LogErrorNewMessage("InitRecHandler", "Process", PrivateRecMessageType, err)
 			return
 		}
 

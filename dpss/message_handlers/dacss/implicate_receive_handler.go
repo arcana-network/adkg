@@ -64,7 +64,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 	// First check whether the sharemap for this acss round has already been stored
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.Errorf("Error retrieving ACSS state in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		common.LogStateRetrieveError("ImplicateReceiveMessage", "Process", err)
 		return
 	}
 
@@ -104,7 +104,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 		// If the have the shareMap Implicate flow can continue; Send ImplicateExecuteMessage
 		implicateExecuteMessage, err := NewImplicateExecuteMessage(msg.ACSSRoundDetails, msg.CurveName, msg.SymmetricKey, msg.Proof, senderPubkeyHex, msg.AcssData)
 		if err != nil {
-			log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			common.LogErrorNewMessage("ImplicateReceiveMessage", "Process", ImplicateExecuteMessageType, err)
 			return
 		}
 		go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)

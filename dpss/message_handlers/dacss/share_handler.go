@@ -201,7 +201,7 @@ func ExecuteACSS(withNewCommittee bool, secret curves.Scalar, sender common.PSSP
 	proposeMsg, err := NewAcssProposeMessageround(msg.ACSSRoundDetails, msgData, msg.CurveName, withNewCommittee, msg.NewCommitteeParams)
 
 	if err != nil {
-		log.Errorf("Error while creating new AcssProposeMessage, err=%v", err)
+		common.LogErrorNewMessage("ShareHandler", "Process", AcssProposeMessageType, err)
 		return
 	}
 

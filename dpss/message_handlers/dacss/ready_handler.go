@@ -66,7 +66,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	state, found, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
-		log.WithField("error", err).Error("DacssReadyMessage - Process()")
+		common.LogStateRetrieveError("DacssReadyHandler", "Process", err)
 		return
 	}
 
@@ -118,7 +118,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, echoInfo.Shard, echoInfo.HashMessage, m.CurveName)
 
 			if err != nil {
-				log.WithField("error", err).Error("DacssReadyMessage - Process()")
+				common.LogErrorNewMessage("DacssReadyMessageHandler", "Propose", AcssReadyMessageType, err)
 				return
 			}
 
@@ -155,7 +155,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				outputMsg, err := NewDacssOutputMessage(m.AcssRoundDetails, rbcMsg, m.CurveName)
 
 				if err != nil {
-					log.WithField("error", err).Error("unable to create DacssOutputMessage")
+					common.LogErrorNewMessage("DacssOutputHandler", "Process", DacssOutputMessageType, err)
 					return
 				}
 				go p.Send(p.Details(), *outputMsg)

@@ -59,21 +59,11 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error trying to retrieve the batch reconstruction state",
-			},
-		).Error("PrivateRecMsg: Process")
+		common.LogStateRetrieveError("PrivateRecHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "There is no state associated with the provided ID",
-			},
-		).Error("PrivateRecMsg: Process")
+		common.LogStateNotFoundError("PrivateRecHandler", "Process", found)
 		return
 	}
 
@@ -135,12 +125,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			reconstructedU.Bytes(),
 		)
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error constructiong Public Reconstruction msg",
-				},
-			).Error("PrivateRecMsg: Process")
+			common.LogErrorNewMessage("PrivateRecHandler", "Process", PublicRecMessageType, err)
 			return
 		}
 

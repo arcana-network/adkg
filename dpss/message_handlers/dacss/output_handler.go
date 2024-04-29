@@ -68,20 +68,11 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		m.AcssRoundDetails.ToACSSRoundID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state of the node.",
-			},
-		).Error("DACSSOutputMessage: Process")
+		common.LogStateRetrieveError("DacssOutputMessage", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Message": "The state was not found",
-			},
-		).Error("DACSSOutputMessage: Process")
+		common.LogStateNotFoundError("DacssOutputMessage", "Process", found)
 		return
 	}
 
@@ -194,12 +185,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			verifier.Commitments[0],
 		)
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "error while creating the commitment message",
-				},
-			).Error("DacssOutputMessage: Process")
+			common.LogErrorNewMessage("DacssOutputMessage", "Process", DacssCommitmentMessageType, err)
 			return
 		}
 

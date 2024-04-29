@@ -74,7 +74,8 @@ func TestNewInitMessage(test *testing.T) {
 	}
 
 	var createdInitMsg InitMessage
-	bijson.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+	err = bijson.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+	assert.Nil(test, err)
 
 	// Asserts that the values are the same
 	assert.Equal(test, msg.PSSRoundDetails, createdInitMsg.PSSRoundDetails)

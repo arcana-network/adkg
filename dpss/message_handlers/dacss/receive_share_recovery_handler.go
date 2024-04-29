@@ -59,8 +59,20 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	defer receiver.State().AcssStore.Unlock()
 
 	acssState, found, err := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
-		log.Errorf("No acssState found in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+	if err != nil {
+		common.LogStateRetrieveError("ReceiveShareRecoveryHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ReceiveShareRecoveryHandler", "Process", found)
+		return
+	}
+	if len(acssState.AcssDataHash) == 0 {
+		log.WithFields(
+			log.Fields{
+				"Message": "the ACSS data hash is empty",
+			},
+		).Error("ReceiveShareRecoveryHandler: Process")
 		return
 	}
 
@@ -151,16 +163,6 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 	// If node has received >= t+1 verified shares: interpolate and output
 	// At this point we already know the acssState exists
-	acssState, _, err = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state",
-			},
-		).Error("DACSSReceiveShareRecoveryHandler: Process")
-		return
-	}
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
 		//once the threshold is reached, update the state

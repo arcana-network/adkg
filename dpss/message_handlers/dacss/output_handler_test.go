@@ -316,7 +316,10 @@ func constructFakeMessage(correctMsg DacssOutputMessage, numParties int) (
 	error,
 ) {
 	var msgData common.AcssData
-	bijson.Unmarshal(correctMsg.Data, &msgData)
+	err := bijson.Unmarshal(correctMsg.Data, &msgData)
+	if err != nil {
+		return DacssOutputMessage{}, err
+	}
 
 	uncompressedCommitmnets, err := sharing.DecompressCommitments(
 		numParties,

@@ -53,21 +53,11 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error trying to retrieve the batch reconstruction state",
-			},
-		).Error("PublicRecMsg: Process")
+		common.LogStateRetrieveError("PublicRecHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "There is no state associated with the provided ID",
-			},
-		).Error("PublicRecMsg: Process")
+		common.LogStateNotFoundError("PublicRecHandler", "Process", found)
 		return
 	}
 
@@ -148,12 +138,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		self.State().ShareStore.Unlock()
 
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error constructiong local Reconstruction msg",
-				},
-			).Error("PublicRecMsg: Process")
+			common.LogErrorNewMessage("PublicRecHandler", "Process", LocalComputationMessageType, err)
 			return
 		}
 
