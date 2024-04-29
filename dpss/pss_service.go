@@ -238,7 +238,7 @@ func (service *PssService) StartNextPSSBatch() {
 			roundDetails := common.PSSRoundDetails{
 				PssID:     common.NewPssID(*big.NewInt(int64(service.currentSecpBatch))),
 				Dealer:    service.pssNode.NodeDetails,
-				BatchSize: BATCHSIZE,
+				BatchSize: len(oldShares),
 			}
 
 			// FIXME replace with `oldShares` once it has the right type
