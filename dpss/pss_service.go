@@ -3,6 +3,7 @@ package dpss
 import (
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -181,6 +182,10 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		if ceil {
 			c25519BatchNum += 1
 		}
+
+		//TODO - check if we need this
+		// To make sure honest nodes have finished creating PssNode
+		time.Sleep(10 * time.Second)
 
 		if !isNewCommittee {
 			// only nodes in old committee need to initiate DPSS

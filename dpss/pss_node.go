@@ -32,7 +32,10 @@ func NewPSSNode(broker common.MessageBroker,
 	tNewCommittee int, kNewCommittee int,
 	privateKey curves.Scalar,
 	epoch int) (*PSSNode, error) {
-	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(epoch), "dpss-transport")
+	// TODO - check if it's ok to always set pss protocol prefix to dpss-1/
+	// set pss protocol prefix to dpss-1/ since it will be used in both old & new committee
+	// consider changing getPSSProtocolPrefix() so it isn't based on epoch.
+	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
 
 	// Creates the committees
 	oldCommitteeNetwork := common.NodeNetwork{

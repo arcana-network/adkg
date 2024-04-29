@@ -69,7 +69,16 @@ We'll see this type of logging:
 13530 time="2024-04-26T16:05:44-06:00" level=info msg="Running DPSS" batch=0 type=secp256k1
 ```
 
-Ideally we want to be able to nicely add shares (only in a test situation) + set the last assigned index somehow. 
+Ideally we want to be able to nicely add shares (only in a test situation) + set the last assigned index somehow.
+
+## Current Status
+
+### 0429 - Alex
+* The "failed to dial" problem below can be fixed by changing ip address in config to 127.0.0.1
+* Encounter another problem when Sending pss p2p message: `level=error msg="failed to create stream" error="failed to negotiate protocol: protocols not supported: [dpss-1/]"` that is caused by #L37 in dpss/pss_node.go. Since we are creating P2P protocol with the node's epoch (`getPSSProtocolPrefix(epoch)`), old nodes and new nodes will have different protocol (`dpss-1/` and `dpss-2/`). For nodes to communicate through P2P, they need to shared the same protocol. Currently all nodes' protocol is set to "dpss-1/" to fixed this issue. It seems fine since the protocol shoudn't change between epochs.
+* Adds "time.Sleep(10 * time.Second)" in dpss/pss_service.go #L178 to allow other honest nodes to finish creating PSSNode. Without this line, we might also get `level=error msg="failed to create stream" error="failed to negotiate protocol: protocols not supported: [dpss-1/]"`. This is caused by trying to send P2P message to other nodes while they are still setting up their PSSNodes. (Actually all the nodes seems to received the correct msg eventually dispite some failed attempts at first, because retry.Do{} is used when sending p2p message.) 
+* The reasoning of "time.Sleep(10 * time.Second)" is that nodes only query pssStatus every 10 secs, so we should make sure all honest nodes have seen the pss status change before starting the PSS process.
+
 
 ## Problem
 

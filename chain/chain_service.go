@@ -1051,7 +1051,7 @@ func epochNodesMonitor(e *ChainService, epoch int) {
 					18486 2024-04-26T19:17:19.186-0600      DEBUG   swarm2  swarm/limiter.go:201    [limiter] clearing all peer dials: 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC
 					18486 time="2024-04-26T19:17:19-06:00" level=error msg="failed to create stream" error="failed to dial: failed to dial 16Uiu2HAmSWiDB6K42p6tTwNih5yDBbv2RoqdTjGJSP7iSpHDPABC: all dials failed\n  * [/ip4/192.167.10.13/tcp/1082] dial tcp4 0.0.0.0:1080->192.167.10.13:1082: i/o timeout"
 			*/
-			e.broker.P2PMethods().SendP2PMessage(nodeRef.PeerID, "test", &p2pMsg)
+			//e.broker.P2PMethods().SendP2PMessage(nodeRef.PeerID, "keygen-1/", &p2pMsg)
 		}
 		if !allNodesConnected {
 			continue
