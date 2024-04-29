@@ -205,6 +205,7 @@ func (service *PssService) StartNextPSSBatch() {
 		// secp256K1 key shares
 		// FIXME oldShares needs to be accompanied by the userId
 		var oldShares []sharing.ShamirShare
+		var userIds []string
 		id := service.broker.ChainMethods().GetSelfIndex()
 		// get old shares list of the batch
 		for i := 0; i < BATCHSIZE; i++ {
@@ -226,6 +227,25 @@ func (service *PssService) StartNextPSSBatch() {
 				Value: si.Bytes(),
 			}
 			oldShares = append(oldShares, share)
+
+			// Gather the user ID for this share.
+			keyMapping, err := service.broker.ABCIMethods().RetrieveKeyMapping(
+				*big.NewInt(int64(index)),
+				common.SECP256K1,
+			)
+			if err != nil {
+				log.Errorf("unable to retrieve the key mapping for index %v: %s", index, err)
+			}
+			if len(keyMapping.Verifiers) == 0 {
+				log.Errorf("there is no verifier associated with this index %v", index)
+			}
+			for _, userId := range keyMapping.Verifiers {
+				// Returns the userID from a random verifier. The idea
+				// for now is just take one userID related to the node from a
+				// random verifier.
+				userIds = append(userIds, userId[0])
+				break
+			}
 		}
 
 		if len(oldShares) > 0 {
@@ -241,9 +261,15 @@ func (service *PssService) StartNextPSSBatch() {
 				BatchSize: len(oldShares),
 			}
 
-			// FIXME replace with `oldShares` once it has the right type
-			// TODO: Fill this array.
 			shares := make([]common.PrivKeyShare, len(oldShares))
+			for i, share := range oldShares {
+				privKeyShare := common.PrivKeyShare{
+					UserIdOwner: userIds[i],
+					Share:       share,
+				}
+
+				shares[i] = privKeyShare
+			}
 
 			// FIXME placeholder
 			ephemeralKeypair := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
