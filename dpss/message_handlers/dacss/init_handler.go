@@ -79,7 +79,6 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, _, recThreshold := self.Params()
 
-	// testing is done for 1 share(+1 added)
 	nGenerations := int(math.Ceil(float64(len(msg.OldShares)) / float64((nNodes - 2*recThreshold))))
 	for i := range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
