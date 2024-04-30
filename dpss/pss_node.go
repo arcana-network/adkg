@@ -1,7 +1,10 @@
 package dpss
 
 import (
+	"errors"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
@@ -227,4 +230,53 @@ func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 // returns the state of the node.
 func (node *PSSNode) State() *common.PSSNodeState {
 	return node.state
+}
+
+// CleanState completely clears the state of a node for a given PSSRound.
+func (node *PSSNode) CleanState(pssRound common.PSSRoundDetails) error {
+	err := cleanMap(&node.state.AcssStore.AcssStateForRound, pssRound, common.Delimiter1)
+	if err != nil {
+		return err
+	}
+
+	err = cleanMap(&node.state.BatchReconStore.BatchReconStateForRound, pssRound, common.Delimiter2)
+	if err != nil {
+		return err
+	}
+
+	node.state.ShareStore.NewShares = make([]curves.Scalar, 0)
+	node.state.ShareStore.OldShares = make([]common.PrivKeyShare, 0)
+
+	return nil
+}
+
+// cleanMap removes the entries of the syncMap that contains the given PSSRoundDetails
+// as part of the key, which is separated with the given delimiter.
+func cleanMap(mapStore *sync.Map, pssRound common.PSSRoundDetails, delimiter string) error {
+	var err error
+	mapStore.Range(
+		func(key, value any) bool {
+			// Parses the key into PSSRoundDetails || AcssCount.
+			keyAcssRoundID := key.(common.ACSSRoundID)
+			splittedKey := strings.Split(
+				string(keyAcssRoundID), delimiter,
+			)
+
+			if len(splittedKey) != 2 {
+				err = errors.New("the split process was not done correctly")
+				return false
+			}
+
+			// Takes the PSSRoundDetails from the key.
+			pssDetailsKey := splittedKey[0]
+			if pssDetailsKey == pssRound.ToString() {
+				mapStore.Delete(
+					key,
+				)
+			}
+			return true
+		},
+	)
+
+	return err
 }
