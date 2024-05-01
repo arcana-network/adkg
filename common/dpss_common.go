@@ -43,6 +43,11 @@ type PSSParticipant interface {
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
+
+	// Broker needed to start the next batch of DPSS
+	// In all the Test Nodes it is mocked to simply return nil
+	// In the PSSNode, it returns the MessageBroker
+	GetMessageBroker() *MessageBroker
 }
 
 // PSSNodeState represents the internal state of a node that participates in

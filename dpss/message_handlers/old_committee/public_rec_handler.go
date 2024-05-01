@@ -152,5 +152,11 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		// Broadcast to the new committee
 		go self.Broadcast(true, *localComputationMsg)
 
+		// starting the next batch
+		messageBroker := self.GetMessageBroker()
+		if messageBroker != nil {
+			messageBroker.PssMethods().StartNextPSSBatch()
+		}
+
 	}
 }

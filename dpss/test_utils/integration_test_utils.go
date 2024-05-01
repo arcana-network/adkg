@@ -198,3 +198,7 @@ func (node *IntegrationTestNode) GetReceivedMessages(msgType string) []common.PS
 func (node *IntegrationTestNode) CountReceivedMessages(msgType string) int {
 	return node.Transport().CountReceivedMessages(msgType)
 }
+
+func (n *IntegrationTestNode) GetMessageBroker() *common.MessageBroker {
+	return nil
+}

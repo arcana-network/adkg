@@ -280,3 +280,8 @@ func cleanMap(mapStore *sync.Map, pssRound common.PSSRoundDetails, delimiter str
 
 	return err
 }
+
+// Returns the messageBroker
+func (node *PSSNode) GetMessageBroker() *common.MessageBroker {
+	return node.Broker()
+}

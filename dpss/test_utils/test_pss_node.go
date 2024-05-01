@@ -152,3 +152,9 @@ func GetSingleNode(isNewCommittee bool, isFaulty bool) (*PssTestNode, *NoSendMoc
 
 	return node, transport
 }
+
+// The GetMessageBroker function is needed in the PSSNode(pss_node.go) to get the message broker for starting the next DPSS Batch
+// In the Test Nodes it is mocked to simply return nil
+func (n *PssTestNode) GetMessageBroker() *common.MessageBroker {
+	return nil
+}
