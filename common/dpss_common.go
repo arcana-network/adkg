@@ -66,6 +66,55 @@ type PSSNodeState struct {
 	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
 }
 
+// Clean completely cleans the state of a node for a given PSSRound.
+func (state *PSSNodeState) Clean(pssRound PSSRoundDetails) error {
+	err := cleanMap(&state.AcssStore.AcssStateForRound, pssRound, Delimiter1)
+	if err != nil {
+		return err
+	}
+
+	err = cleanMap(&state.BatchReconStore.BatchReconStateForRound, pssRound, Delimiter2)
+	if err != nil {
+		return err
+	}
+
+	state.ShareStore.NewShares = make([]curves.Scalar, 0)
+	state.ShareStore.OldShares = make([]PrivKeyShare, 0)
+
+	return nil
+}
+
+// cleanMap removes the entries of the syncMap that contains the given PSSRoundDetails
+// as part of the key, which is separated with the given delimiter.
+func cleanMap(mapStore *sync.Map, pssRound PSSRoundDetails, delimiter string) error {
+	var err error
+	mapStore.Range(
+		func(key, value any) bool {
+			// Parses the key into PSSRoundDetails || AcssCount.
+			keyAcssRoundID := key.(ACSSRoundID)
+			splittedKey := strings.Split(
+				string(keyAcssRoundID), delimiter,
+			)
+
+			if len(splittedKey) != 2 {
+				err = errors.New("the split process was not done correctly")
+				return false
+			}
+
+			// Takes the PSSRoundDetails from the key.
+			pssDetailsKey := splittedKey[0]
+			if pssDetailsKey == pssRound.ToString() {
+				mapStore.Delete(
+					key,
+				)
+			}
+			return true
+		},
+	)
+
+	return err
+}
+
 // Stores all the information for each separate batch reconstruction.
 type BatchRecStoreMap struct {
 	sync.Mutex

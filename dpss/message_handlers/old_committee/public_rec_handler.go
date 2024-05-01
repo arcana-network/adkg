@@ -160,6 +160,18 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		// Broadcast to the new committee
 		go self.Broadcast(true, *localComputationMsg)
 
+		// Clear the state before starting the new batch
+		err = self.State().Clean(msg.DPSSBatchRecDetails.PSSRoundDetails)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Message": "error while cleanning the state",
+					"Error":   err,
+				},
+			).Error("PublicRecMsgHandler: Process")
+			return
+		}
+
 		// starting the next batch
 		messageBroker := self.GetMessageBroker()
 		if messageBroker != nil {
