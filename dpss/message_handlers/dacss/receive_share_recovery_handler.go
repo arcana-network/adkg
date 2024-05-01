@@ -82,8 +82,12 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		return
 	}
 
-	// TODO add: if state.VerifiedRecoveryShares[sender.Index] != nil, ignore the message
+	// if state.VerifiedRecoveryShares[sender.Index] != nil, ignore the message
 	// we've already received and processed the share from that node
+	if acssState.VerifiedRecoveryShares[sender.Index] != nil {
+		log.Debugf("already received and processed the share from %v node", sender.Index)
+		return
+	}
 
 	// Hash the received acssData
 	hash, err := common.HashAcssData(msg.AcssData)
@@ -148,7 +152,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	commitments := msg.AcssData.Commitments
 
 	// Check Predicate for share
-	shamirShare_j, _, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
+	shamirShare_j, verifier, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
 
 	// If the predicate doesn't check out, we can't store the share
 	if !verified {
@@ -207,7 +211,19 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 			state.RBCState.Phase = common.Ended
 		})
 
-		// TODO add sending commit msg
+		// commit msg
+		commitmentMsg, err := NewDacssCommitmentMessage(
+			msg.ACSSRoundDetails,
+			msg.CurveName,
+			verifier.Commitments[0],
+		)
+
+		if err != nil {
+			common.LogErrorNewMessage("ReceiveShareRecoveryMessage", "Process", DacssCommitmentMessageType, err)
+			return
+		}
+
+		go receiver.Broadcast(!receiver.IsNewNode(), *commitmentMsg)
 	}
 
 }
