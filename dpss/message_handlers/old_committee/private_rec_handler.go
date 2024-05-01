@@ -49,10 +49,14 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	defer self.State().BatchReconStore.Unlock()
 
 	// Initialize state here if it is not initialized in the InitHanlder
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err := self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(s *common.BatchRecState) {},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	// Check if there are at least d + t + 1 = 2t + 1 shares received
 	recState, found, err := self.State().BatchReconStore.Get(
@@ -81,12 +85,16 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	}
 
 	// Store the share in the local state.
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.UStore[sender.Index] = share
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	countU := recState.CountReceivedU()
 	_, _, t := self.Params()
@@ -129,12 +137,16 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			return
 		}
 
-		self.State().BatchReconStore.UpdateBatchRecState(
+		err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentPubMsg = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+			return
+		}
 
 		// Broadcast to the old committee
 		go self.Broadcast(false, *publicReconstructMsg)

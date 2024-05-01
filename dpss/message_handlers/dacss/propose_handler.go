@@ -78,7 +78,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		state.AcssDataHash = acssDataHash
 	})
 	if err != nil {
-		log.Errorf("Error updating AcssData in state: %v", err)
+		common.LogStateUpdateError("ProposeHandler", "Process", common.AcssStateType, err)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		}
 
 		//store own share and hash
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 
@@ -221,6 +221,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index-1]
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("ProposeHandler", "Process", common.AcssStateType, err)
+			return
+		}
 
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)

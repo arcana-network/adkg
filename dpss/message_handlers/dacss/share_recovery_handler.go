@@ -68,9 +68,13 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	}
 
 	// Set in the Node's state that we're in ShareRecovery phase
-	self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ShareRecoveryOngoing = true
 	})
+	if err != nil {
+		common.LogStateUpdateError("ShareRecoveryHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// If the current node already has *output* a valid share,
 	// send ReceiveShareRecoveryMessage to the other nodes

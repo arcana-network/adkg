@@ -50,6 +50,13 @@ type PSSParticipant interface {
 	GetMessageBroker() *MessageBroker
 }
 
+// Constants for state naming. Used for loging.
+const (
+	AcssStateType     = "ACSS"
+	BatchRecStateType = "BatchRec"
+	RbcStateType      = "RBC"
+)
+
 // PSSNodeState represents the internal state of a node that participates in
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC

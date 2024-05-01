@@ -103,10 +103,14 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 
 	// Initialize the inner state as empty.
 	self.State().BatchReconStore.Lock()
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(s *common.BatchRecState) {},
 	)
+	if err != nil {
+		common.LogStateUpdateError("InitHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 	self.State().BatchReconStore.Unlock()
 
 	for _, recvrNode := range self.Nodes(self.IsNewNode()) {

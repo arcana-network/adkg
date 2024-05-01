@@ -75,12 +75,16 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	}
 
 	// Store the reconstructedU in the local state.
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.ReconstructedUStore[sender.Index] = share
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PublicRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	ReconstructedUCount := recState.CountReconstructedReceivedU()
 
@@ -142,12 +146,16 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			return
 		}
 
-		self.State().BatchReconStore.UpdateBatchRecState(
+		err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentLocalCompMsg = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("PublicRecHandler", "Process", common.BatchRecStateType, err)
+			return
+		}
 
 		// Broadcast to the new committee
 		go self.Broadcast(true, *localComputationMsg)

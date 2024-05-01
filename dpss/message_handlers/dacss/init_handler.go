@@ -95,7 +95,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 			},
 		)
 		if err != nil {
-			log.Errorf("initMsg: error getting state: %v", err)
+			common.LogStateUpdateError("InitHandler", "Process", common.AcssStateType, err)
 			return
 		}
 

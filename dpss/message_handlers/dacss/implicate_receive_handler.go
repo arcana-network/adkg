@@ -91,7 +91,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,
 				Proof:           msg.Proof,
@@ -100,6 +100,10 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			}
 			state.ImplicateInformationSlice = append(state.ImplicateInformationSlice, implicateInformation)
 		})
+		if err != nil {
+			common.LogStateUpdateError("ImpricateReceiveHandler", "Process", common.AcssStateType, err)
+			return
+		}
 	} else {
 		// If the have the shareMap Implicate flow can continue; Send ImplicateExecuteMessage
 		implicateExecuteMessage, err := NewImplicateExecuteMessage(msg.ACSSRoundDetails, msg.CurveName, msg.SymmetricKey, msg.Proof, senderPubkeyHex, msg.AcssData)

@@ -42,3 +42,14 @@ func LogErrorNewMessage(handler string, function string, messageType string, err
 		},
 	).Error(handler + ": " + function)
 }
+
+// Prints a error log message when updating the state of a node fails.
+func LogStateUpdateError(handler string, function string, stateType string, err error) {
+	log.WithFields(
+		log.Fields{
+			"Message": "error updating the state",
+			"State":   stateType,
+			"Error":   err,
+		},
+	).Error(handler + ": " + function)
+}

@@ -95,7 +95,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 
 	// Mark that the sender already sent its commitments and increase the count
 	// for the received commitment.
-	self.State().AcssStore.UpdateAccsState(
+	err = self.State().AcssStore.UpdateAccsState(
 		msg.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.ReceivedCommitments[sender.Index] = true
@@ -103,6 +103,10 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 			state.CommitmentCount[commitmentStrEncoding]++
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// If the RBC hasn't ended, we should not do the check afterwards
 	if state.RBCState.Phase == common.Ended {
@@ -111,12 +115,16 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		if found {
 			// Computes the hash of the own commitment
 			if commitmentHexHash == state.OwnCommitmentsHash {
-				self.State().AcssStore.UpdateAccsState(
+				err = self.State().AcssStore.UpdateAccsState(
 					msg.ACSSRoundDetails.ToACSSRoundID(),
 					func(state *common.AccsState) {
 						state.ValidShareOutput = true
 					},
 				)
+				if err != nil {
+					common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
+					return
+				}
 
 				log.WithFields(
 					log.Fields{

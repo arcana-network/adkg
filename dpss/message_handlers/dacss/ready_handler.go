@@ -81,7 +81,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	}
 
 	// Adds this share to the list of READY message shards.
-	p.State().AcssStore.UpdateAccsState(
+	err = p.State().AcssStore.UpdateAccsState(
 		m.AcssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.RBCState.ReadyMsgShards = append(
@@ -90,6 +90,10 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			)
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("ReadyHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
@@ -122,12 +126,16 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				return
 			}
 
-			p.State().AcssStore.UpdateAccsState(
+			err = p.State().AcssStore.UpdateAccsState(
 				m.AcssRoundDetails.ToACSSRoundID(),
 				func(state *common.AccsState) {
 					state.RBCState.IsReadyMsgSent = true
 				},
 			)
+			if err != nil {
+				common.LogStateUpdateError("ReadyHandler", "Process", common.AcssStateType, err)
+				return
+			}
 
 			go p.Broadcast(p.IsNewNode(), *readyMsg)
 		}
