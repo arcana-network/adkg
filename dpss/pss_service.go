@@ -4,7 +4,6 @@ package dpss
 
 import (
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -18,28 +17,33 @@ import (
 type MessageType int32
 
 const (
-	RUNNING MessageType = 1
-	PAUSED  MessageType = 0
-	STOPPED MessageType = -1
+	RUNNING   MessageType = 1
+	PAUSED    MessageType = 0
+	STOPPED   MessageType = -1
+	BATCHSIZE int         = 500
 )
 
 type PssService struct {
-	sync.Mutex
-	bus             eventbus.Bus
-	broker          *common.MessageBroker
-	running         bool
-	pssStatus       MessageType
-	pssNode         *PSSNode
-	batchFinChannel chan struct{}
+	bus              eventbus.Bus
+	broker           *common.MessageBroker
+	running          bool
+	pssStatus        MessageType
+	pssNode          *PSSNode
+	currentSecpBatch int
+	currentC255Batch int
+	secpBatchNum     int
+	c25519BatchNum   int
+	secpShareNum     int
+	c25519ShareNum   int
+	newEpochInfo     common.EpochInfo
 }
 
 func New(bus eventbus.Bus) *PssService {
 	keygenService := &PssService{
-		bus:             bus,
-		broker:          common.NewServiceBroker(bus, common.PSS_SERVICE_NAME),
-		running:         false,
-		pssStatus:       STOPPED,
-		batchFinChannel: make(chan struct{}),
+		bus:       bus,
+		broker:    common.NewServiceBroker(bus, common.PSS_SERVICE_NAME),
+		running:   false,
+		pssStatus: STOPPED,
 	}
 	return keygenService
 }
@@ -79,7 +83,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		log.Info("PSS WAS TRIGGERED")
 		// TODO - check what to do for the new committee nodes
 		service.pssStatus = RUNNING
-		batchSize := uint(500)
 		isNewCommittee, err := service.broker.ChainMethods().IsNewCommittee()
 		if err != nil {
 			log.Errorf("Could not get isNewCommittee %s", err.Error())
@@ -149,74 +152,79 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		}
 		service.SetNode(pssNode)
 
-		// get total assigned share num for secp256k1
-		secpShareNum, err := service.broker.ABCIMethods().LastUnassignedIndex()
-		if err != nil {
-			log.Errorf("Could not get share number %s", err.Error())
-			return nil, err
-		}
-		// calculate batch needed
-		ceil := (secpShareNum % batchSize) != 0
-		secpBatchNum := secpShareNum / batchSize
-		if ceil {
-			secpBatchNum += 1
-		}
-
-		// get total assigned share num for c25519
-		c25519ShareNum, err := service.broker.ABCIMethods().LastC25519UnassignedIndex()
-		if err != nil {
-			log.Errorf("Could not get share number %s", err.Error())
-			return nil, err
-		}
-		// calculate batch needed
-		ceil = (c25519ShareNum % batchSize) != 0
-		c25519BatchNum := c25519ShareNum / batchSize
-		if ceil {
-			c25519BatchNum += 1
-		}
-
-		// TODO replace sleep by waiting until all nodes are ready
-		// To make sure honest nodes have finished creating PssNode
-		time.Sleep(10 * time.Second)
-
+		// only nodes in old committee need to initiate DPSS
 		if !isNewCommittee {
-			// only nodes in old committee need to initiate DPSS
-			go service.BatchRunDPSS(secpBatchNum,
-				c25519BatchNum,
-				batchSize,
-				secpShareNum,
-				c25519ShareNum,
-				int(newEpochInfo.N.Int64()),
-				int(newEpochInfo.K.Int64()),
-				int(newEpochInfo.T.Int64()))
+			// get total assigned share num for secp256k1
+			secpShareNumUint, err := service.broker.ABCIMethods().LastUnassignedIndex()
+			if err != nil {
+				log.Errorf("Could not get share number %s", err.Error())
+				return nil, err
+			}
+			secpShareNum := int(secpShareNumUint)
+			// calculate batch needed
+			ceil := (secpShareNum % BATCHSIZE) != 0
+			secpBatchNum := secpShareNum / BATCHSIZE
+			if ceil {
+				secpBatchNum += 1
+			}
+
+			// get total assigned share num for c25519
+			c25519ShareNumUint, err := service.broker.ABCIMethods().LastC25519UnassignedIndex()
+			if err != nil {
+				log.Errorf("Could not get share number %s", err.Error())
+				return nil, err
+			}
+			c25519ShareNum := int(c25519ShareNumUint)
+			// calculate batch needed
+			ceil = (c25519ShareNum % BATCHSIZE) != 0
+			c25519BatchNum := c25519ShareNum / BATCHSIZE
+			if ceil {
+				c25519BatchNum += 1
+			}
+
+			// TODO replace sleep by waiting until all nodes are ready
+			// To make sure honest nodes have finished creating PssNode
+			time.Sleep(10 * time.Second)
+
+			// store the batch info in PssService
+			service.secpBatchNum = int(secpBatchNum)
+			service.c25519BatchNum = int(c25519BatchNum)
+			service.secpShareNum = int(secpShareNum)
+			service.c25519ShareNum = int(c25519ShareNum)
+			service.newEpochInfo = newEpochInfo
+
+			// start the first batch
+			service.StartNextPSSBatch()
 		}
+	case "start_next_pss_batch":
+		service.StartNextPSSBatch()
 	}
 	return nil, nil
 }
 
-func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, batchSize uint, secpShareNum uint, c25519ShareNum uint,
-	new_N int, new_K int, new_T int) {
-
-	// TODO make more generalized and call for both secp and c25519
-	// as of now only in secp256k1 the message handlers are triggered
-
-	// secp256k1 shares
-	for currentBatch := uint(0); currentBatch < secpBatchNum; currentBatch++ {
+// StartNextPSSBatch starts the next batch of PSS
+// based on the current batch saved in PssService
+// This function should be called by the DPSS
+// message handlers to start the next batch
+func (service *PssService) StartNextPSSBatch() {
+	if service.currentSecpBatch <= service.secpBatchNum {
+		// secp256K1 key shares
 		// FIXME oldShares needs to be accompanied by the userId
 		var oldShares []sharing.ShamirShare
+		var userIds []string
 		id := service.broker.ChainMethods().GetSelfIndex()
 		// get old shares list of the batch
-		for i := uint(0); i < batchSize; i++ {
-			index := int64(currentBatch*batchSize + i)
-			if index > int64(secpShareNum) {
+		for i := 0; i < BATCHSIZE; i++ {
+			index := service.currentSecpBatch*BATCHSIZE + i
+			if index >= service.secpShareNum {
 				log.WithFields(log.Fields{
 					"type":            "secp256k1",
 					"last index":      index - 1,
-					"total share num": secpShareNum,
+					"total share num": service.secpShareNum,
 				}).Debug("Last share added")
 				break
 			}
-			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.SECP256K1)
+			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(int64(index)), common.SECP256K1)
 			if err != nil {
 				log.Errorf("unable to ertrieve secp256k1 share of index %v: %s", index, err.Error())
 			}
@@ -225,22 +233,49 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 				Value: si.Bytes(),
 			}
 			oldShares = append(oldShares, share)
+
+			// Gather the user ID for this share.
+			keyMapping, err := service.broker.ABCIMethods().RetrieveKeyMapping(
+				*big.NewInt(int64(index)),
+				common.SECP256K1,
+			)
+			if err != nil {
+				log.Errorf("unable to retrieve the key mapping for index %v: %s", index, err)
+			}
+			if len(keyMapping.Verifiers) == 0 {
+				log.Errorf("there is no verifier associated with this index %v", index)
+			}
+			for _, userId := range keyMapping.Verifiers {
+				// Returns the userID from a random verifier. The idea
+				// for now is just take one userID related to the node from a
+				// random verifier.
+				userIds = append(userIds, userId[0])
+				break
+			}
 		}
 
 		if len(oldShares) > 0 {
 			log.WithFields(log.Fields{
 				"type":  "secp256k1",
-				"batch": currentBatch,
+				"batch": service.currentSecpBatch,
 			}).Info("Running DPSS")
 
 			// FIXME placeholder
 			roundDetails := common.PSSRoundDetails{
-				PssID:  common.NewPssID(*big.NewInt(int64(currentBatch))),
-				Dealer: service.pssNode.NodeDetails,
+				PssID:     common.NewPssID(*big.NewInt(int64(service.currentSecpBatch))),
+				Dealer:    service.pssNode.NodeDetails,
+				BatchSize: len(oldShares),
 			}
 
-			// FIXME replace with `oldShares` once it has the right type
 			shares := make([]common.PrivKeyShare, len(oldShares))
+			for i, share := range oldShares {
+				privKeyShare := common.PrivKeyShare{
+					UserIdOwner: userIds[i],
+					Share:       share,
+				}
+
+				shares[i] = privKeyShare
+			}
 
 			// FIXME placeholder
 			ephemeralKeypair := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
@@ -251,7 +286,7 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 				shares,
 				common.SECP256K1,
 				ephemeralKeypair,
-				common.CommitteeParams{N: new_N, K: new_K, T: new_T},
+				common.CommitteeParams{N: int(service.newEpochInfo.N.Int64()), K: int(service.newEpochInfo.K.Int64()), T: int(service.newEpochInfo.T.Int64())},
 			)
 
 			if err != nil {
@@ -260,31 +295,29 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 
 			go service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
 
-			// block until the batch has finished
-			// <-service.batchFinChannel
 			log.WithFields(log.Fields{
 				"type":  "secp256k1",
-				"batch": currentBatch,
+				"batch": service.currentSecpBatch,
 			}).Info("DPSS finished")
+
+			service.currentSecpBatch++
+
 		}
-
-	}
-
-	// ed25519 shares
-	for currentBatch := uint(0); currentBatch < c25519BatchNum; currentBatch++ {
+	} else if service.currentC255Batch <= service.c25519BatchNum {
+		//c25519 key shares
 		var oldShares []sharing.ShamirShare
 		// get old shares list of the batch
-		for i := uint(0); i < batchSize; i++ {
-			index := int64(currentBatch*batchSize + i)
-			if index > int64(c25519ShareNum) {
+		for i := 0; i < BATCHSIZE; i++ {
+			index := service.currentC255Batch*BATCHSIZE + i
+			if index >= service.c25519ShareNum {
 				log.WithFields(log.Fields{
 					"type":            "ed25519",
 					"last index":      index - 1,
-					"total share num": c25519ShareNum,
+					"total share num": service.c25519ShareNum,
 				}).Debug("Last share added")
 				break
 			}
-			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.ED25519)
+			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(int64(index)), common.ED25519)
 			if err != nil {
 				log.Errorf("unable to ertrieve ed25519 share of index %v: %s", index, err.Error())
 			}
@@ -300,26 +333,19 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 
 			log.WithFields(log.Fields{
 				"type":  "ed25519",
-				"batch": currentBatch,
+				"batch": service.currentC255Batch,
 			}).Info("Running DPSS")
 			// Todo: what message to send here?
 			// dacss.NewInitMessage(,oldoldShares,)
-			// block until the batch has finished
-			<-service.batchFinChannel
 			log.WithFields(log.Fields{
 				"type":  "ed25519",
-				"batch": currentBatch,
+				"batch": service.currentC255Batch,
 			}).Info("DPSS finished")
+
+			service.currentSecpBatch++
 		}
 
 	}
-
-}
-
-// Todo add this in dpss flow
-// function to indicate a dpss batch has finished
-func (service *PssService) BatchFinCallBack() {
-	service.batchFinChannel <- struct{}{}
 }
 
 // TODO - same function exists in keygen_node, move both to common

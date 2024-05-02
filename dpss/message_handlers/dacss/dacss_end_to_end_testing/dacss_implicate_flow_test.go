@@ -89,6 +89,23 @@ func TestTriggerImplicateFlow(t *testing.T) {
 		NewCommitteeParams: testSetUp.NewCommitteeParams,
 	}
 
+	//TODO: Probably it's a good idea to Initialize an empty state for all the new and old committee at the beginning of the protocol ie in initHandler??
+	// Initialize the empty state for all the new nodes
+	for _, node := range testSetUp.NewCommitteeNetwork {
+		node.State().AcssStore.UpdateAccsState(
+			acssRoundDetails.ToACSSRoundID(),
+			func(as *common.AccsState) {},
+		)
+	}
+
+	// Initialize the empty state for all the old nodes
+	for _, node := range testSetUp.OldCommitteeNetwork {
+		node.State().AcssStore.UpdateAccsState(
+			acssRoundDetails.ToACSSRoundID(),
+			func(as *common.AccsState) {},
+		)
+	}
+
 	// Send the ProposeMsg to each node in new committee
 	for _, node := range testSetUp.NewCommitteeNetwork {
 		go func(node *testutils.IntegrationTestNode) {

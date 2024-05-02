@@ -52,6 +52,8 @@ func (iterator *Iterator) Value() (val interface{}) {
 	return iterator.Val
 }
 
+// EpochInfo describes the adversarial parameters for the protocol execution in
+// the epoch as well as a reference to the next and previous epochs.
 type EpochInfo struct {
 	Id        big.Int
 	N         big.Int
@@ -1224,6 +1226,14 @@ type PssMethods struct {
 
 func (pm *PssMethods) TriggerPss() error {
 	methodResponse := ServiceMethod(pm.bus, pm.caller, pm.service, "trigger_pss")
+	if methodResponse.Error != nil {
+		return methodResponse.Error
+	}
+	return nil
+}
+
+func (pm *PssMethods) StartNextPSSBatch() error {
+	methodResponse := ServiceMethod(pm.bus, pm.caller, pm.service, "start_next_pss_batch")
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}

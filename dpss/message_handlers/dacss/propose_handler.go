@@ -52,17 +52,14 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer given that the ACSS state is used until the end of the function
 	defer self.State().AcssStore.Unlock()
 
 	// Check whether the shares were already received. If so, ignore the message
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state",
-			},
-		).Error("DACSSProposeMessage: Process")
+		common.LogStateRetrieveError("DacssProposeHanlder", "Process", err)
 	}
 	if found && len(acssState.AcssDataHash) != 0 {
 		log.Debugf("AcssProposeMessage: Shares already received for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
@@ -81,7 +78,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		state.AcssDataHash = acssDataHash
 	})
 	if err != nil {
-		log.Errorf("Error updating AcssData in state: %v", err)
+		common.LogStateUpdateError("ProposeHandler", "Process", common.AcssStateType, err)
 		return
 	}
 
@@ -89,12 +86,6 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 	// If so, send ImplicateExecuteMessage for each stored ImplicateInformation
 	// hbACSS Algorithm 1, line 401 (continued, upon initially receive IMPLICATE, couldn't proceed because of missing data).
 	// Reference https://eprint.iacr.org/2021/159.pdf
-	acssState, _, err = self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-
-	if err != nil {
-		log.Errorf("Error getting the state state: %v", err)
-		return
-	}
 
 	if len(acssState.ImplicateInformationSlice) > 0 {
 		// It is possible to have received multiple implicate messages from different nodes
@@ -115,9 +106,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				implicate.SenderPubkeyHex,
 				msg.Data)
 			if err != nil {
-				log.Errorf("Error creating implicate execute msg in proposeHandler for implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+				common.LogErrorNewMessage("DacssProposeHandler", "Process", ImplicateExecuteMessageType, err)
 				return
 			}
+
 			log.Debugf("Sending NewImplicateExecuteMessage: from=%d", self.Details().Index)
 			go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)
 		}
@@ -203,12 +195,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 
 		// Serialize data
 		msg_bytes, err := bijson.Marshal(msg.Data)
-		log.WithFields(
-			log.Fields{
-				"ACSS Data Bytes": msg_bytes,
-				"Message":         "Bytes of the data created",
-			},
-		).Debug("DACSSProposeMessage: Process")
+		common.LogMarshalError("DacssProposeMessage", "Process", err)
 
 		if err != nil {
 			log.Debugf("error during data serialization of MsgData, err=%s", err)
@@ -226,7 +213,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		}
 
 		//store own share and hash
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 
@@ -234,6 +221,10 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 				state.RBCState.OwnReedSolomonShard = shares[self.Details().Index-1]
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("ProposeHandler", "Process", common.AcssStateType, err)
+			return
+		}
 
 		for _, n := range self.Nodes(msg.NewCommittee) {
 			log.Debugf("Sending echo: from=%d, to=%d", self.Details().Index, n.Index)
@@ -242,7 +233,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 			//"Asynchronous data disemination and applications." Reference https://eprint.iacr.org/2021/777.pdf
 			echoMsg, err := NewDacssEchoMessage(msg.ACSSRoundDetails, shares[n.Index-1], msg_hash, msg.CurveName, msg.NewCommittee)
 			if err != nil {
-				log.WithField("error", err).Error("NewDacssEchoMessage")
+				common.LogErrorNewMessage("DacssProposeHandler", "Process", DacssEchoMessageType, err)
 				return
 			}
 			go self.Send(n, *echoMsg)
@@ -261,7 +252,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		implicateMsg, err := NewImplicateReceiveMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey, msg.Data)
 
 		if err != nil {
-			log.WithField("error constructing ImplicateMsg", err).Error("ImplicateReceiveMessage")
+			common.LogErrorNewMessage("DacssProposeHandler", "Process", ImplicateReceiveMessageType, err)
 			return
 		}
 

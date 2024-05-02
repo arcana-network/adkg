@@ -60,7 +60,8 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 	)
 	assert.Nil(t, err)
 	testMsg.Process(senderNode.Details(), senderNode)
-	time.Sleep(2 * time.Second)
+
+	senderNode.Transport().WaitForBroadcastSent(1)
 
 	assert.Equal(t, 1, len(senderNode.Transport().GetBroadcastedMessages()))
 
@@ -129,7 +130,8 @@ func TestInvalidShares(t *testing.T) {
 
 	testPublicMsg.Process(senderNode.Details(), senderNode)
 
-	// Wait for all the expected messages to be received
+	// Given that there is no sent message, we cannot use the signal/channel
+	// strategy. We need to wait.
 	time.Sleep(2 * time.Second)
 
 	//No msg is send
@@ -175,10 +177,11 @@ func TestNotEnoughShares(t *testing.T) {
 
 	testPublicMsg.Process(senderNode.Details(), senderNode)
 
-	// Wait for all the expected messages to be received
+	// Given that there is no sent message, we cannot use the signal/channel
+	// strategy. We need to wait.
 	time.Sleep(2 * time.Second)
 
-	//No msg is send
+	// No msg is send
 	assert.Equal(t, 0, len(senderNode.Transport().GetSentMessages()))
 
 }

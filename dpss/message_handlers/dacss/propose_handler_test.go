@@ -30,16 +30,36 @@ func TestProcessProposeMessage(t *testing.T) {
 
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
 
+	// Create the state for the node in the new committee.
+	SingleOldNode.State().AcssStore.UpdateAccsState(
+		msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
+
 	// Call the process on the msg
 	go msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
-	time.Sleep(2 * time.Second)
+
+	// Wait for all the messages in the old committee to be sent. There must
+	// be N_old of them.
+	transport.WaitForMessagesSent(defaultSetup.OldCommitteeParams.N)
 
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), defaultSetup.OldCommitteeParams.N)
 
 	msgNewCommittee := getTestValidProposeMsg(singleNewNode, defaultSetup, true)
+
+	// Create the state for the node in the old committe.
+	singleNewNode.State().AcssStore.UpdateAccsState(
+		msgNewCommittee.ACSSRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
+
 	go msgNewCommittee.Process(singleNewNode.Details(), singleNewNode)
-	time.Sleep(2 * time.Second)
+
+	// Wait for all the messages in the new committee to be sent. There must be
+	// N_new of them. We check for N_new and not for N_new + N_old because the
+	// previous call to the WaitForMessageSent consumes the first N_old messages.
+	transport.WaitForMessagesSent(defaultSetup.NewCommitteeParams.N)
 
 	sent_msg = transport.GetSentMessages()
 
@@ -52,10 +72,10 @@ func TestProcessProposeMessage(t *testing.T) {
 
 	//check states update correctly
 	acssState, _, _ := SingleOldNode.State().AcssStore.Get(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID())
-	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
+	assert.Equal(t, 0, len(acssState.ImplicateInformationSlice))
 
 	acssState, _, _ = singleNewNode.State().AcssStore.Get(msgNewCommittee.ACSSRoundDetails.ToACSSRoundID())
-	assert.Equal(t, len(acssState.ImplicateInformationSlice), 0)
+	assert.Equal(t, 0, len(acssState.ImplicateInformationSlice))
 }
 
 // Test for invalid share
@@ -65,9 +85,16 @@ func TestInvalidShare(t *testing.T) {
 
 	//invalid msg construction
 	SingleOldNode := defaultSetup.GetSingleOldNodeFromTestSetup()
+
 	transport := SingleOldNode.Transport()
 
 	msgOldCommittee := getTestValidProposeMsg(SingleOldNode, defaultSetup, false)
+
+	// Create the state for the old node.
+	SingleOldNode.State().AcssStore.UpdateAccsState(
+		msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
 
 	//constructing an invalid share for node0
 	X := SingleOldNode.Details().PubKey.X
@@ -85,7 +112,10 @@ func TestInvalidShare(t *testing.T) {
 	// Call the process on the msg
 	// should send an implicate
 	msgOldCommittee.Process(SingleOldNode.Details(), SingleOldNode)
-	time.Sleep(10 * time.Second)
+
+	// We wait until all the messages are sent.
+	transport.WaitForMessagesSent(defaultSetup.OldCommitteeParams.N)
+
 	sent_msg := transport.GetSentMessages()
 
 	for i := 0; i < defaultSetup.OldCommitteeParams.N; i++ {
@@ -113,6 +143,9 @@ func TestSenderNotEqualToDealer(t *testing.T) {
 	// Call the process on the msg
 	// should trigger an early return since dealer != sender
 	msgOldCommittee.Process(node1.Details(), node0)
+
+	// We can not use the signal channel strategy here vecause there is no sent
+	// message. So we need to wait.
 	time.Sleep(2 * time.Second)
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), 0)
@@ -138,7 +171,11 @@ func TestShareAlreadyReceived(t *testing.T) {
 
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
+
+	// We can not use the signal channel strategy here vecause there is no sent
+	// message. So we need to wait.
 	time.Sleep(100 * time.Millisecond)
+
 	//shold trigger an early return
 	sent_msg := transport.GetSentMessages()
 	assert.Equal(t, len(sent_msg), 0)
@@ -197,7 +234,9 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 
 	// Call the process on the msg
 	msgOldCommittee.Process(node0.Details(), node1)
-	time.Sleep(10 * time.Second)
+
+	transport.WaitForMessagesReceived(1)
+
 	// Check: Node should send itself 2 implicateExecuteMessages
 	sent_msgs := transport.ReceivedMessages
 	implicateExecuteMessages := []common.PSSMessage{}

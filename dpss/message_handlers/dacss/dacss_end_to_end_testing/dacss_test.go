@@ -61,6 +61,27 @@ func TestDacss(t *testing.T) {
 				Data:            pssMsgData,
 			}
 
+			acssRound := common.ACSSRoundDetails{
+				PSSRoundDetails: initMsg.PSSRoundDetails,
+				ACSSCount:       0,
+			}
+
+			// Initialize the empty state for all the old nodes
+			for _, node := range nodesOld {
+				node.State().AcssStore.UpdateAccsState(
+					acssRound.ToACSSRoundID(),
+					func(as *common.AccsState) {},
+				)
+			}
+
+			// Initialize the empty state for all the new nodes
+			for _, node := range nodesNew {
+				node.State().AcssStore.UpdateAccsState(
+					acssRound.ToACSSRoundID(),
+					func(as *common.AccsState) {},
+				)
+			}
+
 			//store the init msg for testing
 			initMessages.Store(node.Details().GetNodeDetailsID(), initMsg)
 

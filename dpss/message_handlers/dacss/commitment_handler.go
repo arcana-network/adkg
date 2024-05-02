@@ -42,10 +42,6 @@ func NewDacssCommitmentMessage(
 
 	bytes, err := bijson.Marshal(m)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"Error":   err,
-			"Message": "Error while converting the message into bytes",
-		}).Error("DACSSCommitmentMessage: NewDacssCommitmentMessage")
 		return nil, err
 	}
 
@@ -71,25 +67,17 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 	).Debug("DacssCommitmentMessage: Process")
 
 	self.State().AcssStore.Lock()
+
+	// Use defer because the state is needed until the end of the function.
 	defer self.State().AcssStore.Unlock()
 
 	state, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state of the node.",
-			},
-		).Error("DACSSCommitmentMessage: Process")
+		common.LogStateRetrieveError("DacssCommitmentHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "State not found",
-			},
-		).Error("DACSSCommitmentMessage: Process")
+		common.LogStateNotFoundError("DacssCommitmentHandler", "Process", found)
 		return
 	}
 
@@ -107,7 +95,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 
 	// Mark that the sender already sent its commitments and increase the count
 	// for the received commitment.
-	self.State().AcssStore.UpdateAccsState(
+	err = self.State().AcssStore.UpdateAccsState(
 		msg.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.ReceivedCommitments[sender.Index] = true
@@ -115,6 +103,10 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 			state.CommitmentCount[commitmentStrEncoding]++
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// If the RBC hasn't ended, we should not do the check afterwards
 	if state.RBCState.Phase == common.Ended {
@@ -123,12 +115,16 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		if found {
 			// Computes the hash of the own commitment
 			if commitmentHexHash == state.OwnCommitmentsHash {
-				self.State().AcssStore.UpdateAccsState(
+				err = self.State().AcssStore.UpdateAccsState(
 					msg.ACSSRoundDetails.ToACSSRoundID(),
 					func(state *common.AccsState) {
 						state.ValidShareOutput = true
 					},
 				)
+				if err != nil {
+					common.LogStateUpdateError("CommitmentHandler", "Process", common.AcssStateType, err)
+					return
+				}
 
 				log.WithFields(
 					log.Fields{

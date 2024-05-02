@@ -124,12 +124,7 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 		msg.CurveName,
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error while creating the reconstruction message",
-			},
-		).Error("HIMMessageHandler: Process")
+		common.LogErrorNewMessage("DpssHimHandler", "Process", PreprocessBatchRecMessageType, err)
 	}
 
 	go self.Send(self.Details(), *reconstructionMsg)

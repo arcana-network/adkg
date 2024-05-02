@@ -69,11 +69,13 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the ACSS state is used until the end of the protocol.
 	defer self.State().AcssStore.Unlock()
 
 	acssState, isStored, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithField("error", err).Error("DacssEchoMessage - Process()")
+		common.LogStateRetrieveError("DacssEchoMessage", "Process", err)
 		return
 	}
 	if isStored {
@@ -91,7 +93,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	// If the ECHO message has been not received, then update the received ECHO
 	// and increase the counter.
 	// In case the node didn't have state for this acssRound, it will initiate one
-	self.State().AcssStore.UpdateAccsState(
+	err = self.State().AcssStore.UpdateAccsState(
 		m.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.RBCState.ReceivedEcho[sender.Index] = true
@@ -104,13 +106,20 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			echoStore.Count++
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("EchoHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	_, _, t := self.Params()
 
-	acssState, _, err = self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
+	acssState, found, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.WithField("error", err).Error("DacssEchoMessage - Process()")
+		common.LogStateRetrieveError("DacssEchoMessage", "Process", err)
 		return
+	}
+	if !found {
+		common.LogStateNotFoundError("DacssEchoMessage", "Proces", found)
 	}
 	// This deals with Line 11 of the RBC protocol. If the ECHO count for the
 	// received message is 2t + 1, then send the READY message.
@@ -123,15 +132,20 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	if msgRegistry.Count >= 2*t+1 && !acssState.RBCState.IsReadyMsgSent {
 		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, m.Share, m.Hash, m.CurveName)
 		if err != nil {
-			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("EchoHandler", "Process", common.AcssStateType, err)
+			return
+		}
+
 		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 
@@ -140,15 +154,20 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	if acssState.RBCState.CountReady() >= t+1 && msgRegistry.Count >= t+1 {
 		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgRegistry.Shard, m.Hash, m.CurveName)
 		if err != nil {
-			log.WithField("error", err).Error("DacssEchoMessage - Process()")
+			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("EchoHandler", "Process", common.AcssStateType, err)
+			return
+		}
+
 		go self.Broadcast(self.IsNewNode(), *readyMsg)
 	}
 }

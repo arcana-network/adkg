@@ -48,7 +48,7 @@ type KeygenDecision struct {
 	Nodes []int `json:"nodes"`
 }
 
-type DpssFinDecision struct {
+type FinDecision struct {
 	Nodes []int `json:"nodes"`
 }
 
@@ -102,7 +102,11 @@ type State struct {
 	KeygenPubKeys                  map[string]KeygenPubKey      `json:"keygen_pubkeys"`
 	ConsecutiveFailedPubKeyAssigns uint                         `json:"consecutive_failed_pubkey_assigns"`
 	C25519State                    C25519State                  `json:"c25519_state"`
-	DpssFinDecisions               map[string]DpssFinDecision   `json:"dpss_fin_decisions"`
+	//TODO - BatchFinDecisions and DpssFinDecisions are very similar, consider merging both
+	// to vote on wheter a batch has finished
+	BatchFinDecisions map[string]FinDecision `json:"batch_fin_decisions"`
+	// to vote on whether every batch has finished
+	DpssFinDecisions map[string]FinDecision `json:"dpss_fin_decisions"`
 }
 
 func (state *State) KeyAvailable(curve common.CurveName) bool {
@@ -142,7 +146,8 @@ func (a *ABCI) NewABCI(broker *common.MessageBroker) *ABCI {
 				LastCreatedIndex:    0,
 				LastUnassignedIndex: 0,
 			},
-			DpssFinDecisions: make(map[string]DpssFinDecision),
+			BatchFinDecisions: make(map[string]FinDecision),
+			DpssFinDecisions:  make(map[string]FinDecision),
 		}
 		abci.info = &AppInfo{
 			Height: 0,

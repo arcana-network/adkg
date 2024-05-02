@@ -105,6 +105,11 @@ func TestReceiveThresholdShareRecoveryMsgs(t *testing.T) {
 	// Check: bool ValidShareOutput should be valid & len VerifiedRecoveryShares should t+1
 	assert.True(t, acssState.ValidShareOutput)
 	assert.True(t, len(acssState.VerifiedRecoveryShares) == param_t+1)
+
+	receiver.Transport().WaitForBroadcastSent(1)
+	broadcastedMsg := receiver.Transport().BroadcastedMessages
+	//should broadcast the commit msg to the new committee
+	assert.Equal(t, len(broadcastedMsg), 1)
 }
 
 /*

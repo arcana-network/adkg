@@ -57,12 +57,14 @@ Steps:
 func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the state is used until the end of the function.
 	defer self.State().AcssStore.Unlock()
 
 	// First check whether the sharemap for this acss round has already been stored
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
 	if err != nil {
-		log.Errorf("Error retrieving ACSS state in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		common.LogStateRetrieveError("ImplicateReceiveMessage", "Process", err)
 		return
 	}
 
@@ -89,7 +91,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,
 				Proof:           msg.Proof,
@@ -98,11 +100,15 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			}
 			state.ImplicateInformationSlice = append(state.ImplicateInformationSlice, implicateInformation)
 		})
+		if err != nil {
+			common.LogStateUpdateError("ImpricateReceiveHandler", "Process", common.AcssStateType, err)
+			return
+		}
 	} else {
 		// If the have the shareMap Implicate flow can continue; Send ImplicateExecuteMessage
 		implicateExecuteMessage, err := NewImplicateExecuteMessage(msg.ACSSRoundDetails, msg.CurveName, msg.SymmetricKey, msg.Proof, senderPubkeyHex, msg.AcssData)
 		if err != nil {
-			log.Errorf("Error creating implicate execute msg in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			common.LogErrorNewMessage("ImplicateReceiveMessage", "Process", ImplicateExecuteMessageType, err)
 			return
 		}
 		go self.ReceiveMessage(self.Details(), *implicateExecuteMessage)

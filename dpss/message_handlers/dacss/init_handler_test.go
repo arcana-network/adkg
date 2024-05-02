@@ -40,11 +40,12 @@ func TestProcessInitMessage(test *testing.T) {
 
 	go msg.Process(testDealer.Details(), testDealer)
 
-	// Wait a bit until all the goroutines are finished.
-	time.Sleep(time.Second)
+	realRecvMsgAmmount := N_SECRETS / (n - 2*t)
+
+	// Wait for the messages to be sent.
+	transport.WaitForMessagesSent(realRecvMsgAmmount)
 
 	recvMsgAmmount := len(transport.GetSentMessages())
-	realRecvMsgAmmount := N_SECRETS / (n - 2*t)
 	assert.Equal(test, realRecvMsgAmmount, recvMsgAmmount)
 }
 
@@ -73,7 +74,8 @@ func TestNewInitMessage(test *testing.T) {
 	}
 
 	var createdInitMsg InitMessage
-	bijson.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+	err = bijson.Unmarshal(createdMsgBytes.Data, &createdInitMsg)
+	assert.Nil(test, err)
 
 	// Asserts that the values are the same
 	assert.Equal(test, msg.PSSRoundDetails, createdInitMsg.PSSRoundDetails)
@@ -103,7 +105,8 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 
 	go msg.Process(testDealer.Details(), testDealer)
 
-	// Wait a bit until all the goroutines are finished.
+	// Wait a bit until all the goroutines are finished. We use time here
+	// because no message is sent.
 	time.Sleep(time.Second)
 
 	// The party should not send any message

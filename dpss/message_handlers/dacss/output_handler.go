@@ -59,6 +59,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Using defer because the ACSS state is being used until the end.
 	defer self.State().AcssStore.Unlock()
 
 	// Retrieves the state.
@@ -66,20 +68,11 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		m.AcssRoundDetails.ToACSSRoundID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state of the node.",
-			},
-		).Error("DACSSOutputMessage: Process")
+		common.LogStateRetrieveError("DacssOutputMessage", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Message": "The state was not found",
-			},
-		).Error("DACSSOutputMessage: Process")
+		common.LogStateNotFoundError("DacssOutputMessage", "Process", found)
 		return
 	}
 
@@ -167,7 +160,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		log.Debugf("acss_verified: share=%v", *share)
 
 		// Set the state to reflect that RBC has ended.
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.Phase = common.Ended
@@ -185,6 +178,10 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				)
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("OutputHandler", "Process", common.AcssStateType, err)
+			return
+		}
 
 		commitmentMsg, err := NewDacssCommitmentMessage(
 			m.AcssRoundDetails,
@@ -192,21 +189,21 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			verifier.Commitments[0],
 		)
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "error while creating the commitment message",
-				},
-			).Error("DacssOutputMessage: Process")
+			common.LogErrorNewMessage("DacssOutputMessage", "Process", DacssCommitmentMessageType, err)
 			return
 		}
 
-		self.State().AcssStore.UpdateAccsState(
+		err = self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.CommitmentSent = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("OutputHandler", "Process", common.AcssStateType, err)
+			return
+		}
+
 		go self.Broadcast(!self.IsNewNode(), *commitmentMsg)
 
 		// We need to check if the conditions for the commitment handler hold here
@@ -216,12 +213,16 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		if found {
 			// Computes the hash of the own commitment
 			if commitmentHexHash == state.OwnCommitmentsHash {
-				self.State().AcssStore.UpdateAccsState(
+				err = self.State().AcssStore.UpdateAccsState(
 					m.AcssRoundDetails.ToACSSRoundID(),
 					func(state *common.AccsState) {
 						state.ValidShareOutput = true
 					},
 				)
+				if err != nil {
+					common.LogStateUpdateError("OutputHandler", "Process", common.AcssStateType, err)
+					return
+				}
 
 				log.WithFields(
 					log.Fields{

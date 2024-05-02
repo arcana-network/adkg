@@ -45,11 +45,20 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	}
 
 	self.State().AcssStore.Lock()
+
+	// Given that the state is used in the last "if" statement of the function
+	// it is better to hold the lock until the end of the function and not
+	// unlocking it inside the if.
 	defer self.State().AcssStore.Unlock()
 
 	// Retrieve the ACSS state for the specific ACSS round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found {
+	if err != nil {
+		common.LogStateRetrieveError("ShareRecoveryHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ShareRecoveryHandler", "Process", found)
 		return
 	}
 
@@ -59,9 +68,13 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	}
 
 	// Set in the Node's state that we're in ShareRecovery phase
-	self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ShareRecoveryOngoing = true
 	})
+	if err != nil {
+		common.LogStateUpdateError("ShareRecoveryHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// If the current node already has *output* a valid share,
 	// send ReceiveShareRecoveryMessage to the other nodes
@@ -91,7 +104,7 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 
 		receiveShareRecoveryMsg, err := NewReceiveShareRecoveryMessage(msg.ACSSRoundDetails, msg.CurveName, symmetricKey.ToAffineCompressed(), proof, msg.AcssData)
 		if err != nil {
-			log.Errorf("Error in creating ReceiveShareRecoveryMessage for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+			common.LogErrorNewMessage("ShareRecoverHandler", "Process", ShareRecoveryMessageType, err)
 			return
 		}
 

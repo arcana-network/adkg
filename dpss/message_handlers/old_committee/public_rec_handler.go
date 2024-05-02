@@ -43,6 +43,9 @@ func NewPublicRecMsg(
 
 func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	self.State().BatchReconStore.Lock()
+
+	// Holding the lock until the end given that the Batch Rec. store is
+	// accessed until the end of the function.
 	defer self.State().BatchReconStore.Unlock()
 
 	// Check if there are at least T + t = n - t shares received
@@ -50,21 +53,11 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error trying to retrieve the batch reconstruction state",
-			},
-		).Error("PublicRecMsg: Process")
+		common.LogStateRetrieveError("PublicRecHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "There is no state associated with the provided ID",
-			},
-		).Error("PublicRecMsg: Process")
+		common.LogStateNotFoundError("PublicRecHandler", "Process", found)
 		return
 	}
 
@@ -82,12 +75,16 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	}
 
 	// Store the reconstructedU in the local state.
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.ReconstructedUStore[sender.Index] = share
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PublicRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	ReconstructedUCount := recState.CountReconstructedReceivedU()
 
@@ -145,24 +142,41 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		self.State().ShareStore.Unlock()
 
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error constructiong local Reconstruction msg",
-				},
-			).Error("PublicRecMsg: Process")
+			common.LogErrorNewMessage("PublicRecHandler", "Process", LocalComputationMessageType, err)
 			return
 		}
 
-		self.State().BatchReconStore.UpdateBatchRecState(
+		err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentLocalCompMsg = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("PublicRecHandler", "Process", common.BatchRecStateType, err)
+			return
+		}
 
 		// Broadcast to the new committee
 		go self.Broadcast(true, *localComputationMsg)
+
+		// Clear the state before starting the new batch
+		err = self.State().Clean(msg.DPSSBatchRecDetails.PSSRoundDetails)
+		if err != nil {
+			log.WithFields(
+				log.Fields{
+					"Message": "error while cleanning the state",
+					"Error":   err,
+				},
+			).Error("PublicRecMsgHandler: Process")
+			return
+		}
+
+		// starting the next batch
+		messageBroker := self.GetMessageBroker()
+		if messageBroker != nil {
+			messageBroker.PssMethods().StartNextPSSBatch()
+		}
 
 	}
 }

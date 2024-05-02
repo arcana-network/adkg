@@ -59,7 +59,7 @@ func TestProcessReadyMessage(test *testing.T) {
 		readyMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	receiverNode.Transport().WaitForBroadcastSent(1)
 
 	broadcastedMsg := receiverNode.Transport().BroadcastedMessages
 
@@ -130,6 +130,9 @@ func TestLateEchoAfterReady(test *testing.T) {
 		}
 		readyMsg.Process(senderGroup[i].Details(), receiverNode)
 	}
+
+	// Here we can not use the strategy of signals and channels because no
+	// message is sent, therefore, we need to wait.
 	time.Sleep(100 * time.Millisecond)
 
 	// Test that no broadcast has been sent because there are t + 1 ECHO
@@ -153,7 +156,8 @@ func TestLateEchoAfterReady(test *testing.T) {
 		echoMsg.Hash,
 		echoMsg.Share,
 	)
-	time.Sleep(100 * time.Millisecond)
+
+	receiverNode.Transport().WaitForBroadcastSent(1)
 
 	assert.Equal(test, 1, len(receiverNode.Transport().BroadcastedMessages))
 	assert.Equal(test, t+1, msgInfo.Count)
@@ -207,7 +211,10 @@ func TestGoingToOutputHandler(test *testing.T) {
 		}
 		readyMsg.Process(senderNode.Details(), receiverNode)
 	}
-	time.Sleep(100 * time.Millisecond)
+
+	// Wait fot the output message sent when the party receives 2t + 1 ready
+	// messages.
+	receiverNode.Transport().WaitForMessagesSent(1)
 
 	_, _, t := receiverNode.Params()
 	assert.Equal(test, 2*t+1, len(stateReceiver.RBCState.ReadyMsgShards))
@@ -294,6 +301,9 @@ func TestRepeatedReadyMessages(test *testing.T) {
 		}
 		readyMsg.Process(senderNode.Details(), receiverNode)
 	}
+
+	// Here no message is sent so we cannot use the chanel/signal strategy. We
+	// need to wait for the process to finish.
 	time.Sleep(100 * time.Millisecond)
 
 	assert.Equal(test, 1, len(stateReceiver.RBCState.ReadyMsgShards))

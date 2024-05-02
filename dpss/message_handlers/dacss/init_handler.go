@@ -67,6 +67,8 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 
 	// Store the old shares in the local database
 	self.State().ShareStore.Lock()
+
+	// Using defer because the state is accessed until the end of the function.
 	defer self.State().ShareStore.Unlock()
 
 	self.State().ShareStore.Initialize(len(msg.OldShares))
@@ -77,7 +79,6 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	// Step 101: Sample B / (n - 2t) random elements.
 	nNodes, _, recThreshold := self.Params()
 
-	// testing is done for 1 share(+1 added)
 	nGenerations := int(math.Ceil(float64(len(msg.OldShares)) / float64((nNodes - 2*recThreshold))))
 	for i := range nGenerations {
 		r := curve.Scalar.Random(rand.Reader)
@@ -94,12 +95,13 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 			},
 		)
 		if err != nil {
-			log.Errorf("initMsg: error getting state: %v", err)
+			common.LogStateUpdateError("InitHandler", "Process", common.AcssStateType, err)
 			return
 		}
 
 		msg, err := NewDualCommitteeACSSShareMessage(r, self.Details(), acssRoundDetails, curve, msg.EphemeralSecretKey, msg.EphemeralPublicKey, msg.NewCommitteeParams)
 		if err != nil {
+			common.LogErrorNewMessage("InitMessageHandler", "Process", ShareMessageType, err)
 			return
 		}
 		//NOTE: since the msg is sent to self, we can keep the EmephemeralKeypair in the msg

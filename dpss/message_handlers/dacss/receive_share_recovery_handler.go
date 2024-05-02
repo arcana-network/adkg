@@ -53,11 +53,26 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	}
 
 	receiver.State().AcssStore.Lock()
+
+	// Holding the lock until the end given that the ACSS state is accessed
+	// until the end of the function.
 	defer receiver.State().AcssStore.Unlock()
 
 	acssState, found, err := receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
-		log.Errorf("No acssState found in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+	if err != nil {
+		common.LogStateRetrieveError("ReceiveShareRecoveryHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ReceiveShareRecoveryHandler", "Process", found)
+		return
+	}
+	if len(acssState.AcssDataHash) == 0 {
+		log.WithFields(
+			log.Fields{
+				"Message": "the ACSS data hash is empty",
+			},
+		).Error("ReceiveShareRecoveryHandler: Process")
 		return
 	}
 
@@ -67,8 +82,12 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		return
 	}
 
-	// TODO add: if state.VerifiedRecoveryShares[sender.Index] != nil, ignore the message
+	// if state.VerifiedRecoveryShares[sender.Index] != nil, ignore the message
 	// we've already received and processed the share from that node
+	if acssState.VerifiedRecoveryShares[sender.Index] != nil {
+		log.Debugf("already received and processed the share from %v node", sender.Index)
+		return
+	}
 
 	// Hash the received acssData
 	hash, err := common.HashAcssData(msg.AcssData)
@@ -133,7 +152,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	commitments := msg.AcssData.Commitments
 
 	// Check Predicate for share
-	shamirShare_j, _, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
+	shamirShare_j, verifier, verified := sharing.Predicate(K_j_d, share_j, commitments, k, common.CurveFromName(msg.CurveName))
 
 	// If the predicate doesn't check out, we can't store the share
 	if !verified {
@@ -142,31 +161,30 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	}
 
 	// Store the obtained share
-	receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.VerifiedRecoveryShares[sender.Index] = shamirShare_j
 	})
+	if err != nil {
+		common.LogStateUpdateError("ReceiveShareRecoveryHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// If node has received >= t+1 verified shares: interpolate and output
 	// At this point we already know the acssState exists
-	acssState, _, err = receiver.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error retrieving the state",
-			},
-		).Error("DACSSReceiveShareRecoveryHandler: Process")
-		return
-	}
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
 		//once the threshold is reached, update the state
-		receiver.State().AcssStore.UpdateAccsState(
+		err = receiver.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.ValidShareOutput = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("ReceiveShareRecoveryHandler", "Process", common.AcssStateType, err)
+			return
+		}
+
 		shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 		if err != nil {
 			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
@@ -197,12 +215,28 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		}
 
 		// When finished, save the share + set RBC phase to ended
-		receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			state.ReceivedShare = shareForNode
 			state.RBCState.Phase = common.Ended
 		})
+		if err != nil {
+			common.LogStateUpdateError("ReceiveShareRecoveryHandler", "Process", common.AcssStateType, err)
+			return
+		}
 
-		// TODO add sending commit msg
+		// commit msg
+		commitmentMsg, err := NewDacssCommitmentMessage(
+			msg.ACSSRoundDetails,
+			msg.CurveName,
+			verifier.Commitments[0],
+		)
+
+		if err != nil {
+			common.LogErrorNewMessage("ReceiveShareRecoveryMessage", "Process", DacssCommitmentMessageType, err)
+			return
+		}
+
+		go receiver.Broadcast(!receiver.IsNewNode(), *commitmentMsg)
 	}
 
 }

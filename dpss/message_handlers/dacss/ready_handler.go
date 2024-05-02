@@ -58,13 +58,15 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	log.Debugf("Received Ready message from sender=%d on %d", sender.Index, p.Details().Index)
 
 	p.State().AcssStore.Lock()
+
+	// Using defer given that  the state is used until the end of the function.
 	defer p.State().AcssStore.Unlock()
 
 	// Get state from node
 	state, found, err := p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
 
 	if err != nil {
-		log.WithField("error", err).Error("DacssReadyMessage - Process()")
+		common.LogStateRetrieveError("DacssReadyHandler", "Process", err)
 		return
 	}
 
@@ -79,7 +81,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	}
 
 	// Adds this share to the list of READY message shards.
-	p.State().AcssStore.UpdateAccsState(
+	err = p.State().AcssStore.UpdateAccsState(
 		m.AcssRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.RBCState.ReadyMsgShards = append(
@@ -88,6 +90,10 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			)
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("ReadyHandler", "Process", common.AcssStateType, err)
+		return
+	}
 
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
@@ -116,16 +122,20 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			readyMsg, err := NewDacssReadyMessage(m.AcssRoundDetails, echoInfo.Shard, echoInfo.HashMessage, m.CurveName)
 
 			if err != nil {
-				log.WithField("error", err).Error("DacssReadyMessage - Process()")
+				common.LogErrorNewMessage("DacssReadyMessageHandler", "Propose", AcssReadyMessageType, err)
 				return
 			}
 
-			p.State().AcssStore.UpdateAccsState(
+			err = p.State().AcssStore.UpdateAccsState(
 				m.AcssRoundDetails.ToACSSRoundID(),
 				func(state *common.AccsState) {
 					state.RBCState.IsReadyMsgSent = true
 				},
 			)
+			if err != nil {
+				common.LogStateUpdateError("ReadyHandler", "Process", common.AcssStateType, err)
+				return
+			}
 
 			go p.Broadcast(p.IsNewNode(), *readyMsg)
 		}
@@ -153,7 +163,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 				outputMsg, err := NewDacssOutputMessage(m.AcssRoundDetails, rbcMsg, m.CurveName)
 
 				if err != nil {
-					log.WithField("error", err).Error("unable to create DacssOutputMessage")
+					common.LogErrorNewMessage("DacssOutputHandler", "Process", DacssOutputMessageType, err)
 					return
 				}
 				go p.Send(p.Details(), *outputMsg)

@@ -43,34 +43,31 @@ func NewPrivateRecMsg(
 
 func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	self.State().BatchReconStore.Lock()
+
+	// Holding the lock until the end of the function because the Batch Rec.
+	// state is being used until the end of the function.
 	defer self.State().BatchReconStore.Unlock()
 
 	// Initialize state here if it is not initialized in the InitHanlder
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err := self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(s *common.BatchRecState) {},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	// Check if there are at least d + t + 1 = 2t + 1 shares received
 	recState, found, err := self.State().BatchReconStore.Get(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 	)
 	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "Error trying to retrieve the batch reconstruction state",
-			},
-		).Error("PrivateRecMsg: Process")
+		common.LogStateRetrieveError("PrivateRecHandler", "Process", err)
 		return
 	}
 	if !found {
-		log.WithFields(
-			log.Fields{
-				"Found":   found,
-				"Message": "There is no state associated with the provided ID",
-			},
-		).Error("PrivateRecMsg: Process")
+		common.LogStateNotFoundError("PrivateRecHandler", "Process", found)
 		return
 	}
 
@@ -88,12 +85,16 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	}
 
 	// Store the share in the local state.
-	self.State().BatchReconStore.UpdateBatchRecState(
+	err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.UStore[sender.Index] = share
 		},
 	)
+	if err != nil {
+		common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+		return
+	}
 
 	countU := recState.CountReceivedU()
 	_, _, t := self.Params()
@@ -132,21 +133,20 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			reconstructedU.Bytes(),
 		)
 		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"Error":   err,
-					"Message": "Error constructiong Public Reconstruction msg",
-				},
-			).Error("PrivateRecMsg: Process")
+			common.LogErrorNewMessage("PrivateRecHandler", "Process", PublicRecMessageType, err)
 			return
 		}
 
-		self.State().BatchReconStore.UpdateBatchRecState(
+		err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentPubMsg = true
 			},
 		)
+		if err != nil {
+			common.LogStateUpdateError("PrivateRecHandler", "Process", common.BatchRecStateType, err)
+			return
+		}
 
 		// Broadcast to the old committee
 		go self.Broadcast(false, *publicReconstructMsg)

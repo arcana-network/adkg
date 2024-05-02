@@ -228,3 +228,8 @@ func (node *PSSNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 func (node *PSSNode) State() *common.PSSNodeState {
 	return node.state
 }
+
+// Returns the messageBroker
+func (node *PSSNode) GetMessageBroker() *common.MessageBroker {
+	return node.Broker()
+}

@@ -65,12 +65,19 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	}
 
 	self.State().AcssStore.Lock()
-	defer self.State().AcssStore.Unlock()
 
 	// At this point we should have the ACSS data hash for this acss round
 	acssState, found, err := self.State().AcssStore.Get(msg.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil || !found || len(acssState.AcssDataHash) == 0 {
-		log.Errorf("Couldn't obtain AcssDataHash in Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
+	if err != nil {
+		common.LogStateRetrieveError("ImplicateExecuteHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ImplicateExecuteHandler", "Process", found)
+		return
+	}
+	if len(acssState.AcssDataHash) == 0 {
+		log.Errorf("The ACSS data hash is empty in round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
 
@@ -92,6 +99,8 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 		log.Errorf("Received shareMap is incorrect for Implicate flow for ACSS round %s", msg.ACSSRoundDetails.ToACSSRoundID())
 		return
 	}
+
+	self.State().AcssStore.Unlock()
 
 	curve := common.CurveFromName(msg.CurveName)
 
@@ -156,7 +165,7 @@ func (msg *ImplicateExecuteMessage) Process(sender common.NodeDetails, self comm
 	// send ShareRecoveryMsg to self
 	recoveryMsg, err := NewShareRecoveryMessage(msg.ACSSRoundDetails, msg.AcssData)
 	if err != nil {
-		log.Errorf("Error in creating ShareRecoveryMsg, Implicate - ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
+		common.LogErrorNewMessage("ImplicateExecuteHandler", "Process", ShareRecoveryMessageType, err)
 		return
 	}
 	go self.ReceiveMessage(self.Details(), *recoveryMsg)

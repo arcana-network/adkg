@@ -43,7 +43,19 @@ type PSSParticipant interface {
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
+
+	// Broker needed to start the next batch of DPSS
+	// In all the Test Nodes it is mocked to simply return nil
+	// In the PSSNode, it returns the MessageBroker
+	GetMessageBroker() *MessageBroker
 }
+
+// Constants for state naming. Used for loging.
+const (
+	AcssStateType     = "ACSS"
+	BatchRecStateType = "BatchRec"
+	RbcStateType      = "RBC"
+)
 
 // PSSNodeState represents the internal state of a node that participates in
 // possibly multiple DPSS protocol. There is an storage for the different
@@ -52,6 +64,55 @@ type PSSNodeState struct {
 	AcssStore       *AcssStateMap     // State for the separate ACSS rounds
 	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
 	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
+}
+
+// Clean completely cleans the state of a node for a given PSSRound.
+func (state *PSSNodeState) Clean(pssRound PSSRoundDetails) error {
+	err := cleanMap(&state.AcssStore.AcssStateForRound, pssRound, Delimiter1)
+	if err != nil {
+		return err
+	}
+
+	err = cleanMap(&state.BatchReconStore.BatchReconStateForRound, pssRound, Delimiter2)
+	if err != nil {
+		return err
+	}
+
+	state.ShareStore.NewShares = make([]curves.Scalar, 0)
+	state.ShareStore.OldShares = make([]PrivKeyShare, 0)
+
+	return nil
+}
+
+// cleanMap removes the entries of the syncMap that contains the given PSSRoundDetails
+// as part of the key, which is separated with the given delimiter.
+func cleanMap(mapStore *sync.Map, pssRound PSSRoundDetails, delimiter string) error {
+	var err error
+	mapStore.Range(
+		func(key, value any) bool {
+			// Parses the key into PSSRoundDetails || AcssCount.
+			keyAcssRoundID := key.(ACSSRoundID)
+			splittedKey := strings.Split(
+				string(keyAcssRoundID), delimiter,
+			)
+
+			if len(splittedKey) != 2 {
+				err = errors.New("the split process was not done correctly")
+				return false
+			}
+
+			// Takes the PSSRoundDetails from the key.
+			pssDetailsKey := splittedKey[0]
+			if pssDetailsKey == pssRound.ToString() {
+				mapStore.Delete(
+					key,
+				)
+			}
+			return true
+		},
+	)
+
+	return err
 }
 
 // Stores all the information for each separate batch reconstruction.
@@ -231,10 +292,11 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 				EchoDatabase:   make(map[string]*EchoStore),
 				IsReadyMsgSent: false,
 			},
-			VerifiedRecoveryShares: make(map[int]*sharing.ShamirShare),
-			RandomSecretShared:     make(map[ACSSRoundID]*curves.Scalar),
-			ReceivedCommitments:    make(map[int]bool),
-			CommitmentCount:        make(map[string]int),
+			VerifiedRecoveryShares:    make(map[int]*sharing.ShamirShare),
+			RandomSecretShared:        make(map[ACSSRoundID]*curves.Scalar),
+			ReceivedCommitments:       make(map[int]bool),
+			CommitmentCount:           make(map[string]int),
+			ImplicateInformationSlice: make([]ImplicateInformation, 0),
 		}
 	}
 
