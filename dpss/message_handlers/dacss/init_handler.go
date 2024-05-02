@@ -46,7 +46,6 @@ func NewInitMessage(pssRoundDetails common.PSSRoundDetails, oldShares []common.P
 
 // Process processes an incommint InitMessage.
 func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSParticipant) {
-	log.Info("InitMessage: Process")
 	curve := common.CurveFromName(*msg.CurveName)
 	// If the node is not an old node, this should not continue.
 	if self.IsNewNode() {

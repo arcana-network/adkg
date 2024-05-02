@@ -1,8 +1,6 @@
 package dpss
 
 import (
-	"strconv"
-
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
@@ -34,8 +32,7 @@ func NewPSSNode(broker common.MessageBroker,
 	epoch int) (*PSSNode, error) {
 	// TODO - check if it's ok to always set pss protocol prefix to dpss-1/
 	// set pss protocol prefix to dpss-1/ since it will be used in both old & new committee
-	// consider changing getPSSProtocolPrefix() so it isn't based on epoch.
-	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(1), "dpss-transport")
+	transport := NewPssNodeTransport(bus, getPSSProtocolPrefix(), "dpss-transport")
 
 	// Creates the committees
 	oldCommitteeNetwork := common.NodeNetwork{
@@ -80,9 +77,10 @@ func NewPSSNode(broker common.MessageBroker,
 	return newPSSNode, nil
 }
 
-// Returns the PSS protocol prefix in the form dpss-<epoch>
-func getPSSProtocolPrefix(epoch int) PSSProtocolPrefix {
-	return PSSProtocolPrefix("dpss" + "-" + strconv.Itoa(epoch) + "/")
+// TODO check if and how this could be dynamic
+// Returns the PSS protocol prefix, currently fixed to dpss-1
+func getPSSProtocolPrefix() PSSProtocolPrefix {
+	return PSSProtocolPrefix("dpss-1/")
 }
 
 // IsNewNode determines if the current node belongs to the new committee.
@@ -129,9 +127,6 @@ func (node *PSSNode) Params() (n, k, t int) {
 // Broadcast broadcasts a message to the given committee determined by the flag
 // toNewCommittee.
 func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
-	log.WithFields(log.Fields{
-		"node": common.Stringify(node.Details().Index),
-	}).Debug("Broadcast")
 	nodesToBroadcast := node.Nodes(toNewCommittee)
 	for _, n := range nodesToBroadcast {
 		go func(receiver common.NodeDetails) {
@@ -172,9 +167,6 @@ func ProcessMessageForType[T MessageProcessor](data []byte, sender common.NodeDe
 
 // ProcessMessage unmarshals the message and calls the appropriate handler for incoming message.
 func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PSSMessage) error {
-	log.WithFields(log.Fields{
-		"node": common.Stringify(node.Details().Index),
-	}).Debug("ProcessMessage")
 	switch message.Type {
 	case dacss.InitMessageType:
 		ProcessMessageForType[dacss.InitMessage](message.Data, sender, node, dacss.InitMessageType)
