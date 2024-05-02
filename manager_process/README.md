@@ -44,12 +44,12 @@ Addres = `0xaAbb43AF42c823b75d39673C99197cd2B10Fa3E1`
 5. Start all the nodes as below
 
 ## Start a single manager/node processes
-1. Build the node process `go build -o adkgNode main.go`
+1. Build the node process `go build -o adkgNode main.go`. For testing: `go build -tags test -o adkgNode main.go`
 2. Build the manager process `go build -o nodeManager ./manager_process`
 3. Run the manager & node with default config in ./manager_process/new-node-config: `./nodeManager`
 
 ## Run multiple managers/nodes
-1. Build the node process ``go build -o adkgNode main.go``
+1. Build the node process ``go build -o adkgNode main.go``. For testing: `go build -tags test -o adkgNode main.go`
 2. Build the manager process ``go build -o nodeManager ./manager_process``
 3. Set up multiple config directories and files (the default config dir is ``./manager_process/new-node-config``) e.g. ``mkdir ./manager_process/new-node-config2 && mkdir ./manager_process/new-node-config3``
 4. Create/Copy config files for the newly created config dirs. Test config files can be found in `./local-setup-data`. `config.local.[1~3].json` are configs for nodes in epoch 1, `config.local.[4~6].json` are configs for nodes in epoch 2.
@@ -71,6 +71,16 @@ Note: addresses in `config.local.[1~6].json` have been whitelisted and registere
 1. Change PSS status from epoch1 to epoch2 to 0: `python nodelist-pyscript/node_list.py -pc 1 2 0`
 2. Change epoch back to epoch 1: `python nodelist-pyscript/node_list.py -ec 1`
 3. Change the config in config dirs back to `config.local.[1~3].json`
+
+## Set vscode for build tags:
+1. open control panel: (command+shift+p / control+shift+p)
+2. search "open user settings(JSON)"
+3.  "gopls": {
+        "buildFlags": [
+            "-tags=test"
+        ]
+    }
+
 
 
 ## Start 1 process manually (directly run binary instead of through main)
