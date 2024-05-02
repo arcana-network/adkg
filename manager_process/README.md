@@ -1,13 +1,47 @@
 # Manager Process
-
+* faucet for arbitrum-sepolia https://www.alchemy.com/faucets/arbitrum-sepolia
 ## Setup python env
 1. Create python virtual env: `python -m venv ./venv`
 2. Activate venv: `source ./venv/bin/activate`
 3. Install packages: `pip install -r ./nodelist-pyscript/requirements.txt`
 4. Check current PSS status from epoch1 to epoch2 `python nodelist-pyscript/node_list.py -p 1 2`, it should returns 0.
 5. Check current epoch `python nodelist-pyscript/node_list.py -e`, it should returns 1.
-6. Check balance of owner `python nodelist-pyscript/node_list.py -b`, hopefully more than 0. (owner's address: `0xaAbb43AF42c823b75d39673C99197cd2B10Fa3E1`)
+6. Check balance of owner `python nodelist-pyscript/node_list.py -bo`, hopefully more than 0. (owner's address: `0xaAbb43AF42c823b75d39673C99197cd2B10Fa3E1`)
 6. To exit python virtual env: `deactivate`
+
+## Python script
+* owner's sk = `0x8d33ef20ec6519d7242aeee66e67d0771a794fce356a22ade91df0731efe99b8`
+Addres = `0xaAbb43AF42c823b75d39673C99197cd2B10Fa3E1`
+* owner can whitelist a node, update the epoch, set the epoch info
+
+#### Balance / Address / Send Eth
+* Check owner's balance: `python nodelist-pyscript/node_list.py -bo`
+* Check balance of an address: `python nodelist-pyscript/node_list.py -b [addr]`
+* Get address from a private key: `python nodelist-pyscript/node_list.py -afk [key]`
+* Send v Eth form A to B: `python nodelist-pyscript/node_list.py -s -sk [A's private key] -to [B's address] -v [value in eth]`
+
+#### Get epoch / Pss status
+* Get current epoch:  `python nodelist-pyscript/node_list.py -e`
+* Get epoch info: `python nodelist-pyscript/node_list.py -ef [epoch]`
+* Check current PSS status from epoch1 to epoch2: `python nodelist-pyscript/node_list.py -p [epoch1] [epoch2]`
+
+#### Set epoch / Pss status
+* Change current epoch: `python nodelist-pyscript/node_list.py -ec [epoch]`
+* Set epoch info: `python nodelist-pyscript/node_list.py -se [epoch] -n [N] -k [K] -t [T]` (Warning: this funcion will unregister nodes in the epoch)
+* Set pss status from [epoch1] to [epoch2] to [1 or 0]: `python nodelist-pyscript/node_list.py -pc [epoch1] [epoch2] [1 or 0]`
+
+#### whitelist
+* Whitelist a node in an epoch: `python nodelist-pyscript/node_list.py -w [epoch] -a [address]` (address can be get from key using -afk, see Balance / Address)
+* Check if a node is whitelisted in an epoch: `python nodelist-pyscript/node_list.py -iw [epoch] -a [address]`
+
+
+## How to set up a committee
+1. Prepare config files for all the nodes
+2. Whitelist nodes for the epoch:  `python nodelist-pyscript/node_list.py -w [epoch] -a [address]`
+3. Check if a node is whitelisted in an epoch: `python nodelist-pyscript/node_list.py -iw [epoch] -a [address]` 
+3. Set the epoch info: `python nodelist-pyscript/node_list.py -se [epoch] -n [N] -k [K] -t [T]` (Warning: this funcion will unregister nodes in the epoch)
+4. Fund all the nodes so they can registered themself at start. Send v Eth form A to B: `python nodelist-pyscript/node_list.py -s -sk [A's private key] -to [B's address] -v [value in eth]` **(0.002 eth shoud be enough. However, if unable to start the committee, it's most likely due to not enough balance. Try increase balance for nodes.)**
+5. Start all the nodes as below
 
 ## Start a single manager/node processes
 1. Build the node process `go build -o adkgNode main.go`

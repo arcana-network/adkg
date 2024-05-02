@@ -1,9 +1,11 @@
-//go:build !test
+//go:build test
 
 package dpss
 
 import (
+	"fmt"
 	"math/big"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -22,6 +24,9 @@ const (
 	PAUSED  MessageType = 0
 	STOPPED MessageType = -1
 )
+
+var secpShareNum uint = 10   //hardcoded secp256k1 share number
+var c25519ShareNum uint = 10 //hardcoded ed25519 share number
 
 type PssService struct {
 	sync.Mutex
@@ -79,7 +84,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 		log.Info("PSS WAS TRIGGERED")
 		// TODO - check what to do for the new committee nodes
 		service.pssStatus = RUNNING
-		batchSize := uint(500)
+		batchSize := uint(5)
 		isNewCommittee, err := service.broker.ChainMethods().IsNewCommittee()
 		if err != nil {
 			log.Errorf("Could not get isNewCommittee %s", err.Error())
@@ -90,14 +95,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			err := service.broker.ManagerMethods().SendDpssStart()
 			if err != nil {
 				log.Errorf("unable to send DPSS start message: %s", err.Error())
-			}
-
-			// TODO remove this, only for quick testing
-			// db.AddTestShare(service.broker.DBMethods())
-
-			err = service.broker.DBMethods().StoreCompletedPSSShare(*big.NewInt(0), *big.NewInt(456), *big.NewInt(789), common.SECP256K1)
-			if err != nil {
-				log.Errorf("unable to store secp256k1 share: %s", err.Error())
 			}
 		}
 		// get self info from ChainService
@@ -134,11 +131,11 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 		log.Info("CREATING PSS NODE")
 		// create a PSSNode
-		var epochForNode int
+		var epochOfNode int
 		if isNewCommittee {
-			epochForNode = newEpoch
+			epochOfNode = newEpoch
 		} else {
-			epochForNode = oldEpoch
+			epochOfNode = oldEpoch
 		}
 		pssNode, err := NewPSSNode(*service.broker,
 			selfDetails,
@@ -150,21 +147,13 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			int(newEpochInfo.T.Int64()),
 			int(newEpochInfo.K.Int64()),
 			priv,
-			epochForNode)
+			epochOfNode)
 		if err != nil {
 			log.Errorf("Could not create pssNode in trigger_pss %s", err.Error())
 			return nil, err
 		}
 		service.SetNode(pssNode)
 
-		// get total assigned share num for secp256k1
-		secpShareNum, err := service.broker.ABCIMethods().LastUnassignedIndex()
-		// TODO remove, this is only for quick testing
-		secpShareNum, err := uint(1), nil //service.broker.ABCIMethods().LastUnassignedIndex()
-		if err != nil {
-			log.Errorf("Could not get share number %s", err.Error())
-			return nil, err
-		}
 		// calculate batch needed
 		ceil := (secpShareNum % batchSize) != 0
 		secpBatchNum := secpShareNum / batchSize
@@ -172,12 +161,6 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 			secpBatchNum += 1
 		}
 
-		// get total assigned share num for c25519
-		c25519ShareNum, err := service.broker.ABCIMethods().LastC25519UnassignedIndex()
-		if err != nil {
-			log.Errorf("Could not get share number %s", err.Error())
-			return nil, err
-		}
 		// calculate batch needed
 		ceil = (c25519ShareNum % batchSize) != 0
 		c25519BatchNum := c25519ShareNum / batchSize
@@ -210,11 +193,14 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 	// TODO make more generalized and call for both secp and c25519
 	// as of now only in secp256k1 the message handlers are triggered
 
+	id := service.broker.ChainMethods().GetSelfIndex()
+	// set the seed so we can recreate the random secret in the new committee
+	secpRand := rand.New(rand.NewSource(0))
 	// secp256k1 shares
 	for currentBatch := uint(0); currentBatch < secpBatchNum; currentBatch++ {
 		// FIXME oldShares needs to be accompanied by the userId
 		var oldShares []sharing.ShamirShare
-		id := service.broker.ChainMethods().GetSelfIndex()
+
 		// get old shares list of the batch
 		for i := uint(0); i < batchSize; i++ {
 			index := int64(currentBatch*batchSize + i)
@@ -226,14 +212,27 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 				}).Debug("Last share added")
 				break
 			}
-			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.SECP256K1)
-			if err != nil {
-				log.Errorf("unable to ertrieve secp256k1 share of index %v: %s", index, err.Error())
-			}
-			share := sharing.ShamirShare{
-				Id:    uint32(id),
-				Value: si.Bytes(),
-			}
+
+			// for benchmark
+			// create random scalar as the secret share
+			// this method is better for benchmarking since it is faster
+			// however it isn't good for testing since it will be hard to interpolate and compare the secret
+			// si := curves.K256().Scalar.Random(secpRand).BigInt()
+			// share := sharing.ShamirShare{
+			// 	Id:    uint32(id),
+			// 	Value: si.Bytes(),
+			// }
+
+			// for testing
+			// this method is slower since we have to run shamir sharing everytime
+			// but we can easily get the secret in the new committee
+			// by regenerate the random values with the correct seed
+			shamir, _ := sharing.NewShamir(uint32(service.pssNode.OldCommitteeNodes.K), uint32(service.pssNode.OldCommitteeNodes.N), curves.K256())
+			secret := curves.K256().Scalar.Random(secpRand)
+			fmt.Printf("secp %v", secret)
+			shares, _ := shamir.Split(secret, secpRand)
+			share := *shares[id-1]
+
 			oldShares = append(oldShares, share)
 		}
 
@@ -272,7 +271,7 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 			go service.pssNode.PssNodeTransport.Receive(service.pssNode.NodeDetails, *createdMsgBytes)
 
 			// block until the batch has finished
-			// <-service.batchFinChannel
+			//<-service.batchFinChannel
 			log.WithFields(log.Fields{
 				"type":  "secp256k1",
 				"batch": currentBatch,
@@ -280,6 +279,9 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 		}
 
 	}
+
+	// set the seed so we can recreate the random secret in the new committee
+	ed25519Rand := rand.New(rand.NewSource(1))
 
 	// ed25519 shares
 	for currentBatch := uint(0); currentBatch < c25519BatchNum; currentBatch++ {
@@ -295,15 +297,27 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 				}).Debug("Last share added")
 				break
 			}
-			si, _, err := service.broker.DBMethods().RetrieveCompletedShare(*big.NewInt(index), common.ED25519)
-			if err != nil {
-				log.Errorf("unable to ertrieve ed25519 share of index %v: %s", index, err.Error())
-			}
-			id := service.broker.ChainMethods().GetSelfIndex()
-			share := sharing.ShamirShare{
-				Id:    uint32(id),
-				Value: si.Bytes(),
-			}
+
+			// for benchmark
+			// create random scalar as the secret share
+			// this method is for benchmarking since it is faster
+			// but it isn't good for testing since it will be hard to interpolate the secret
+			// si := curves.ED25519().Scalar.Random(ed25519Rand).BigInt()
+			// share := sharing.ShamirShare{
+			// 	Id:    uint32(id),
+			// 	Value: si.Bytes(),
+			// }
+
+			// for testing
+			// this method is slower since we have to run shamir sharing everytime
+			// but we can easily get the secret in the new committee
+			// by regenerate the random values with the correct seed
+			shamir, _ := sharing.NewShamir(uint32(service.pssNode.OldCommitteeNodes.K), uint32(service.pssNode.OldCommitteeNodes.N), curves.ED25519())
+			secret := curves.ED25519().Scalar.Random(ed25519Rand)
+			fmt.Printf("ed25519 %v", secret)
+			shares, _ := shamir.Split(secret, ed25519Rand)
+			share := *shares[id-1]
+
 			oldShares = append(oldShares, share)
 		}
 
@@ -332,6 +346,11 @@ func (service *PssService) BatchRunDPSS(secpBatchNum uint, c25519BatchNum uint, 
 func (service *PssService) BatchFinCallBack() {
 	service.batchFinChannel <- struct{}{}
 }
+
+// func get_next_share(k, n uint32, curve *curves.Curve) {
+// 	shamir, _ := sharing.NewShamir(k, n, curve)
+// 	shamir.
+// }
 
 // TODO - same function exists in keygen_node, move both to common
 func getCommonNodesFromNodeRefArray(nodeRefs []common.NodeReference) (commonNodes []common.NodeDetails) {
