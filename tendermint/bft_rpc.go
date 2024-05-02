@@ -48,11 +48,16 @@ type DpssFinTx struct {
 	Epoch string
 }
 
+type BatchFinTx struct {
+	BatchID string
+}
+
 // mapping of name of struct to id
 var txTypeMap = map[string]byte{
 	getType(AssignmentTx{}):      byte(1),
 	getType(common.DKGMessage{}): byte(2),
-	getType(DpssFinTx{}):         byte(3),
+	getType(BatchFinTx{}):        byte(3),
+	getType(DpssFinTx{}):         byte(4),
 }
 
 func (wrapper *DefaultBFTTxWrapper) PrepareBFTTx(bftTx interface{}, broker *common.MessageBroker) ([]byte, error) {
