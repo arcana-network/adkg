@@ -424,6 +424,7 @@ func pssFlagMonitor(e *ChainService) {
 		epochInfo, err := e.GetEpochInfo(e.currentEpoch, false)
 		if err != nil {
 			log.WithError(err).Error("could not get epochInfo on chain")
+			continue
 		}
 		// query pssStatus from currentEpoch to nextEpoch
 		newStatus, err := e.GetEpochPssStatus(e.currentEpoch, int(epochInfo.NextEpoch.Int64()))
@@ -466,6 +467,7 @@ func epochMonitor(e *ChainService) {
 		new_epoch, err := e.GetCurrentEpoch()
 		if err != nil {
 			log.WithError(err).Error("epochMonitor: can't get current epoch")
+			continue
 		}
 		if new_epoch != e.currentEpoch {
 			// epoch change

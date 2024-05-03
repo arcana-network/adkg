@@ -39,13 +39,13 @@ type PssService struct {
 }
 
 func New(bus eventbus.Bus) *PssService {
-	keygenService := &PssService{
+	pssService := &PssService{
 		bus:       bus,
 		broker:    common.NewServiceBroker(bus, common.PSS_SERVICE_NAME),
 		running:   false,
 		pssStatus: STOPPED,
 	}
-	return keygenService
+	return pssService
 }
 
 func (pssService *PssService) SetNode(pssNode *PSSNode) {
