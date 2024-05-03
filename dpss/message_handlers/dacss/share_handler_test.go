@@ -117,7 +117,6 @@ func getTestMsg(testDealer *testutils.PssTestNode, defaultSetup *testutils.TestS
 	pssRoundDetails := common.PSSRoundDetails{
 		PssID:  common.NewPssID(*id),
 		Dealer: testDealer.Details(),
-		Kind:   "dacss",
 	}
 	acssRoundDetails := common.ACSSRoundDetails{
 		PSSRoundDetails: pssRoundDetails,

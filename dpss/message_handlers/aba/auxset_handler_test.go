@@ -130,7 +130,6 @@ func AuxsetTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, 
 	round := common.PSSRoundDetails{
 		PssID:  id,
 		Dealer: leader.Details(),
-		Kind:   "aba",
 	}
 
 	msg, error := NewAuxsetMessage(round, vote, r, common.CurveName(c.Name))

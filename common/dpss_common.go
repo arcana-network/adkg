@@ -225,7 +225,7 @@ type PSSState struct {
 	sync.Mutex
 	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
 	TProposals     map[int]int // nodeIndex => unverified keyset
-	PSSID          PSSID
+	PSSID          string
 	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
 	KeysetProposed bool
 	ABAStarted     []int
@@ -395,7 +395,7 @@ func CountBit(n int) int {
 	return count
 }
 
-func GetDefaultPSSState(id PSSID) *PSSState {
+func GetDefaultPSSState(id string) *PSSState {
 	s := PSSState{
 		PSSID:      id,
 		KeysetMap:  make(map[int]*ACSSKeysetMap),
@@ -406,13 +406,13 @@ func GetDefaultPSSState(id PSSID) *PSSState {
 	return &s
 }
 
-func (m *PSSStateMap) Get(r PSSID) (state *PSSState, found bool) {
+func (m *PSSStateMap) Get(r string) (state *PSSState, found bool) {
 	inter, found := m.Map.Load(r)
 	state, _ = inter.(*PSSState)
 	return
 }
 
-func (store *PSSStateMap) GetOrSetIfNotComplete(r PSSID) (keygen *PSSState, complete bool) {
+func (store *PSSStateMap) GetOrSetIfNotComplete(r string) (keygen *PSSState, complete bool) {
 	inter, found := store.GetOrSet(r, GetDefaultPSSState(r))
 	if found {
 		if inter == nil {
@@ -422,16 +422,16 @@ func (store *PSSStateMap) GetOrSetIfNotComplete(r PSSID) (keygen *PSSState, comp
 	return inter, false
 }
 
-func (store *PSSStateMap) GetOrSet(r PSSID, input *PSSState) (keygen *PSSState, found bool) {
+func (store *PSSStateMap) GetOrSet(r string, input *PSSState) (keygen *PSSState, found bool) {
 	inter, found := store.Map.LoadOrStore(r, input)
 	keygen, _ = inter.(*PSSState)
 	return
 }
-func (store *PSSStateMap) Complete(r PSSID) {
+func (store *PSSStateMap) Complete(r string) {
 	store.Map.Store(r, nil)
 }
 
-func (store *PSSStateMap) Delete(r PSSID) {
+func (store *PSSStateMap) Delete(r string) {
 	store.Map.Delete(r)
 }
 
@@ -687,8 +687,8 @@ func CreatePSSRound(pssID string, dealer NodeDetails, batchSize int) PSSRoundDet
 
 type PSSID string
 
-func GeneratePSSID(index big.Int) PSSID {
-	return PSSID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
+func GeneratePSSID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
 }
 
 func (round *PSSRoundDetails) ToRoundID() PSSRoundID {
@@ -764,8 +764,8 @@ func CreatePSSMessage(pssRoundDetails PSSRoundDetails, phase string, data []byte
 }
 
 // Generates a new PSSRoundID for a given index.
-func NewPssID(index big.Int) PSSID {
-	return PSSID(strings.Join([]string{"PSS", index.Text(16)}, Delimiter3))
+func NewPssID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
 }
 
 func HashAcssData(data AcssData) ([]byte, error) {

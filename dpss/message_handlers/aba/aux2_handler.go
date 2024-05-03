@@ -8,7 +8,7 @@ import (
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 )
 
 var Aux2MessageType string = "aba_aux2"
@@ -146,7 +146,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 							if err != nil {
 								continue
 							}
-							round := common.CreatePSSRound(pssID, details, "keyset")
+							round := common.CreatePSSRound(pssID, details, m.RoundID.BatchSize)
 							msg, err := NewInitMessage(round, 0, 0, m.Curve)
 							if err != nil {
 								log.WithError(err).Error("Could not create init message")
@@ -175,7 +175,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 					alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
 					shares := pssState.GetSharesFromT(T, alpha, curve)
 
-					msg, err := dpss.NewDpssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)
+					msg, err := old_committee.NewDpssHimMessage(m.RoundID, shares, []byte{}, m.Curve)
 					if err != nil {
 						return
 					}

@@ -213,7 +213,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 					if err != nil {
 						continue
 					}
-					roundID := common.CreatePSSRound(pssState.PSSID, dealer, "keyset")
+					roundID := common.CreatePSSRound(pssState.PSSID, dealer, m.AcssRoundDetails.PSSRoundDetails.BatchSize)
 					keyset.OnKeysetVerified(roundID, m.curveName, dpsscommon.IntToByteValue(v), pssState, key, self)
 					delete(pssState.TProposals, key)
 				}

@@ -82,7 +82,6 @@ func estTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, com
 	round := common.PSSRoundDetails{
 		PssID:  id,
 		Dealer: leader.Details(),
-		Kind:   "aba",
 	}
 
 	msg, _ := NewEst1Message(round, vote, r, common.CurveName(c.Name))

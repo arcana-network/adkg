@@ -11,7 +11,7 @@ import (
 	"github.com/torusresearch/bijson"
 
 	"github.com/arcana-network/dkgnode/common"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/dpss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	kcommon "github.com/arcana-network/dkgnode/keygen/common"
 	"github.com/arcana-network/dkgnode/keygen/common/aba"
 )
@@ -187,7 +187,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 				for i := 1; i <= n; i++ {
 					if !Contains(pssState.ABAStarted, i) {
 						go func(id int) {
-							round := common.CreatePSSRound(pssID, m.RoundID.Dealer, "keyset")
+							round := common.CreatePSSRound(pssID, m.RoundID.Dealer, m.RoundID.BatchSize)
 							msg, err := NewInitMessage(round, 0, 0, m.Curve)
 							if err != nil {
 								log.WithError(err).Error("Could not create init message")
@@ -228,7 +228,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
 			shares := pssState.GetSharesFromT(T, alpha, curve)
 
-			msg, err := dpss.NewDpssHimMatrix(m.RoundID, shares, []byte{}, m.Curve)
+			msg, err := old_committee.NewDpssHimMessage(m.RoundID, shares, []byte{}, m.Curve)
 			if err != nil {
 				return
 			}

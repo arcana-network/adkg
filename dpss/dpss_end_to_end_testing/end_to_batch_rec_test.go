@@ -12,7 +12,6 @@ import (
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	ksharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/torusresearch/bijson"
@@ -290,7 +289,7 @@ func getTestInitMsg(testDealer *testutils.IntegrationTestNode, pssRoundIndex big
 	return msg
 }
 
-func GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld int) ([]curves.Scalar, []*sharing.FeldmanVerifier, [][]*ksharing.ShamirShare, error) {
+func GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld int) ([]curves.Scalar, []*sharing.FeldmanVerifier, [][]*sharing.ShamirShare, error) {
 
 	// generate n secrets
 	testSecret := make([]curves.Scalar, B)
@@ -300,7 +299,7 @@ func GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld int) ([]curves.Scalar
 	}
 
 	var verifier []*sharing.FeldmanVerifier
-	var shamirShare [][]*ksharing.ShamirShare
+	var shamirShare [][]*sharing.ShamirShare
 
 	for i := 0; i < B; i++ {
 

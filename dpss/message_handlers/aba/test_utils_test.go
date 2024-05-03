@@ -271,6 +271,10 @@ func (n *Node) GetPublicKeyFor(idx int, newCommittee bool) curves.Point {
 	// }
 }
 
+func (node *Node) GetMessageBroker() *common.MessageBroker {
+	return nil
+}
+
 func (n *Node) Cleanup(id common.PSSID) {
 	n.cleanupKeygenStore(id)
 	n.cleanupABAStore(id)

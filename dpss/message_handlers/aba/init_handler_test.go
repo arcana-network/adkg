@@ -83,7 +83,6 @@ func abaTestSetup(r, vote int) (*MockTransport, []*Node, *common.PSSMessage, com
 	round := common.PSSRoundDetails{
 		PssID:  id,
 		Dealer: leader.Details(),
-		Kind:   "aba",
 	}
 
 	msg, _ := NewInitMessage(round, vote, r, common.CurveName(c.Name))

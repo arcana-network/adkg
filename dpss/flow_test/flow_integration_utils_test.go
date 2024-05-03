@@ -374,6 +374,10 @@ func (node *PssTestNode2) GetReceivedMessages(msgType string) []common.PSSMessag
 	return filteredMessages
 }
 
+func (node *PssTestNode2) GetMessageBroker() *common.MessageBroker {
+	return nil
+}
+
 func TTestCurveName() common.CurveName {
 	return common.SECP256K1
 }

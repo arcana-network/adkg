@@ -18,8 +18,8 @@ import (
 2 -> [a2, b2, c2]
 ...
 */
-func getOldShares(n, k uint32, numOfShares int) map[int][]sharing.ShamirShare {
-	shareList := make(map[int][]sharing.ShamirShare)
+func getOldShares(n, k uint32, numOfShares int) map[int][]common.PrivKeyShare {
+	shareList := make(map[int][]common.PrivKeyShare)
 	c := common.CurveFromName(common.SECP256K1)
 	for i := range numOfShares {
 		log.Infof("Generating share: %d", i)
@@ -32,7 +32,7 @@ func getOldShares(n, k uint32, numOfShares int) map[int][]sharing.ShamirShare {
 			log.Error(err)
 		}
 		for i, share := range shares {
-			shareList[i+1] = append(shareList[i+1], *share)
+			shareList[i+1] = append(shareList[i+1], common.PrivKeyShare{UserIdOwner: "test", Share: *share})
 		}
 	}
 
@@ -53,9 +53,9 @@ func TestFlow(t *testing.T) {
 		go func(node *PssTestNode2) {
 			shares := shareList[node.details.Index]
 			pssRoundDetails := common.PSSRoundDetails{
-				PssID:  pssID,
-				Dealer: node.details,
-				Kind:   "acss",
+				PssID:     pssID,
+				Dealer:    node.details,
+				BatchSize: 1,
 			}
 			ephemeralKeypairDealer := common.GenerateKeyPair(common.CurveFromName(common.SECP256K1))
 			m, _ := dacss.NewInitMessage(pssRoundDetails, shares, common.SECP256K1, ephemeralKeypairDealer, testSetup.NewCommitteeParams)
