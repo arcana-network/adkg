@@ -191,7 +191,7 @@ func (service *PssService) Call(method string, args ...interface{}) (interface{}
 
 			// TODO replace sleep by waiting until all nodes are ready
 			// To make sure honest nodes have finished creating PssNode
-			time.Sleep(10 * time.Second)
+			time.Sleep(30 * time.Second)
 
 			// store the batch info in PssService
 			service.secpBatchNum = int(secpBatchNum)
