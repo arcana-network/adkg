@@ -51,6 +51,12 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
+	// initializing an empty state
+	self.State().AcssStore.UpdateAccsState(
+		msg.ACSSRoundDetails.ToACSSRoundID(),
+		func(as *common.AccsState) {},
+	)
+
 	self.State().AcssStore.Lock()
 
 	// Using defer given that the ACSS state is used until the end of the function
