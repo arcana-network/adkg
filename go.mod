@@ -1,6 +1,6 @@
 module github.com/arcana-network/dkgnode
 
-go 1.22.0
+go 1.22
 
 require (
 	github.com/TRON-US/go-eccrypto v0.0.1

@@ -3,15 +3,16 @@ package common
 import (
 	"errors"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
-	ownsharing "github.com/arcana-network/dkgnode/common/sharing"
-
+	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	"github.com/coinbase/kryptology/pkg/sharing"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
+	"github.com/vivint/infectious"
 )
 
 // PSSParticipant is the interface that covers all the participants inside the
@@ -43,11 +44,15 @@ type PSSParticipant interface {
 	// Obtains the nodes from the new or old committee. The committee is defined
 	// by the flag fromNewCommitte.
 	Nodes(fromNewCommittee bool) map[NodeDetailsID]NodeDetails
-
 	// Broker needed to start the next batch of DPSS
 	// In all the Test Nodes it is mocked to simply return nil
 	// In the PSSNode, it returns the MessageBroker
 	GetMessageBroker() *MessageBroker
+	// Get node details by id, only checks in list of old nodes
+	OldNodeDetailsByID(id int) (NodeDetails, error)
+	// Get B
+	// Get (G, H) for specific curve
+	CurveParams(curveName string) (curves.Point, curves.Point)
 }
 
 // Constants for state naming. Used for loging.
@@ -57,13 +62,24 @@ const (
 	RbcStateType      = "RBC"
 )
 
+/*
+B is fixed, we dont want to start too many dpss
+at once since P2P network will start dropping messages
+
+PSS-1 => 0 - 51 => B = 51 / 3 => 17 ACSS
+PSS-2 => 52 -103 => B = 51 / 3 => 17 ACSS
+*/
+
 // PSSNodeState represents the internal state of a node that participates in
 // possibly multiple DPSS protocol. There is an storage for the different
 // sub-protocols in the DPSS: ACSS, RBC
 type PSSNodeState struct {
+	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
 	AcssStore       *AcssStateMap     // State for the separate ACSS rounds
 	ShareStore      *PSSShareStore    // Storage of shares for the DPSS protocol.
-	BatchReconStore *BatchRecStoreMap // State for the separate batch reconstruction rounds
+	ABAStore        *AbaStateMap
+	KeysetStore     *KeysetStateMap // Could have reused ACSS here
+	PSSStore        *PSSStateMap
 }
 
 // Clean completely cleans the state of a node for a given PSSRound.
@@ -189,7 +205,311 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 	return nil
 }
 
-// Stores the information of the shares for a given ACSS Round
+/* ------- PSS state start ------- */
+// Stores the information of the shares for a given PSS Round
+type PSSStateMap struct {
+	Map sync.Map // key:PSSRoundID, value: PSSState
+}
+
+type ACSSKeysetMap struct {
+	// Own super keyset, not limited to n-f
+	TPrime int
+	// nodeIndex => Commitments (used in ABA coin tossing)
+	CommitmentStore map[int][]curves.Point
+	// nodeIndex => share
+	ShareStore map[int]*sharing.ShamirShare
+}
+
+// Shared data for a PSS Round
+type PSSState struct {
+	sync.Mutex
+	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
+	TProposals     map[int]int // nodeIndex => unverified keyset
+	PSSID          string
+	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
+	KeysetProposed bool
+	ABAStarted     []int
+	ABAComplete    bool
+	Decisions      map[int]int
+	HIMStarted     bool
+}
+
+func (state *PSSState) GetTSet(n, t int) []int {
+	keysets := make([][]int, 0)
+	for k, v := range state.Decisions {
+		if v == 1 {
+			keysets = append(keysets, GetSetBits(n, state.T[k]))
+		}
+	}
+
+	T := Union(keysets...)
+	sort.Ints(T)
+	T = T[:(n - t)]
+	return T
+}
+
+func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) []curves.Scalar {
+	shares := []curves.Scalar{}
+	for i := range alpha {
+		val := state.KeysetMap[i]
+		for _, j := range T {
+			log.Debug("val.ShareStore", val.ShareStore, "curve", curve)
+			s := val.ShareStore[j]
+			log.Debug("s.value", s, j, val.ShareStore)
+			share, err := curve.Scalar.SetBytes(s.Value)
+			if err != nil {
+				log.Error("scalar.setBytes:", err)
+				continue
+			}
+			shares = append(shares, share)
+		}
+	}
+	return shares
+}
+
+func Contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func HasBit(n int, pos int) bool {
+	val := n & (1 << pos)
+	return (val > 0)
+}
+
+func GetSetBits(n, val int) []int {
+	l := make([]int, 0)
+	for i := 1; i <= n; i++ {
+		if HasBit(val, i) {
+			l = append(l, i)
+		}
+	}
+	return l
+}
+
+func Union(args ...[]int) []int {
+	if len(args) == 0 {
+		return []int{}
+	}
+
+	a := args[0]
+	m := make(map[int]bool)
+
+	for _, item := range a {
+		m[item] = true
+	}
+
+	for _, s := range args[1:] {
+		for _, item := range s {
+			if _, ok := m[item]; !ok {
+				a = append(a, item)
+				m[item] = true
+			}
+		}
+	}
+	return a
+}
+
+/*
+PSS-1-Dealer-1-Alpha-1
+Alpha = 0 -> B/n-2t
+
+keysetMap Structure:
+Alpha-0 => {
+	Node - 1 => {
+
+	},
+	Node - X => {
+		TPrime => int
+		CommmitmentStore => {
+			NodeIndex => Commitment
+		}
+		ShareStore => {
+			NodeIndex => share
+		}
+	}
+},
+.
+.
+.
+Alpha-X => {
+	Node - 1 => {
+
+	},
+	Node - X => {
+		TPrime => int
+		CommmitmentStore => {
+			NodeIndex => Commitment
+		}
+		ShareStore => {
+			NodeIndex => share
+		}
+	}
+}
+*/
+
+func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
+	_, ok := state.KeysetMap[id]
+	if !ok {
+		state.KeysetMap[id] = &ACSSKeysetMap{
+			TPrime:          0,
+			CommitmentStore: make(map[int][]curves.Point),
+			ShareStore:      make(map[int]*sharing.ShamirShare),
+		}
+	}
+
+	return state.KeysetMap[id]
+}
+
+// Threshold = n-t, alpha = B/n-2t
+func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, bool) {
+	T := 0
+	Tset := make([]int, 0)
+	if len(state.KeysetMap) == alpha {
+		for _, v := range state.KeysetMap {
+			Tset = append(Tset, v.TPrime)
+		}
+
+		T = Tset[0]
+		for i := 1; i < alpha; i += 1 {
+			T = T & Tset[i]
+		}
+		if CountBit(T) >= threshold {
+			return T, true
+		}
+	}
+	return 0, false
+}
+
+// FIXME: Deduplicate this v
+func CountBit(n int) int {
+	count := 0
+	for n > 0 {
+		n &= (n - 1)
+		count++
+	}
+	return count
+}
+
+func GetDefaultPSSState(id string) *PSSState {
+	s := PSSState{
+		PSSID:      id,
+		KeysetMap:  make(map[int]*ACSSKeysetMap),
+		T:          make(map[int]int),
+		TProposals: make(map[int]int),
+		Decisions:  make(map[int]int),
+	}
+	return &s
+}
+
+func (m *PSSStateMap) Get(r string) (state *PSSState, found bool) {
+	inter, found := m.Map.Load(r)
+	state, _ = inter.(*PSSState)
+	return
+}
+
+func (store *PSSStateMap) GetOrSetIfNotComplete(r string) (keygen *PSSState, complete bool) {
+	inter, found := store.GetOrSet(r, GetDefaultPSSState(r))
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *PSSStateMap) GetOrSet(r string, input *PSSState) (keygen *PSSState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*PSSState)
+	return
+}
+func (store *PSSStateMap) Complete(r string) {
+	store.Map.Store(r, nil)
+}
+
+func (store *PSSStateMap) Delete(r string) {
+	store.Map.Delete(r)
+}
+
+/* ------- PSS state end ------- */
+
+/* ------- Keyset start ------- */
+// Stores the information of the shares for a given Keyset Round
+type KeysetStateMap struct {
+	Map sync.Map // key:PSSRoundID, value: KeysetState
+}
+
+type KeysetState struct {
+	sync.Mutex
+	RoundID  PSSRoundID
+	RBCState NewRBCState
+}
+
+type NewRBCState struct {
+	Phase         phase
+	ReceivedEcho  map[int]bool
+	ReceivedReady map[int]bool
+	ReadySent     bool
+	EchoStore     map[string]*EchoStore
+	ReadyStore    []infectious.Share
+}
+
+// Get or create echo store according to the id
+func (s *KeysetState) GetEchoStore(id string, share infectious.Share, hash []byte) *EchoStore {
+	if _, ok := s.RBCState.EchoStore[id]; !ok {
+		s.RBCState.EchoStore[id] = &EchoStore{
+			Shard:       share,
+			HashMessage: hash,
+			Count:       0,
+		}
+	}
+	return s.RBCState.EchoStore[id]
+}
+
+func (s *KeysetState) FindThresholdEchoStore(threshold int) *EchoStore {
+	for _, v := range s.RBCState.EchoStore {
+		if v.Count >= threshold {
+			return v
+		}
+	}
+	return nil
+}
+
+func (m *KeysetStateMap) Get(r PSSRoundID) (keygen *KeysetState, found bool) {
+	inter, found := m.Map.Load(r)
+	keygen, _ = inter.(*KeysetState)
+	return
+}
+
+func (store *KeysetStateMap) GetOrSetIfNotComplete(r PSSRoundID, input *KeysetState) (keygen *KeysetState, complete bool) {
+	inter, found := store.GetOrSet(r, input)
+	if found {
+		if inter == nil {
+			return inter, true
+		}
+	}
+	return inter, false
+}
+
+func (store *KeysetStateMap) GetOrSet(r PSSRoundID, input *KeysetState) (keygen *KeysetState, found bool) {
+	inter, found := store.Map.LoadOrStore(r, input)
+	keygen, _ = inter.(*KeysetState)
+	return
+}
+func (store *KeysetStateMap) Complete(r PSSRoundID) {
+	store.Map.Store(r, nil)
+}
+
+func (store *KeysetStateMap) Delete(r PSSRoundID) {
+	store.Map.Delete(r)
+}
+
+/* ------- Keyset end ------- */
+
 type AcssStateMap struct {
 	sync.Mutex
 	// For each specific ACSS round, we have a DacssState
@@ -357,6 +677,29 @@ func (pssRoundDetails PSSRoundDetails) ToString() string {
 	}, Delimiter1)
 }
 
+func CreatePSSRound(pssID string, dealer NodeDetails, batchSize int) PSSRoundDetails {
+	return PSSRoundDetails{
+		pssID,
+		dealer,
+		batchSize,
+	}
+}
+
+type PSSID string
+
+func GeneratePSSID(index big.Int) string {
+	return strings.Join([]string{"PSS", index.Text(16)}, Delimiter3)
+}
+
+func (round *PSSRoundDetails) ToRoundID() PSSRoundID {
+	return PSSRoundID(strings.Join([]string{
+		string(round.PssID),
+		strconv.Itoa(round.Dealer.Index),
+	}, Delimiter1))
+}
+
+type PSSRoundID string
+
 // ACSSRoundID defines the ID of a single ACSS that can be running within the DPSS process
 type ACSSRoundID string
 
@@ -440,6 +783,6 @@ func HashAcssData(data AcssData) ([]byte, error) {
 
 // PrivKeyShare represents a share of a private key.
 type PrivKeyShare struct {
-	UserIdOwner string                 // Owner of the private key.
-	Share       ownsharing.ShamirShare // Share of the private key.
+	UserIdOwner string              // Owner of the private key.
+	Share       sharing.ShamirShare // Share of the private key.
 }

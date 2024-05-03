@@ -187,9 +187,6 @@ func (ksm *KeystoreMethods) StoreShare(id string, share []byte) (err error) {
 	if methodResponse.Error != nil {
 		return methodResponse.Error
 	}
-	if err != nil {
-		return err
-	}
 	return
 }
 

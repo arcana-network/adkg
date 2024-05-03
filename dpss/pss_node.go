@@ -1,7 +1,10 @@
 package dpss
 
 import (
+	"errors"
+
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	"github.com/arcana-network/dkgnode/eventbus"
@@ -90,6 +93,16 @@ func (node *PSSNode) IsNewNode() bool {
 	return found
 }
 
+func (node *PSSNode) OldNodeDetailsByID(idx int) (common.NodeDetails, error) {
+	nodes := node.Nodes(false)
+	for _, n := range nodes {
+		if n.Index == idx {
+			return n, nil
+		}
+	}
+	return common.NodeDetails{}, errors.New("node not found in old committee")
+}
+
 // PublicKey returns the public key of the node with index idx that belongs to
 // the old or new commitee according to the fromNewCommittee flag.
 func (node *PSSNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
@@ -136,6 +149,9 @@ func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 			}
 		}(n)
 	}
+}
+func (node *PSSNode) CurveParams(curveName string) (curves.Point, curves.Point) {
+	return sharing.CurveParams(curveName)
 }
 
 // Nodes returns the set of nodes of the old or new committee according to the flag

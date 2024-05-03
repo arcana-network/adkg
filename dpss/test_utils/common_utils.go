@@ -9,7 +9,6 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	krsharing "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 	"github.com/vivint/infectious"
@@ -61,9 +60,9 @@ func CreateShardAndHash(
 
 // Computes the Reed-Solomon shards and hash of a given commitment and shares.
 func ComputeReedSolomonShardsAndHash(
-	commitment *krsharing.FeldmanVerifier,
+	commitment *sharing.FeldmanVerifier,
 	dealer common.PSSParticipant,
-	shares []*krsharing.ShamirShare,
+	shares []*sharing.ShamirShare,
 	dealerEphemeralKey common.KeyPair,
 ) ([]infectious.Share, []byte, error) {
 	n, _, t := dealer.Params()

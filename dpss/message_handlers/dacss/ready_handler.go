@@ -95,6 +95,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		return
 	}
 
+	// FIXME: Something wrong here, sometimes gets nil pointer dereference.
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
 		return

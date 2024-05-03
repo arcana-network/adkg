@@ -7,7 +7,6 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
-	sharingk "github.com/coinbase/kryptology/pkg/sharing"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +39,7 @@ func TestSendReceiveShareRecoveryMsg(t *testing.T) {
 
 	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		//To mimic the condition of A node having a valid share
-		state.ReceivedShare = &sharingk.ShamirShare{
+		state.ReceivedShare = &sharing.ShamirShare{
 			Id:    0,
 			Value: []byte{0, 1, 2, 3},
 		}

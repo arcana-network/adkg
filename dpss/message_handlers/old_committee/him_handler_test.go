@@ -13,7 +13,6 @@ import (
 	"github.com/arcana-network/dkgnode/common/sharing"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
-	ksharing "github.com/coinbase/kryptology/pkg/sharing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,7 +91,7 @@ func generateSharesMultipleSecrets(nShares, nodeIdx, n, k int, curve *curves.Cur
 
 		shareIdx := slices.IndexFunc(
 			sharesRandScalar,
-			func(share *ksharing.ShamirShare) bool {
+			func(share *sharing.ShamirShare) bool {
 				return share.Id == uint32(nodeIdx)
 			},
 		)
