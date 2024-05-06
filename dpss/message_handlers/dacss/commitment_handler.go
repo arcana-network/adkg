@@ -118,6 +118,12 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 				},
 			)
 
+			log.WithFields(
+				log.Fields{
+					"Message": "Start MVBA",
+				},
+			).Debug("DACSSCommitmentMessage: Process")
+
 			// DONE: Call the message to start MVBA here.
 			{
 				if self.IsNewNode() {
@@ -161,8 +167,8 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 	} else {
 		log.WithFields(
 			log.Fields{
-				"RBCState.Phase": state.RBCState.Phase,
-				"Message":        "the RBC has not ended yet",
+				"Threshold": t + 1,
+				"Message":   "No threshold commitment found",
 			},
 		).Debug("DACSSCommitmentMessage: Process")
 	}

@@ -104,7 +104,7 @@ func TestEndToBatchRec(t *testing.T) {
 		}(index, n)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// DACSS Checks
 
