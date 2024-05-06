@@ -5,7 +5,9 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/dpss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	log "github.com/sirupsen/logrus"
@@ -31,9 +33,11 @@ func (processor DpssEndToEndMessageProcessor) ProcessMessages(sender common.Node
 	case strings.HasPrefix(PssMessage.Type, "dpss"):
 		processor.ProcessDpssMessages(sender, PssMessage, node)
 
-	// // PlaceHolder for MBVA
-	// case strings.HasPrefix(PssMessage.Type, "aba"):
-	// 	processor.ProcessMvbaMessages(sender, PssMessage, node)
+	case strings.HasPrefix(PssMessage.Type, "aba"):
+		processor.ProcessMvbaMessages(sender, PssMessage, node)
+
+	case strings.HasPrefix(PssMessage.Type, "keyset"):
+		processor.ProcessKeysetMessages(sender, PssMessage, node)
 
 	default:
 		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
@@ -94,8 +98,41 @@ func (processor DpssEndToEndMessageProcessor) ProcessDpssMessages(sender common.
 	}
 }
 
-// TODO: MBVA handlers needed
 // message processor for MVBA
-// func (processor DpssEndToEndMessageProcessor) ProcessMvbaMessages(sender common.NodeDetails, PssMessage common.PSSMessage, node *testutils.IntegrationTestNode) {
-// 	//PLaceholder for processing MVBA messge handlers
-// }
+func (processor DpssEndToEndMessageProcessor) ProcessMvbaMessages(sender common.NodeDetails, PssMessage common.PSSMessage, node *testutils.IntegrationTestNode) {
+	switch PssMessage.Type {
+	case aba.InitMessageType:
+		dpss.ProcessMessageForType[*aba.InitMessage](PssMessage.Data, sender, node, aba.InitMessageType)
+	case aba.Aux1MessageType:
+		dpss.ProcessMessageForType[*aba.Aux1Message](PssMessage.Data, sender, node, aba.Aux1MessageType)
+	case aba.Aux2MessageType:
+		dpss.ProcessMessageForType[*aba.Aux2Message](PssMessage.Data, sender, node, aba.Aux2MessageType)
+	case aba.AuxsetMessageType:
+		dpss.ProcessMessageForType[*aba.AuxsetMessage](PssMessage.Data, sender, node, aba.AuxsetMessageType)
+	case aba.Est1MessageType:
+		dpss.ProcessMessageForType[*aba.Est1Message](PssMessage.Data, sender, node, aba.Est1MessageType)
+	case aba.Est2MessageType:
+		dpss.ProcessMessageForType[*aba.Est2Message](PssMessage.Data, sender, node, aba.Est2MessageType)
+	case aba.CoinInitMessageType:
+		dpss.ProcessMessageForType[*aba.CoinInitMessage](PssMessage.Data, sender, node, aba.CoinInitMessageType)
+	case aba.CoinMessageType:
+		dpss.ProcessMessageForType[*aba.CoinMessage](PssMessage.Data, sender, node, aba.CoinMessageType)
+	default:
+		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
+	}
+}
+
+func (processor DpssEndToEndMessageProcessor) ProcessKeysetMessages(sender common.NodeDetails, PssMessage common.PSSMessage, node *testutils.IntegrationTestNode) {
+	switch PssMessage.Type {
+	case keyset.ProposeMessageType:
+		dpss.ProcessMessageForType[*keyset.ProposeMessage](PssMessage.Data, sender, node, keyset.ProposeMessageType)
+	case keyset.EchoMessageType:
+		dpss.ProcessMessageForType[*keyset.EchoMessage](PssMessage.Data, sender, node, keyset.EchoMessageType)
+	case keyset.ReadyMessageType:
+		dpss.ProcessMessageForType[*keyset.ReadyMessage](PssMessage.Data, sender, node, keyset.ReadyMessageType)
+	case keyset.OutputMessageType:
+		dpss.ProcessMessageForType[*keyset.OutputMessage](PssMessage.Data, sender, node, keyset.OutputMessageType)
+	default:
+		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
+	}
+}

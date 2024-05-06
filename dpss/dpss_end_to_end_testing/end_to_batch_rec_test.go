@@ -10,6 +10,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,7 @@ func TestEndToBatchRec(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
-	TestSetUp, _ := DpssEndToEndTestSetup()
+	TestSetUp, transport := DpssEndToEndTestSetup()
 
 	nodesOld := TestSetUp.OldCommitteeNetwork
 	nodesNew := TestSetUp.NewCommitteeNetwork
@@ -195,78 +196,78 @@ func TestEndToBatchRec(t *testing.T) {
 	// Batch Reconstruction handler Checks
 	// TODO: can be checked once MBVA is added
 
-	// // Check step 1: Each HimHandler invocation should send 1 preprocess message
-	// // in total we expect n PreProcessMessages
-	// sentMsgs := transport.GetSentMessages()
-	// preprocessRecMessages := make([]common.PSSMessage, 0)
+	// Check step 1: Each HimHandler invocation should send 1 preprocess message
+	// in total we expect n PreProcessMessages
+	sentMsgs := transport.GetSentMessages()
+	preprocessRecMessages := make([]common.PSSMessage, 0)
 
-	// for _, msg := range sentMsgs {
-	// 	if msg.Type == old_committee.PreprocessBatchRecMessageType {
-	// 		preprocessRecMessages = append(preprocessRecMessages, msg)
-	// 	}
-	// }
-	// assert.Equal(t, nOld, len(preprocessRecMessages))
+	for _, msg := range sentMsgs {
+		if msg.Type == old_committee.PreprocessBatchRecMessageType {
+			preprocessRecMessages = append(preprocessRecMessages, msg)
+		}
+	}
+	assert.Equal(t, nOld, len(preprocessRecMessages))
 
-	// // Check step 2: Each PreprocessBatchRecMessage should send
-	// // ceil(B/(n-2t)) InitRecHandlerMessages
-	// // 34
-	// nrBatches := math.Ceil(float64(B) / float64(nOld-2*tOld))
+	// Check step 2: Each PreprocessBatchRecMessage should send
+	// ceil(B/(n-2t)) InitRecHandlerMessages
+	// 34
+	nrBatches := math.Ceil(float64(B) / float64(nOld-2*tOld))
 
-	// receiveMessageMsgs := transport.GetReceivedMessages()
-	// assert.True(t, len(receiveMessageMsgs) > 0)
-	// initRecMessages := make([]common.PSSMessage, 0)
+	receiveMessageMsgs := transport.GetReceivedMessages()
+	assert.True(t, len(receiveMessageMsgs) > 0)
+	initRecMessages := make([]common.PSSMessage, 0)
 
-	// for _, msg := range receiveMessageMsgs {
-	// 	if msg.Type == old_committee.InitRecHandlerType {
-	// 		initRecMessages = append(initRecMessages, msg)
-	// 	}
-	// }
-	// nrInitRecMessages := len(initRecMessages)
-	// // ceil(B/(n-2t)) * n_old
-	// // 34*7 = 238
-	// assert.Equal(t, int(nrBatches)*nOld, nrInitRecMessages)
+	for _, msg := range receiveMessageMsgs {
+		if msg.Type == old_committee.InitRecHandlerType {
+			initRecMessages = append(initRecMessages, msg)
+		}
+	}
+	nrInitRecMessages := len(initRecMessages)
+	// ceil(B/(n-2t)) * n_old
+	// 34*7 = 238
+	assert.Equal(t, int(nrBatches)*nOld, nrInitRecMessages)
 
-	// // Check step 3: From each InitRecHandlerMessage we expect
-	// // n_old PrivateRecHandlerMessages to be sent
-	// privateRecMessages := make([]common.PSSMessage, 0)
+	// Check step 3: From each InitRecHandlerMessage we expect
+	// n_old PrivateRecHandlerMessages to be sent
+	privateRecMessages := make([]common.PSSMessage, 0)
 
-	// for _, msg := range sentMsgs {
-	// 	if msg.Type == old_committee.PrivateRecMessageType {
-	// 		privateRecMessages = append(privateRecMessages, msg)
-	// 	}
-	// }
-	// // ceil(B/(n-2t)) * n_old InitRecHandlerMessage were sent
-	// // n_old messages are sent per InitRecHandlerMessage
-	// // 238 * 7 = 1666
-	// assert.Equal(t, nrInitRecMessages*nOld, len(privateRecMessages))
+	for _, msg := range sentMsgs {
+		if msg.Type == old_committee.PrivateRecMessageType {
+			privateRecMessages = append(privateRecMessages, msg)
+		}
+	}
+	// ceil(B/(n-2t)) * n_old InitRecHandlerMessage were sent
+	// n_old messages are sent per InitRecHandlerMessage
+	// 238 * 7 = 1666
+	assert.Equal(t, nrInitRecMessages*nOld, len(privateRecMessages))
 
-	// // Filter broadcasted messages on the ones that are of type PublicRecMsg
-	// publicRecMessages := make([]common.PSSMessage, 0)
-	// broadcastedMsgs := transport.GetBroadcastedMessages()
+	// Filter broadcasted messages on the ones that are of type PublicRecMsg
+	publicRecMessages := make([]common.PSSMessage, 0)
+	broadcastedMsgs := transport.GetBroadcastedMessages()
 
-	// for _, msg := range broadcastedMsgs {
-	// 	if msg.Type == old_committee.PublicRecMessageType {
-	// 		publicRecMessages = append(publicRecMessages, msg)
-	// 	}
-	// }
+	for _, msg := range broadcastedMsgs {
+		if msg.Type == old_committee.PublicRecMessageType {
+			publicRecMessages = append(publicRecMessages, msg)
+		}
+	}
 
-	// // There are ceil(B/(n-2t)) batch rounds
-	// // There are n_old nodes
-	// // Each old node should broadcast 1 PublicRecMessage per batch round
-	// // 34*7 = 238
-	// assert.Equal(t, int(nrBatches)*nOld, len(publicRecMessages))
+	// There are ceil(B/(n-2t)) batch rounds
+	// There are n_old nodes
+	// Each old node should broadcast 1 PublicRecMessage per batch round
+	// 34*7 = 238
+	assert.Equal(t, int(nrBatches)*nOld, len(publicRecMessages))
 
-	// // Final check: the broadcasted LocalComputationMessages
-	// localComputationMessages := make([]common.PSSMessage, 0)
-	// for _, msg := range broadcastedMsgs {
-	// 	if msg.Type == old_committee.LocalComputationMessageType {
-	// 		localComputationMessages = append(localComputationMessages, msg)
-	// 	}
-	// }
-	// // Each node, per batch, broadcasts 1 LocalComputationMessage
-	// // n_old nodes
-	// // ceil(B/(n-2t)) nr of batches
-	// assert.Equal(t, int(nrBatches)*nOld, len(localComputationMessages))
+	// Final check: the broadcasted LocalComputationMessages
+	localComputationMessages := make([]common.PSSMessage, 0)
+	for _, msg := range broadcastedMsgs {
+		if msg.Type == old_committee.LocalComputationMessageType {
+			localComputationMessages = append(localComputationMessages, msg)
+		}
+	}
+	// Each node, per batch, broadcasts 1 LocalComputationMessage
+	// n_old nodes
+	// ceil(B/(n-2t)) nr of batches
+	assert.Equal(t, int(nrBatches)*nOld, len(localComputationMessages))
 }
 
 // returns DACSS initMsg
