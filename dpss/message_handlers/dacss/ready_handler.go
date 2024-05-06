@@ -73,10 +73,12 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 	// If the ready message from sender was already received, we do an early
 	// return.
 	if found && state.RBCState.ReceivedReady[sender.Index] {
-		log.Debugf(
-			"The party already has a message from the node %d",
-			sender.Index,
-		)
+		log.WithFields(
+			log.Fields{
+				"SenderIndex": sender.Index,
+				"Message":     "The party already received message from this node",
+			},
+		).Debug("DacssReadyMessage: Process")
 		return
 	}
 
