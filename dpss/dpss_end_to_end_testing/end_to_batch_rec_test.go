@@ -44,8 +44,7 @@ func TestEndToBatchRec(t *testing.T) {
 	// That means that for the single share each node has,
 	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
 	// and shared to both old & new committee
-	pssIdInt := 0            // PssId should be the same for all the init messages.
-	pssDealer := nodesOld[0] // We set the node in position zero to be the deler for DPSS
+	pssIdInt := 0 // PssId should be the same for all the init messages.
 
 	for index, n := range nodesOld {
 		go func(index int, node *testutils.IntegrationTestNode) {
@@ -62,7 +61,7 @@ func TestEndToBatchRec(t *testing.T) {
 				}
 			}
 
-			initMsg := getTestInitMsg(pssDealer, *big.NewInt(int64(pssIdInt)), B, &privKeyShare, ephemeralKeypair, TestSetUp.NewCommitteeParams)
+			initMsg := getTestInitMsg(node, *big.NewInt(int64(pssIdInt)), B, &privKeyShare, ephemeralKeypair, TestSetUp.NewCommitteeParams)
 
 			pssMsgData, err := bijson.Marshal(initMsg)
 			assert.Nil(t, err)
