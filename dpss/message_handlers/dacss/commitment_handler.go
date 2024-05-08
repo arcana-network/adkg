@@ -132,10 +132,11 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 				}
 
 				// Deduplicate this calculation v ??
+				self.State().ShareStore.Lock()
 				numShares := len(self.State().ShareStore.OldShares)
-
+				self.State().ShareStore.Unlock()
 				alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
-
+				log.Infof("alpha=%d, totalShare=%d, n-2t=%d", alpha, numShares, n-(2*t))
 				TSet, completed := pssState.CheckForThresholdCompletion(alpha, n-t)
 				if completed {
 					pssState.T[self.Details().Index] = TSet
