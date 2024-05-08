@@ -90,7 +90,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		return
 	}
 
-	log.Debugf("acss_output: round=%v, self=%v", m.AcssRoundDetails, self.Details().Index)
+	log.Debugf("dacss_output: round=%v, self=%v", m.AcssRoundDetails, self.Details().Index)
 
 	priv := self.PrivateKey()
 
@@ -204,7 +204,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			keysetMap.CommitmentStore[dealer.Index] = verifier.Commitments
 
 			// Check proposals and emit
-			numShares := len(self.State().ShareStore.OldShares)
+			numShares := m.AcssRoundDetails.PSSRoundDetails.BatchSize
 			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 			TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
 			for key, v := range pssState.TProposals {

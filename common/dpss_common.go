@@ -374,10 +374,6 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 			Tset = append(Tset, v.TPrime)
 		}
 
-		if len(Tset) <= alpha {
-			return 0, false
-		}
-
 		T = Tset[0]
 		for i := 1; i < alpha; i += 1 {
 			T = T & Tset[i]
