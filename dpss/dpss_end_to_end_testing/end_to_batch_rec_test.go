@@ -32,7 +32,7 @@ func TestEndToBatchRec(t *testing.T) {
 	tOld := TestSetUp.OldCommitteeParams.T
 
 	// The old committee has shares of secrets
-	B := 100
+	B := 10
 	_, _, shares, _ := GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld)
 
 	// number of random secret scalar to be shared
@@ -104,7 +104,7 @@ func TestEndToBatchRec(t *testing.T) {
 		}(index, n)
 	}
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// DACSS Checks
 

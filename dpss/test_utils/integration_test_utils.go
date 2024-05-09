@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -201,4 +202,14 @@ func (node *IntegrationTestNode) CountReceivedMessages(msgType string) int {
 
 func (n *IntegrationTestNode) GetMessageBroker() *common.MessageBroker {
 	return nil
+}
+
+func (n *IntegrationTestNode) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
+	nodes := n.Nodes(false)
+	for _, n := range nodes {
+		if n.Index == id {
+			return n, nil
+		}
+	}
+	return common.NodeDetails{}, errors.New("node not found in old committee")
 }
