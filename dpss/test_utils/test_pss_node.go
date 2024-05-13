@@ -136,8 +136,10 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 		state: &common.PSSNodeState{
 			AcssStore:       &common.AcssStateMap{},
 			ShareStore:      &common.PSSShareStore{},
-			BatchReconStore: &common.BatchRecStoreMap{},
+			ABAStore:        &common.AbaStateMap{},
 			PSSStore:        &common.PSSStateMap{},
+			KeysetStore:     &common.KeysetStateMap{},
+			BatchReconStore: &common.BatchRecStoreMap{},
 		},
 		transport:   noSendTransport,
 		LongtermKey: keypair,
