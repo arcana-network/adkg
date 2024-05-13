@@ -19,7 +19,7 @@ import (
 )
 
 func TestEndToBatchRec(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
+	// log.SetLevel(log.DebugLevel)
 
 	//default setup and mock transport
 	TestSetUp, transport := DpssEndToEndTestSetup()
@@ -32,7 +32,8 @@ func TestEndToBatchRec(t *testing.T) {
 	tOld := TestSetUp.OldCommitteeParams.T
 
 	// The old committee has shares of secrets
-	B := 10
+	// 100 has passed, but 300 not
+	B := 300
 	_, _, shares, _ := GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld)
 
 	// number of random secret scalar to be shared
@@ -104,7 +105,7 @@ func TestEndToBatchRec(t *testing.T) {
 		}(index, n)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(25 * time.Second)
 
 	// DACSS Checks
 
