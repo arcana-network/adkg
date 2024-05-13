@@ -244,6 +244,9 @@ func (state *PSSState) GetTSet(n, t int) []int {
 
 	T := Union(keysets...)
 	sort.Ints(T)
+	if len(T) < n-t {
+		return []int{}
+	}
 	T = T[:(n - t)]
 	return T
 }
