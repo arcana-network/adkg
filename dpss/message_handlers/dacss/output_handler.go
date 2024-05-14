@@ -218,6 +218,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 					delete(pssState.TProposals, key)
 				}
 			}
+			// FIXME: Calling below function to trigger listeners, can change func name
+			pssState.GetTSet(n, t)
 		}
 
 		commitmentMsg, err := NewDacssCommitmentMessage(

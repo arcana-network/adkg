@@ -170,8 +170,10 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 					// FIXME: Something wrong here, sometime gets pointer nil thingy
 					T := pssState.GetTSet(n, f)
 					if len(T) < n-f {
-						log.Infof("self=%d", self.Details().Index)
-						return
+						c := self.State().Waiter.WaitForTSet()
+						pssState.Unlock()
+						T = <-c
+						pssState.Lock()
 					}
 					curve := common.CurveFromName(m.Curve)
 					numShares := m.RoundID.BatchSize

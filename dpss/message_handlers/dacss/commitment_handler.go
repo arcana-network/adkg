@@ -145,7 +145,8 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 				TSet, completed := pssState.CheckForThresholdCompletion(alpha, n-t)
 				if completed {
 					pssState.T[self.Details().Index] = TSet
-
+					// FIXME: Calling below function to trigger listeners, can change func name
+					pssState.GetTSet(n, t)
 					var output [8]byte
 					binary.BigEndian.PutUint64(output[:], uint64(TSet))
 
