@@ -63,12 +63,14 @@ func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSPartic
 	pssState.Lock()
 	defer pssState.Unlock()
 
-	numShares := len(self.State().ShareStore.OldShares)
+	numShares := m.RoundID.BatchSize
 
 	alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
 	verified := Predicate(kcommon.IntToByteValue(TSet), m.Data)
 
+	// FIXME: Calling below function to trigger listeners, can change func name
+	pssState.GetTSet(n, t)
 	// If verified, send echo to each node
 	if verified {
 		OnKeysetVerified(m.RoundID, m.Curve, m.Data, pssState, leader, self)

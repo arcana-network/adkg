@@ -129,6 +129,10 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 	} else {
 		params = StandardOldCommitteeParams()
 	}
+	w := &common.Waiter{
+		ThresholdCompletionWaiters: [](chan int){},
+		TSetWaiters:                [](chan []int){},
+	}
 	node := PssTestNode{
 		details:             common.NodeDetails{Index: index, PubKey: common.CurvePointToPoint(keypair.PublicKey, common.SECP256K1)},
 		isNewCommittee:      isNewCommittee,
@@ -136,8 +140,11 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 		state: &common.PSSNodeState{
 			AcssStore:       &common.AcssStateMap{},
 			ShareStore:      &common.PSSShareStore{},
+			ABAStore:        &common.AbaStateMap{},
+			PSSStore:        &common.PSSStateMap{Waiter: w},
+			KeysetStore:     &common.KeysetStateMap{},
 			BatchReconStore: &common.BatchRecStoreMap{},
-			PSSStore:        &common.PSSStateMap{},
+			Waiter:          w,
 		},
 		transport:   noSendTransport,
 		LongtermKey: keypair,

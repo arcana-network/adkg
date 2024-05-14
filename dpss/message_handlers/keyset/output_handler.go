@@ -68,7 +68,7 @@ func (m OutputMessage) Process(sender common.NodeDetails, self common.PSSPartici
 	}
 	n, _, t := self.Params()
 
-	numShares := len(self.State().ShareStore.OldShares)
+	numShares := m.RoundID.BatchSize
 
 	alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)

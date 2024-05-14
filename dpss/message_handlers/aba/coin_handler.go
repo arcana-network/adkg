@@ -223,7 +223,7 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 
 			T := pssState.GetTSet(n, f)
 			curve := common.CurveFromName(m.Curve)
-			numShares := len(self.State().ShareStore.OldShares)
+			numShares := m.RoundID.BatchSize
 
 			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
 			shares := pssState.GetSharesFromT(T, alpha, curve)

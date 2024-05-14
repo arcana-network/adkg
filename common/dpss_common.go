@@ -80,6 +80,7 @@ type PSSNodeState struct {
 	ABAStore        *AbaStateMap
 	KeysetStore     *KeysetStateMap // Could have reused ACSS here
 	PSSStore        *PSSStateMap
+	Waiter          *Waiter
 }
 
 // Clean completely cleans the state of a node for a given PSSRound.
@@ -208,7 +209,8 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 /* ------- PSS state start ------- */
 // Stores the information of the shares for a given PSS Round
 type PSSStateMap struct {
-	Map sync.Map // key:PSSRoundID, value: PSSState
+	Map    sync.Map // key:PSSRoundID, value: PSSState
+	Waiter *Waiter
 }
 
 type ACSSKeysetMap struct {
@@ -232,6 +234,7 @@ type PSSState struct {
 	ABAComplete    bool
 	Decisions      map[int]int
 	HIMStarted     bool
+	waiter         *Waiter
 }
 
 func (state *PSSState) GetTSet(n, t int) []int {
@@ -244,7 +247,12 @@ func (state *PSSState) GetTSet(n, t int) []int {
 
 	T := Union(keysets...)
 	sort.Ints(T)
+	if len(T) < n-t {
+		return []int{}
+	}
 	T = T[:(n - t)]
+	// Check if listener exist, if they do send Tset and clear listener array
+	go state.waiter.TriggerTSet(T)
 	return T
 }
 
@@ -265,6 +273,84 @@ func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) [
 		}
 	}
 	return shares
+}
+
+func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
+	_, ok := state.KeysetMap[id]
+	if !ok {
+		state.KeysetMap[id] = &ACSSKeysetMap{
+			TPrime:          0,
+			CommitmentStore: make(map[int][]curves.Point),
+			ShareStore:      make(map[int]*sharing.ShamirShare),
+		}
+	}
+
+	return state.KeysetMap[id]
+}
+
+// Threshold = n-t, alpha = B/n-2t
+func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, bool) {
+	T := 0
+	Tset := make([]int, 0)
+	if len(state.KeysetMap) == alpha {
+		for _, v := range state.KeysetMap {
+			Tset = append(Tset, v.TPrime)
+		}
+
+		T = Tset[0]
+		for i := 1; i < alpha; i += 1 {
+			T = T & Tset[i]
+		}
+		if CountBit(T) >= threshold {
+			go state.waiter.TriggerThreshold(T)
+			return T, true
+		}
+	}
+	return 0, false
+}
+
+type Waiter struct {
+	sync.Mutex
+	ThresholdCompletionWaiters [](chan int)
+	TSetWaiters                [](chan []int)
+}
+
+func (w *Waiter) WaitForThresholdCompletion() chan int {
+	w.Lock()
+	defer w.Unlock()
+	c := make(chan int)
+	w.ThresholdCompletionWaiters = append(w.ThresholdCompletionWaiters, c)
+	return c
+}
+
+func (w *Waiter) WaitForTSet() chan []int {
+	w.Lock()
+	defer w.Unlock()
+	c := make(chan []int)
+	w.TSetWaiters = append(w.TSetWaiters, c)
+	return c
+}
+
+func (w *Waiter) TriggerThreshold(T int) {
+	w.Lock()
+	defer w.Unlock()
+	if len(w.ThresholdCompletionWaiters) > 0 {
+		for _, c := range w.ThresholdCompletionWaiters {
+			c <- T
+		}
+		w.ThresholdCompletionWaiters = w.ThresholdCompletionWaiters[:0]
+	}
+}
+
+func (w *Waiter) TriggerTSet(T []int) {
+	w.Lock()
+	defer w.Unlock()
+	if len(w.TSetWaiters) > 0 {
+		for _, c := range w.TSetWaiters {
+			c <- T
+		}
+		w.TSetWaiters = w.TSetWaiters[:0]
+	}
 }
 
 func Contains(s []int, e int) bool {
@@ -352,39 +438,6 @@ Alpha-X => {
 }
 */
 
-func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
-	_, ok := state.KeysetMap[id]
-	if !ok {
-		state.KeysetMap[id] = &ACSSKeysetMap{
-			TPrime:          0,
-			CommitmentStore: make(map[int][]curves.Point),
-			ShareStore:      make(map[int]*sharing.ShamirShare),
-		}
-	}
-
-	return state.KeysetMap[id]
-}
-
-// Threshold = n-t, alpha = B/n-2t
-func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, bool) {
-	T := 0
-	Tset := make([]int, 0)
-	if len(state.KeysetMap) == alpha {
-		for _, v := range state.KeysetMap {
-			Tset = append(Tset, v.TPrime)
-		}
-
-		T = Tset[0]
-		for i := 1; i < alpha; i += 1 {
-			T = T & Tset[i]
-		}
-		if CountBit(T) >= threshold {
-			return T, true
-		}
-	}
-	return 0, false
-}
-
 // FIXME: Deduplicate this v
 func CountBit(n int) int {
 	count := 0
@@ -395,13 +448,14 @@ func CountBit(n int) int {
 	return count
 }
 
-func GetDefaultPSSState(id string) *PSSState {
+func GetDefaultPSSState(id string, w *Waiter) *PSSState {
 	s := PSSState{
 		PSSID:      id,
 		KeysetMap:  make(map[int]*ACSSKeysetMap),
 		T:          make(map[int]int),
 		TProposals: make(map[int]int),
 		Decisions:  make(map[int]int),
+		waiter:     w,
 	}
 	return &s
 }
@@ -413,7 +467,7 @@ func (m *PSSStateMap) Get(r string) (state *PSSState, found bool) {
 }
 
 func (store *PSSStateMap) GetOrSetIfNotComplete(r string) (keygen *PSSState, complete bool) {
-	inter, found := store.GetOrSet(r, GetDefaultPSSState(r))
+	inter, found := store.GetOrSet(r, GetDefaultPSSState(r, store.Waiter))
 	if found {
 		if inter == nil {
 			return inter, true
