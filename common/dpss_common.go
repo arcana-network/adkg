@@ -85,12 +85,12 @@ type PSSNodeState struct {
 
 // Clean completely cleans the state of a node for a given PSSRound.
 func (state *PSSNodeState) Clean(pssRound PSSRoundDetails) error {
-	err := cleanMap(&state.AcssStore.AcssStateForRound, pssRound, Delimiter1)
+	err := cleanMap[ACSSRoundID](&state.AcssStore.AcssStateForRound, pssRound, Delimiter1)
 	if err != nil {
 		return err
 	}
 
-	err = cleanMap(&state.BatchReconStore.BatchReconStateForRound, pssRound, Delimiter2)
+	err = cleanMap[BatchRecID](&state.BatchReconStore.BatchReconStateForRound, pssRound, Delimiter2)
 	if err != nil {
 		return err
 	}
@@ -103,12 +103,12 @@ func (state *PSSNodeState) Clean(pssRound PSSRoundDetails) error {
 
 // cleanMap removes the entries of the syncMap that contains the given PSSRoundDetails
 // as part of the key, which is separated with the given delimiter.
-func cleanMap(mapStore *sync.Map, pssRound PSSRoundDetails, delimiter string) error {
+func cleanMap[K ACSSRoundID | BatchRecID](mapStore *sync.Map, pssRound PSSRoundDetails, delimiter string) error {
 	var err error
 	mapStore.Range(
 		func(key, value any) bool {
 			// Parses the key into PSSRoundDetails || AcssCount.
-			keyAcssRoundID := key.(ACSSRoundID)
+			keyAcssRoundID := key.(K)
 			splittedKey := strings.Split(
 				string(keyAcssRoundID), delimiter,
 			)
@@ -698,8 +698,8 @@ type ImplicateInformation struct {
 // at the end of the DPSS protocol (for the new nodes).
 type PSSShareStore struct {
 	sync.Mutex
-	NewShares []curves.Scalar // Map of shares at the end of the protocol.
-	OldShares []PrivKeyShare  // Map of shares at the beginning of the protocol.
+	NewShares []curves.Scalar // Array of shares at the end of the protocol.
+	OldShares []PrivKeyShare  // Array of shares at the beginning of the protocol.
 }
 
 func (store *PSSShareStore) Initialize(storeSize int) {

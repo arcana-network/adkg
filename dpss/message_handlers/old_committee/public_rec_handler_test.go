@@ -59,6 +59,9 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 		},
 	)
 	assert.Nil(t, err)
+
+	userIdsInternalState := senderNode.State().ShareStore.GetUserIDs()
+
 	testMsg.Process(senderNode.Details(), senderNode)
 
 	senderNode.Transport().WaitForBroadcastSent(1)
@@ -73,9 +76,17 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 		err := bijson.Unmarshal(message.Data, &localCompMsg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, localCompMsg.UserIds, senderNode.State().ShareStore.GetUserIDs())
+		assert.Equal(t, localCompMsg.UserIds, userIdsInternalState)
 	}
 
+	// Check that the state is cleaned
+	assert.Empty(t, senderNode.State().ShareStore.NewShares)
+	assert.Empty(t, senderNode.State().ShareStore.OldShares)
+	_, found, err := senderNode.State().BatchReconStore.Get(
+		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
+	)
+	assert.Nil(t, err)
+	assert.False(t, found)
 }
 
 func getValidPublicRecMsgAndPoints(senderNode *testutils.PssTestNode, defaultSetup *testutils.TestSetup) (*PublicRecMsg, map[int]curves.Scalar, error) {
