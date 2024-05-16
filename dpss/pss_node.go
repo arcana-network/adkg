@@ -5,7 +5,9 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -224,6 +226,34 @@ func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PS
 		ProcessMessageForType[*old_committee.PrivateRecMsg](message.Data, sender, node, old_committee.PrivateRecMessageType)
 	case old_committee.PublicRecMessageType:
 		ProcessMessageForType[*old_committee.PublicRecMsg](message.Data, sender, node, old_committee.PublicRecMessageType)
+	// mvba related messages
+	case keyset.EchoMessageType:
+		ProcessMessageForType[*keyset.EchoMessage](message.Data, sender, node, keyset.EchoMessageType)
+	case keyset.ProposeMessageType:
+		ProcessMessageForType[*keyset.ProposeMessage](message.Data, sender, node, keyset.ProposeMessageType)
+	case keyset.ReadyMessageType:
+		ProcessMessageForType[*keyset.ReadyMessage](message.Data, sender, node, keyset.ReadyMessageType)
+	case keyset.OutputMessageType:
+		ProcessMessageForType[*keyset.OutputMessage](message.Data, sender, node, keyset.OutputMessageType)
+	case aba.Aux1MessageType:
+		ProcessMessageForType[*aba.Aux1Message](message.Data, sender, node, aba.Aux1MessageType)
+	case aba.Aux2MessageType:
+		ProcessMessageForType[*aba.Aux2Message](message.Data, sender, node, aba.Aux2MessageType)
+	case aba.AuxsetMessageType:
+		ProcessMessageForType[*aba.AuxsetMessage](message.Data, sender, node, aba.AuxsetMessageType)
+	case aba.CoinInitMessageType:
+		ProcessMessageForType[*aba.CoinInitMessage](message.Data, sender, node, aba.CoinInitMessageType)
+	case aba.CoinMessageType:
+		ProcessMessageForType[*aba.CoinMessage](message.Data, sender, node, aba.CoinMessageType)
+	case aba.Est1MessageType:
+		ProcessMessageForType[*aba.Est1Message](message.Data, sender, node, aba.Est1MessageType)
+	case aba.Est2MessageType:
+		ProcessMessageForType[*aba.Est2Message](message.Data, sender, node, aba.Est2MessageType)
+	case aba.InitMessageType:
+		ProcessMessageForType[*aba.InitMessage](message.Data, sender, node, aba.InitMessageType)
+	// FIXME add the actual local computation msgs, this is just a dummy
+	case old_committee.LocalComputationMessageType:
+		ProcessMessageForType[*old_committee.LocalComputationMsg](message.Data, sender, node, old_committee.LocalComputationMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", message.Type)
 	}
