@@ -84,6 +84,15 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 		return
 	}
 
+	if state.ValidShareOutput {
+		log.WithFields(
+			log.Fields{
+				"Message": "The share output is already marked valid",
+			},
+		).Debug("DACSSCommitmentMessage: Process")
+		return
+	}
+
 	// Do nothing if the commitment have been already received by the sender.
 	if state.ReceivedCommitments[sender.Index] {
 		log.WithFields(

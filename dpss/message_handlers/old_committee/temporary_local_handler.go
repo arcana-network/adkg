@@ -5,6 +5,7 @@ package old_committee
 
 import (
 	"github.com/arcana-network/dkgnode/common"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
 
@@ -45,4 +46,8 @@ func NewLocalComputationMsg(
 	)
 
 	return &pssMessage, nil
+}
+
+func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
+	log.Info("LocalComputationMsg: Process")
 }
