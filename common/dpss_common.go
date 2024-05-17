@@ -235,6 +235,7 @@ type PSSState struct {
 	Decisions      map[int]int
 	HIMStarted     bool
 	waiter         *Waiter
+	LocalComp      map[string]int
 }
 
 func (state *PSSState) GetTSet(n, t int) []int {
