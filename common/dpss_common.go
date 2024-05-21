@@ -644,6 +644,10 @@ func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
 	return dacssState, true, nil
 }
 
+// TODO consider returning the updated AcssState since
+// the user might call Get before AccsState is created,
+// and the old reference will still be nil after calling UpdateAccsState
+
 // Generic updater for a AcssState within the AcssStateMap
 func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStateUpdater) error {
 	// Attempt to load the existing AccsState for the given acssRoundID

@@ -97,7 +97,15 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 		return
 	}
 
-	// FIXME: Something wrong here, sometimes gets nil pointer dereference.
+	state, found, err = p.State().AcssStore.Get(m.AcssRoundDetails.ToACSSRoundID())
+	if err != nil {
+		common.LogStateRetrieveError("ReadyHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("ReadyHandler", "Proces", found)
+	}
+
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
 		return
