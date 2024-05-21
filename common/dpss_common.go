@@ -225,23 +225,28 @@ type ACSSKeysetMap struct {
 // Shared data for a PSS Round
 type PSSState struct {
 	sync.Mutex
-	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
-	TProposals     map[int]int // nodeIndex => unverified keyset
-	PSSID          string
-	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
-	KeysetProposed bool
-	ABAStarted     []int
-	ABAComplete    bool
-	Decisions      map[int]int
-	HIMStarted     bool
-	waiter         *Waiter
-	LocalComp      map[string]int
+	T               map[int]int // nodeIndex => verified keyset (limited to n-f)
+	TProposals      map[int]int // nodeIndex => unverified keyset
+	PSSID           string
+	KeysetMap       map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
+	KeysetProposed  bool
+	ABAStarted      []int
+	ABAComplete     bool
+	Decisions       map[int]int
+	HIMStarted      bool
+	waiter          *Waiter
+	LocalComp       map[string]int
+	UserIDs         map[string]int
+	RefreshedShares []curves.Scalar
 }
 
 func (state *PSSState) GetTSet(n, t int) []int {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
+			if state.T[k] == 0 {
+				return []int{}
+			}
 			keysets = append(keysets, GetSetBits(n, state.T[k]))
 		}
 	}
@@ -319,25 +324,26 @@ type Waiter struct {
 func (w *Waiter) WaitForThresholdCompletion() chan int {
 	w.Lock()
 	defer w.Unlock()
-	c := make(chan int)
-	w.ThresholdCompletionWaiters = append(w.ThresholdCompletionWaiters, c)
-	return c
+	ch := make(chan int)
+	w.ThresholdCompletionWaiters = append(w.ThresholdCompletionWaiters, ch)
+	return ch
 }
 
 func (w *Waiter) WaitForTSet() chan []int {
 	w.Lock()
 	defer w.Unlock()
-	c := make(chan []int)
-	w.TSetWaiters = append(w.TSetWaiters, c)
-	return c
+	ch := make(chan []int)
+	w.TSetWaiters = append(w.TSetWaiters, ch)
+	return ch
 }
 
 func (w *Waiter) TriggerThreshold(T int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.ThresholdCompletionWaiters) > 0 {
-		for _, c := range w.ThresholdCompletionWaiters {
-			c <- T
+		for _, ch := range w.ThresholdCompletionWaiters {
+			ch <- T
+			close(ch)
 		}
 		w.ThresholdCompletionWaiters = w.ThresholdCompletionWaiters[:0]
 	}
@@ -347,8 +353,9 @@ func (w *Waiter) TriggerTSet(T []int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.TSetWaiters) > 0 {
-		for _, c := range w.TSetWaiters {
-			c <- T
+		for _, ch := range w.TSetWaiters {
+			ch <- T
+			close(ch)
 		}
 		w.TSetWaiters = w.TSetWaiters[:0]
 	}
@@ -738,6 +745,20 @@ func CreatePSSRound(pssID string, dealer NodeDetails, batchSize int) PSSRoundDet
 		dealer,
 		batchSize,
 	}
+}
+
+func GetIndexFromPSSID(pssID string) int {
+	//FIXME: handle errors
+	split := strings.Split(pssID, Delimiter3)
+	if len(split) != 2 {
+		// ???
+	}
+	index, ok := new(big.Int).SetString(split[1], 16)
+	if !ok {
+		// ???
+	}
+
+	return int(index.Int64())
 }
 
 type PSSID string

@@ -1,6 +1,7 @@
 package new_committee
 
 import (
+	"encoding/hex"
 	"math"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -52,6 +53,53 @@ func NewLocalComputationMsg(
 	return &pssMessage, nil
 }
 
+func getHash(input [][]byte) string {
+	var bytes []byte
+	for _, b := range input {
+		bytes = append(bytes, b...)
+	}
+	hash := hex.EncodeToString(common.Keccak256(bytes))
+	return hash
+}
+
+func (msg *LocalComputationMsg) ProcessPublicKeyData(sender common.NodeDetails, self common.PSSParticipant) {
+	_, _, t := self.Params()
+
+	state, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+
+	state.Lock()
+	defer state.Unlock()
+
+	for i, id := range msg.UserIds {
+		if id != "" {
+			val, ok := state.UserIDs[id]
+			if !ok {
+				state.UserIDs[id] = 0
+			}
+
+			if val == -1 {
+				continue
+			}
+
+			state.UserIDs[id] = state.UserIDs[id] + 1
+
+			if state.UserIDs[id] >= t+1 {
+				if len(state.RefreshedShares) > 0 {
+					// Assumption: All batch sizes are same except for the last batch
+					// pssID = 1, i = 97 => index = 1*300 +97 = 397
+					// batchSize := self.DefaultBatchSize()
+					batchSize := 300
+					pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+					keyIndex := (pssIndex * batchSize) + i
+					share := state.RefreshedShares[i]
+					// FIXME: this function needs to be created
+					self.StoreRefreshedData(keyIndex, id, share)
+					state.UserIDs[id] = -1 // -1 to denote already done
+				}
+			}
+		}
+	}
+}
 func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.PSSParticipant) {
 	log.Info("LocalComputationMsg: Process")
 
@@ -62,10 +110,9 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	state.Lock()
 	defer state.Unlock()
 
-	// Store hash(msg.Coefficients) -> 1
-	// FIXME: Add function to hash [][]byte
-	hash := ""
+	go msg.ProcessPublicKeyData(sender, self)
 
+	hash := getHash(msg.coefficients)
 	_, ok := state.LocalComp[hash]
 	if !ok {
 		state.LocalComp[hash] = 0
@@ -92,17 +139,12 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 
 	if err != nil {
-
 		log.WithFields(
-
 			log.Fields{
-
-				"Error": err,
-
+				"Error":   err,
 				"Message": "error in HIM Matrix Multiplication",
 			},
 		).Error("HIMMessageHandler: Process")
-
 	}
 
 	rPrimeValues := globalRandomR[:numShares]
@@ -117,14 +159,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		}
 		newShare := sri.Sub(rPrimeValues[i])
 		refreshedShares = append(refreshedShares, newShare) // ((s + r) - r')
-		// Validate ??
 	}
 
-	// FIXME: Add actual functions here
-	// i => some unused index
-	// i => share (refreshedShare)
-	// userid(msg.userId[k]) => i
-
-	// HOW??
-	// i => public key
+	state.RefreshedShares = refreshedShares
 }

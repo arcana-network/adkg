@@ -167,12 +167,11 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 						"T":         pssState.T,
 					}).Debug("starting HIM")
 
-					// FIXME: Something wrong here, sometime gets pointer nil thingy
 					T := pssState.GetTSet(n, f)
 					if len(T) < n-f {
-						c := self.State().Waiter.WaitForTSet()
+						ch := self.State().Waiter.WaitForTSet()
 						pssState.Unlock()
-						T = <-c
+						T = <-ch
 						pssState.Lock()
 					}
 					curve := common.CurveFromName(m.Curve)
