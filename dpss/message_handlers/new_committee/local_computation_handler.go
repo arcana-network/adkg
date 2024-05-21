@@ -62,7 +62,7 @@ func getHash(input [][]byte) string {
 	return hash
 }
 
-func (msg *LocalComputationMsg) ProcessPublicKeyData(sender common.NodeDetails, self common.PSSParticipant) {
+func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, self common.PSSParticipant) {
 	_, _, t := self.Params()
 
 	state, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
@@ -92,8 +92,8 @@ func (msg *LocalComputationMsg) ProcessPublicKeyData(sender common.NodeDetails, 
 					pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 					keyIndex := (pssIndex * batchSize) + i
 					share := state.RefreshedShares[i]
-					// FIXME: this function needs to be created
-					self.StoreRefreshedData(keyIndex, id, share)
+					// FIXME: this function needs to be created, where public key?
+					self.StoreRefreshedData(keyIndex, id, share, publicKey, msg.curveName)
 					state.UserIDs[id] = -1 // -1 to denote already done
 				}
 			}
@@ -110,7 +110,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	state.Lock()
 	defer state.Unlock()
 
-	go msg.ProcessPublicKeyData(sender, self)
+	go msg.ProcessUserIDData(sender, self)
 
 	hash := getHash(msg.coefficients)
 	_, ok := state.LocalComp[hash]
