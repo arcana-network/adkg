@@ -41,14 +41,20 @@ func TestEndToBatchRec(t *testing.T) {
 	//store the init msgs for testing
 	var initMessages sync.Map
 
+	// Use a channel to signal completion
+	done := make(chan struct{})
+
 	// Each node in old committee starts dACSS
 	// That means that for the single share each node has,
 	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
 	// and shared to both old & new committee
 	pssIdInt := 0 // PssId should be the same for all the init messages.
 
+	var wg sync.WaitGroup
 	for index, n := range nodesOld {
+		wg.Add(1)
 		go func(index int, node *testutils.IntegrationTestNode) {
+			defer wg.Done()
 			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
 
 			privKeyShare := make([]common.PrivKeyShare, B)
@@ -102,10 +108,24 @@ func TestEndToBatchRec(t *testing.T) {
 			initMessages.Store(node.Details().GetNodeDetailsID(), initMsg)
 
 			node.ReceiveMessage(node.Details(), InitPssMessage)
+
+			// Signal completion
+			done <- struct{}{}
+
 		}(index, n)
 	}
 
-	time.Sleep(25 * time.Second)
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	// Wait until all signals have been received
+	for range nodesOld {
+		<-done
+	}
+
+	time.Sleep(10 * time.Second)
 
 	// DACSS Checks
 
