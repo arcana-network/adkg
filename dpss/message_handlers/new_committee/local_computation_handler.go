@@ -70,6 +70,9 @@ func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, sel
 	state.Lock()
 	defer state.Unlock()
 
+	// This whole thing is being done seperately
+	// because all nodes might not have public key.
+	// They might have been offline during assignment.
 	for i, id := range msg.UserIds {
 		if id != "" {
 			val, ok := state.UserIDs[id]
@@ -84,18 +87,16 @@ func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, sel
 			state.UserIDs[id] = state.UserIDs[id] + 1
 
 			if state.UserIDs[id] >= t+1 {
-				if len(state.RefreshedShares) > 0 {
-					// Assumption: All batch sizes are same except for the last batch
-					// pssID = 1, i = 97 => index = 1*300 +97 = 397
-					// batchSize := self.DefaultBatchSize()
-					batchSize := 300
-					pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
-					keyIndex := (pssIndex * batchSize) + i
-					share := state.RefreshedShares[i]
-					// FIXME: this function needs to be created, where public key?
-					self.StoreRefreshedData(keyIndex, id, share, publicKey, msg.curveName)
-					state.UserIDs[id] = -1 // -1 to denote already done
-				}
+				// Assumption: All batch sizes are same except for the last batch
+				// pssID = 1, i = 97 => index = 1*300 +97 = 397
+				// batchSize := self.DefaultBatchSize()
+				batchSize := 300
+				pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+				keyIndex := (pssIndex * batchSize) + i
+				// FIXME: this function needs to be created, where public key?
+				self.StoreIndexToUser(keyIndex, id, publicKey, msg.curveName)
+				state.UserIDs[id] = -1 // -1 to denote already done
+
 			}
 		}
 	}
@@ -144,7 +145,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 				"Error":   err,
 				"Message": "error in HIM Matrix Multiplication",
 			},
-		).Error("HIMMessageHandler: Process")
+		).Error("LocalCompMessageHandler: Process")
 	}
 
 	rPrimeValues := globalRandomR[:numShares]
@@ -161,5 +162,13 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		refreshedShares = append(refreshedShares, newShare) // ((s + r) - r')
 	}
 
-	state.RefreshedShares = refreshedShares
+	// Assumption: All batch sizes are same except for the last batch
+	// pssID = 1, i = 97 => index = 1*300 +97 = 397
+	// batchSize := self.DefaultBatchSize()
+	batchSize := 300
+	pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+	for i, share := range refreshedShares {
+		keyIndex := (pssIndex * batchSize) + i
+		self.StoreShare(keyIndex, share, msg.curveName)
+	}
 }

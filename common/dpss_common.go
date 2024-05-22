@@ -225,19 +225,18 @@ type ACSSKeysetMap struct {
 // Shared data for a PSS Round
 type PSSState struct {
 	sync.Mutex
-	T               map[int]int // nodeIndex => verified keyset (limited to n-f)
-	TProposals      map[int]int // nodeIndex => unverified keyset
-	PSSID           string
-	KeysetMap       map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
-	KeysetProposed  bool
-	ABAStarted      []int
-	ABAComplete     bool
-	Decisions       map[int]int
-	HIMStarted      bool
-	waiter          *Waiter
-	LocalComp       map[string]int
-	UserIDs         map[string]int
-	RefreshedShares []curves.Scalar
+	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
+	TProposals     map[int]int // nodeIndex => unverified keyset
+	PSSID          string
+	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
+	KeysetProposed bool
+	ABAStarted     []int
+	ABAComplete    bool
+	Decisions      map[int]int
+	HIMStarted     bool
+	waiter         *Waiter
+	LocalComp      map[string]int
+	UserIDs        map[string]int
 }
 
 func (state *PSSState) GetTSet(n, t int) []int {
