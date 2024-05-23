@@ -163,6 +163,16 @@ func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
 func (node *PSSNode) CurveParams(curveName string) (curves.Point, curves.Point) {
 	return sharing.CurveParams(curveName)
 }
+func (n *PSSNode) StoreIndexToUser(index int, uid string, c common.CurveName) {
+	// TODO: Impl?
+}
+func (n *PSSNode) StoreShare(index int, share curves.Scalar, c common.CurveName) {
+	// TODO: Impl?
+}
+
+func (n *PSSNode) DefaultBatchSize() int {
+	return BATCHSIZE
+}
 
 // Nodes returns the set of nodes of the old or new committee according to the flag
 // fromNewCommitte.

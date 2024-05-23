@@ -65,7 +65,7 @@ func getHash(input [][]byte) string {
 func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, self common.PSSParticipant) {
 	_, _, t := self.Params()
 
-	state, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+	state, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 
 	state.Lock()
 	defer state.Unlock()
@@ -88,13 +88,12 @@ func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, sel
 
 			if state.UserIDs[id] >= t+1 {
 				// Assumption: All batch sizes are same except for the last batch
-				// pssID = 1, i = 97 => index = 1*300 +97 = 397
-				// batchSize := self.DefaultBatchSize()
-				batchSize := 300
+				// pssID = 1, i = 97 => index = 1 * 300 + 97 = 397
+				batchSize := self.DefaultBatchSize()
 				pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 				keyIndex := (pssIndex * batchSize) + i
-				// FIXME: this function needs to be created, where public key?
-				self.StoreIndexToUser(keyIndex, id, publicKey, msg.curveName)
+				// FIXME: this function needs to be created, where public key and appID?
+				self.StoreIndexToUser(keyIndex, id, msg.curveName)
 				state.UserIDs[id] = -1 // -1 to denote already done
 
 			}
@@ -106,69 +105,82 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 
 	n, _, t := self.Params()
 
-	state, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+	state, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 
 	state.Lock()
 	defer state.Unlock()
 
-	go msg.ProcessUserIDData(sender, self)
+	if state.LocalCompReceived[sender.Index] {
+		// Duplicate Message
+		return
+	}
+
+	state.LocalCompReceived[sender.Index] = true
 
 	hash := getHash(msg.coefficients)
+
 	_, ok := state.LocalComp[hash]
 	if !ok {
 		state.LocalComp[hash] = 0
 	}
 
 	state.LocalComp[hash] = state.LocalComp[hash] + 1
+
 	// Check if t + 1 have sent similar message
-	if state.LocalComp[hash] != t+1 {
+	if state.LocalComp[hash] < t+1 {
 		return
 	}
 
-	numShares := msg.DPSSBatchRecDetails.PSSRoundDetails.BatchSize
+	go msg.ProcessUserIDData(sender, self)
 
-	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
+	if state.LocalComp[hash] == t+1 {
+		numShares := msg.DPSSBatchRecDetails.PSSRoundDetails.BatchSize
+		log.Infof("numShare=%d", numShares)
 
-	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.curveName))
+		matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 
-	curve := common.CurveFromName(msg.curveName)
+		hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.curveName))
 
-	// msg.coefficients = s + r
+		curve := common.CurveFromName(msg.curveName)
 
-	shares := state.GetSharesFromT(msg.T, numShares, curve)
+		// msg.coefficients = s + r
 
-	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
+		shares := state.GetSharesFromT(msg.T, numShares, curve)
 
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"Error":   err,
-				"Message": "error in HIM Matrix Multiplication",
-			},
-		).Error("LocalCompMessageHandler: Process")
-	}
+		globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 
-	rPrimeValues := globalRandomR[:numShares]
-
-	refreshedShares := make([]curves.Scalar, 0)
-
-	for i, sr := range msg.coefficients {
-		sri, err := curve.Scalar.SetBytes(sr)
 		if err != nil {
-			refreshedShares = append(refreshedShares, curve.Scalar.Zero())
-			continue
+			log.WithFields(
+				log.Fields{
+					"Error":   err,
+					"Message": "error in HIM Matrix Multiplication",
+				},
+			).Error("LocalCompMessageHandler: Process")
+			return
 		}
-		newShare := sri.Sub(rPrimeValues[i])
-		refreshedShares = append(refreshedShares, newShare) // ((s + r) - r')
+
+		rPrimeValues := globalRandomR[:numShares]
+
+		refreshedShares := make([]curves.Scalar, 0)
+
+		for i, sr := range msg.coefficients {
+			sri, err := curve.Scalar.SetBytes(sr)
+			if err != nil {
+				refreshedShares = append(refreshedShares, curve.Scalar.Zero())
+				continue
+			}
+			newShare := sri.Sub(rPrimeValues[i])
+			refreshedShares = append(refreshedShares, newShare) // ((s + r) - r')
+		}
+
+		// Assumption: All batch sizes are same except for the last batch
+		// pssID = 1, i = 97 => index = 1 * 300 + 97 = 397
+		batchSize := self.DefaultBatchSize()
+		pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+		for i, share := range refreshedShares {
+			keyIndex := (pssIndex * batchSize) + i
+			self.StoreShare(keyIndex, share, msg.curveName)
+		}
 	}
 
-	// Assumption: All batch sizes are same except for the last batch
-	// pssID = 1, i = 97 => index = 1*300 +97 = 397
-	// batchSize := self.DefaultBatchSize()
-	batchSize := 300
-	pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
-	for i, share := range refreshedShares {
-		keyIndex := (pssIndex * batchSize) + i
-		self.StoreShare(keyIndex, share, msg.curveName)
-	}
 }
