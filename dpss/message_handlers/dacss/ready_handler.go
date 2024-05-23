@@ -50,10 +50,10 @@ upon receiving 𝑡 + 1 ⟨READY, ∗, ℎ⟩ messages and not having sent a REA
     send ⟨READY,𝑚′𝑖, ℎ⟩ to all
 */
 
+// Process handles the incomming READY message.
+// READY from self is taken into account
 func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParticipant) {
-	if sender.Index == p.Details().Index {
-		return // TODO check
-	}
+
 	//TODO: cannot identlfy the old/new nodes just by index
 	log.Debugf("Received Ready message from sender=%d on %d", sender.Index, p.Details().Index)
 

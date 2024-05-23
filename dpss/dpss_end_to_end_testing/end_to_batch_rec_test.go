@@ -21,6 +21,11 @@ import (
 func TestEndToBatchRec(t *testing.T) {
 	// log.SetLevel(log.DebugLevel)
 
+	// this is set to panicLevel so that normal info logging can be avoided during test run
+	// and logging is done only if the program panics
+	// can be commented out when we want info logging
+	log.SetLevel(log.PanicLevel)
+
 	//default setup and mock transport
 	TestSetUp, transport := DpssEndToEndTestSetup()
 
