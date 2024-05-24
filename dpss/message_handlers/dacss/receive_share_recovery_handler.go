@@ -1,6 +1,7 @@
 package dacss
 
 import (
+	"encoding/hex"
 	"reflect"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -172,18 +173,6 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	// At this point we already know the acssState exists
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
-		//once the threshold is reached, update the state
-		_, err = receiver.State().AcssStore.UpdateAccsState(
-			msg.ACSSRoundDetails.ToACSSRoundID(),
-			func(state *common.AccsState) {
-				state.ValidShareOutput = true
-			},
-		)
-		if err != nil {
-			common.LogStateUpdateError("ReceiveShareRecoveryHandler", "Process", common.AcssStateType, err)
-			return
-		}
-
 		shamir, err := sharing.NewShamir(uint32(k), uint32(n), curve)
 		if err != nil {
 			log.Errorf("Error creating Shamir in Receive Share Recovery for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
@@ -215,8 +204,12 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 
 		// When finished, save the share + set RBC phase to ended
 		_, err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+			log.Debugf("storing share: share=%v", *shareForNode)
 			state.ReceivedShare = shareForNode
 			state.RBCState.Phase = common.Ended
+			state.OwnCommitmentsHash = hex.EncodeToString(
+				common.HashByte(verifier.Commitments[0].ToAffineCompressed()),
+			)
 		})
 		if err != nil {
 			common.LogStateUpdateError("ReceiveShareRecoveryHandler", "Process", common.AcssStateType, err)
@@ -236,6 +229,17 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		}
 
 		go receiver.Broadcast(!receiver.IsNewNode(), *commitmentMsg)
+
+		_, err = receiver.State().AcssStore.UpdateAccsState(
+			msg.ACSSRoundDetails.ToACSSRoundID(),
+			func(state *common.AccsState) {
+				state.CommitmentSent = true
+			},
+		)
+		if err != nil {
+			common.LogErrorNewMessage("ReceiveShareRecoveryMessage", "Process", DacssCommitmentMessageType, err)
+			return
+		}
 	}
 
 }

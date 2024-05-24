@@ -83,8 +83,8 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 	if state.RBCState.Phase == common.Ended {
 		log.WithFields(
 			log.Fields{
-				"RBCState": state.RBCState.Phase,
-				"Message":  "The RBC state has already finished. Doing an early return",
+				"Message":   "The RBC state has already finished. Doing an early return",
+				"NodeIndex": self.Details().Index,
 			},
 		).Debug("DACSSOutputMessage: Process")
 		return
@@ -281,9 +281,31 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		}
 
 	} else if !verified {
+		// Start the implicate flow
 		log.WithFields(
 			log.Fields{
 				"Message": "The predicate was not verified correctly",
+			},
+		).Error("DACSSOutputMessage: Process")
+
+		symmetricKey := key
+		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
+
+		implicateMsg, err := NewImplicateReceiveMessage(m.AcssRoundDetails, m.curveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey, msgData)
+
+		if err != nil {
+			common.LogErrorNewMessage("DACSSOutputMessage", "Process", ImplicateReceiveMessageType, err)
+			return
+		}
+
+		for _, node := range self.Nodes(self.IsNewNode()) {
+			go self.Send(node, *implicateMsg)
+		}
+	} else if state.CommitmentSent {
+		log.WithFields(
+			log.Fields{
+				"Message":   "The commitment was already sent",
+				"NodeIndex": self.Details().Index,
 			},
 		).Error("DACSSOutputMessage: Process")
 	}

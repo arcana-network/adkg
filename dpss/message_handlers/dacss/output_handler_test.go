@@ -64,6 +64,7 @@ Expectations:
 - If the RBC is not ended, it should remain not ended.
 - There is no broadcast of the commitment.
 - The commitment sent should be false.
+- Implicate reeive message was sent to all nodes in same committee.
 */
 func TestNotVerifiedCorrectly(test *testing.T) {
 	defaultSetup := testutils.DefaultTestSetup()
@@ -77,7 +78,7 @@ func TestNotVerifiedCorrectly(test *testing.T) {
 	)
 	assert.Nil(test, err)
 
-	_, k, _ := testNode.Params()
+	n_old, k, _ := testNode.Params()
 	fakeMessage, err := constructFakeMessage(
 		correctMessage,
 		k,
@@ -102,6 +103,7 @@ func TestNotVerifiedCorrectly(test *testing.T) {
 	assert.Zero(test, len(broadcastedMsgs))
 
 	assert.False(test, stateNode.CommitmentSent)
+	assert.Equal(test, n_old, testNode.Transport().CountSentMsg(ImplicateReceiveMessageType))
 }
 
 /*

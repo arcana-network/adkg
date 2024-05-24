@@ -77,7 +77,7 @@ func TestEchoReadyInteraction(test *testing.T) {
 			common.CurveName(testutils.TestCurveName()),
 		)
 		if err != nil {
-			test.Errorf("error creating the ECHO message: %v", err)
+			test.Errorf("error creating the ready message: %v", err)
 		}
 
 		go senderNode.Send(receiverNode.Details(), *readyMsg)

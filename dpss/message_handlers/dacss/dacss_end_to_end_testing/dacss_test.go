@@ -89,7 +89,164 @@ func TestDacss(t *testing.T) {
 		}(index, n)
 	}
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
+
+	// round details for oldNode0 being the dealer
+	//since only one secret is shared, the ACSSCount = 0
+	retrievedMsg, found := initMessages.Load(nodesOld[0].Details().GetNodeDetailsID())
+	if !found {
+		log.WithFields(
+			log.Fields{
+				"Found":   found,
+				"Message": "Message not found in init messages",
+			},
+		).Error("TestDacss")
+		t.Error("Error retrieving the init message")
+	}
+	message := retrievedMsg.(*dacss.InitMessage)
+
+	acssRound := common.ACSSRoundDetails{
+		PSSRoundDetails: message.PSSRoundDetails,
+		ACSSCount:       0,
+	}
+
+	// getting the random secret shared
+	state, _, err := nodesOld[0].State().AcssStore.Get(acssRound.ToACSSRoundID())
+	assert.Nil(t, err)
+	randomSecretShared := state.RandomSecretShared[acssRound.ToACSSRoundID()]
+
+	//storing shares received from the oldnode0 for old committee
+	var OldCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
+
+	for _, n := range nodesOld {
+
+		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		assert.Nil(t, err)
+
+		// Check that the valid share output has been set.
+		assert.True(t, state.ValidShareOutput)
+
+		rbcState := state.RBCState.Phase
+		assert.Equal(t, rbcState, common.Ended)
+		share := state.ReceivedShare
+		OldCommitteReceivedShareFromNodeOld0 = append(OldCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
+
+	}
+
+	//For Old Committee
+
+	//reconstructing the random secret
+	shamir, err := sharing.NewShamir(testutils.DefaultK_old, testutils.DefaultN_old, curves.K256())
+	assert.Nil(t, err)
+
+	reconstructedSecret, err := shamir.Combine(OldCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
+
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
+
+	//For New Committee
+
+	//storing shares received from the oldnode0 for New committee
+	var NewCommitteReceivedShareFromNodeOld0 []*sharing.ShamirShare
+
+	for _, n := range nodesNew {
+
+		state, _, err := n.State().AcssStore.Get(acssRound.ToACSSRoundID())
+		assert.Nil(t, err)
+		share := state.ReceivedShare
+		NewCommitteReceivedShareFromNodeOld0 = append(NewCommitteReceivedShareFromNodeOld0, (*sharing.ShamirShare)(share))
+
+	}
+
+	//reconstructing the random secret
+	shamir, err = sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
+	assert.Nil(t, err)
+
+	reconstructedSecret, err = shamir.Combine(NewCommitteReceivedShareFromNodeOld0...)
+	assert.Nil(t, err)
+
+	assert.Equal(t, reconstructedSecret, *randomSecretShared)
+}
+
+/*
+Instead of sending all msgs immediately, send to 1 node with a delay
+*/
+func TestDacss2(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	//default setup and mock transport
+	TestSetUp, _ := DacssIntegrationTestSetup()
+
+	nodesOld := TestSetUp.OldCommitteeNetwork
+	nodesNew := TestSetUp.NewCommitteeNetwork
+
+	nOld := TestSetUp.OldCommitteeParams.N
+	kOld := TestSetUp.OldCommitteeParams.K
+
+	// The old committee has shares of a single secret
+	testSecret := sharing.GenerateSecret(curves.K256())
+	_, shares, _ := sharing.GenerateCommitmentAndShares(testSecret, uint32(kOld), uint32(nOld), testutils.TestCurve())
+
+	//store the init msgs for testing
+	var initMessages sync.Map
+
+	// Each node in old committee starts dACSS
+	// That means that for the single share each node has,
+	// ceil(nrShare/(nrOldNodes-2*recThreshold)) = 1 random values are sampled
+	// and shared to both old & new committee
+	pssIdInt := 0            // PssId should be the same for all the init messages.
+	pssDealer := nodesOld[0] // We set the node in position zero to be the deler for DPSS
+	for index, n := range nodesOld {
+		if index == nOld {
+			time.Sleep(5 * time.Second)
+		}
+		go func(index int, node *testutils.IntegrationTestNode) {
+			ephemeralKeypair := common.GenerateKeyPair(curves.K256())
+			share := sharing.ShamirShare{Id: shares[index].Id, Value: shares[index].Value}
+			privKeyShare := common.PrivKeyShare{
+				UserIdOwner: "DummyUserId",
+				Share:       share,
+			}
+			initMsg := getTestInitMsgSingleShare(pssDealer, *big.NewInt(int64(pssIdInt)), &privKeyShare, ephemeralKeypair, TestSetUp.NewCommitteeParams)
+
+			pssMsgData, err := bijson.Marshal(initMsg)
+			assert.Nil(t, err)
+
+			InitPssMessage := common.PSSMessage{
+				PSSRoundDetails: initMsg.PSSRoundDetails,
+				Type:            initMsg.Kind,
+				Data:            pssMsgData,
+			}
+
+			acssRound := common.ACSSRoundDetails{
+				PSSRoundDetails: initMsg.PSSRoundDetails,
+				ACSSCount:       0,
+			}
+
+			// Initialize the empty state for all the old nodes
+			for _, node := range nodesOld {
+				node.State().AcssStore.UpdateAccsState(
+					acssRound.ToACSSRoundID(),
+					func(as *common.AccsState) {},
+				)
+			}
+
+			// Initialize the empty state for all the new nodes
+			for _, node := range nodesNew {
+				node.State().AcssStore.UpdateAccsState(
+					acssRound.ToACSSRoundID(),
+					func(as *common.AccsState) {},
+				)
+			}
+
+			//store the init msg for testing
+			initMessages.Store(node.Details().GetNodeDetailsID(), initMsg)
+
+			node.ReceiveMessage(node.Details(), InitPssMessage)
+		}(index, n)
+	}
+
+	time.Sleep(10 * time.Second)
 
 	// round details for oldNode0 being the dealer
 	//since only one secret is shared, the ACSSCount = 0

@@ -99,6 +99,7 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 
 	// Returns if RBC ended
 	if state.RBCState.Phase == common.Ended {
+		log.Debug("OutputHandler: RBC already ended, index: ", p.Details().Index)
 		return
 	}
 
@@ -131,6 +132,8 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			state, err = p.State().AcssStore.UpdateAccsState(
 				m.AcssRoundDetails.ToACSSRoundID(),
 				func(state *common.AccsState) {
+					// Store the hash, in case the node hasn't received ProposeMsg yet.
+					state.AcssDataHash = m.Hash
 					state.RBCState.IsReadyMsgSent = true
 				},
 			)
@@ -155,11 +158,16 @@ func (m *DacssReadyMessage) Process(sender common.NodeDetails, p common.PSSParti
 			// Reconstruction of the message using RS encoding.
 			rbcMsg, err := acss.Decode(fec, state.RBCState.ReadyMsgShards)
 			if err != nil {
-				log.WithField("error", err).Error("unable to decode the message")
+				log.WithField("error", err).WithField("node index", p.Details().Index).Error("unable to decode the message")
 				return
 			}
 
 			hashReconstMsg := common.HashByte(rbcMsg)
+			// But of course this will return false, because the local dataHash might not be present
+			if state.AcssDataHash == nil {
+				log.WithField("error", "DataHash is nil").WithField("node index", p.Details().Index).Error("DataHash is nil")
+			}
+
 			if reflect.DeepEqual(hashReconstMsg, state.AcssDataHash) {
 				// Send output msg to self
 				outputMsg, err := NewDacssOutputMessage(m.AcssRoundDetails, rbcMsg, m.CurveName)

@@ -54,6 +54,19 @@ func (transport *NoSendMockTransport) GetSentMessages() []common.PSSMessage {
 	return transport.sentMessages
 }
 
+func (transport *NoSendMockTransport) CountSentMsg(msgType string) int {
+	sentMessages := transport.GetSentMessages()
+	filteredMessages := make([]common.PSSMessage, 0)
+
+	for _, msg := range sentMessages {
+		if msg.Type == msgType {
+			filteredMessages = append(filteredMessages, msg)
+		}
+	}
+	countSentMsg := len(filteredMessages)
+	return countSentMsg
+}
+
 func (transport *NoSendMockTransport) GetBroadcastedMessages() []common.PSSMessage {
 	return transport.BroadcastedMessages
 }

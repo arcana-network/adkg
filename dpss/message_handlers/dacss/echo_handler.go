@@ -122,6 +122,8 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true
+				// Store the hash, in case the node hasn't received ProposeMsg yet.
+				state.AcssDataHash = m.Hash
 			},
 		)
 		if err != nil {
@@ -134,7 +136,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	// This deals with the waiting for ECHO handler in Line 14 of the RBC
 	// protocol.
-	if acssState.RBCState.CountReady() >= t+1 && msgRegistry.Count >= t+1 {
+	if acssState.RBCState.CountReady() >= t+1 && msgRegistry.Count >= t+1 && !acssState.RBCState.IsReadyMsgSent {
 		readyMsg, err := NewDacssReadyMessage(m.ACSSRoundDetails, msgRegistry.Shard, m.Hash, m.CurveName)
 		if err != nil {
 			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
@@ -144,6 +146,8 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true
+				// Store the hash, in case the node hasn't received ProposeMsg yet.
+				state.AcssDataHash = m.Hash
 			},
 		)
 		if err != nil {
