@@ -164,7 +164,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		dealer := m.AcssRoundDetails.PSSRoundDetails.Dealer
 
 		// Set the state to reflect that RBC has ended.
-		err = self.State().AcssStore.UpdateAccsState(
+		_, err = self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.Phase = common.Ended
@@ -232,7 +232,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			return
 		}
 
-		err = self.State().AcssStore.UpdateAccsState(
+		_, err = self.State().AcssStore.UpdateAccsState(
 			m.AcssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.CommitmentSent = true
@@ -252,7 +252,7 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		if found {
 			// Computes the hash of the own commitment
 			if commitmentHexHash == state.OwnCommitmentsHash {
-				err = self.State().AcssStore.UpdateAccsState(
+				_, err = self.State().AcssStore.UpdateAccsState(
 					m.AcssRoundDetails.ToACSSRoundID(),
 					func(state *common.AccsState) {
 						state.ValidShareOutput = true

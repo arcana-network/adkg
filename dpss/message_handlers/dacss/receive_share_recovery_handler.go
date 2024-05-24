@@ -160,7 +160,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	}
 
 	// Store the obtained share
-	err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.VerifiedRecoveryShares[sender.Index] = shamirShare_j
 	})
 	if err != nil {
@@ -173,7 +173,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 	if len(acssState.VerifiedRecoveryShares) >= t+1 {
 
 		//once the threshold is reached, update the state
-		err = receiver.State().AcssStore.UpdateAccsState(
+		_, err = receiver.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.ValidShareOutput = true
@@ -214,7 +214,7 @@ func (msg *ReceiveShareRecoveryMessage) Process(sender common.NodeDetails, recei
 		}
 
 		// When finished, save the share + set RBC phase to ended
-		err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		_, err = receiver.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			state.ReceivedShare = shareForNode
 			state.RBCState.Phase = common.Ended
 		})

@@ -220,7 +220,7 @@ func TestIncorrectProofFormat(t *testing.T) {
 	ephemeralKeypairDealer, msgData, acssRoundDetails := getMsgData(dealer)
 
 	hash, _ := common.HashAcssData(msgData)
-	err := receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 		state.ShareRecoveryOngoing = true
 	})
@@ -503,7 +503,7 @@ func getMsgDataAndStoreHash(dealer *testutils.PssTestNode, receiver *testutils.P
 	ephemeralKeypairDealer, msgData, acssRoundDetails := getMsgData(dealer)
 
 	hash, _ := common.HashAcssData(msgData)
-	err := receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := receiver.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {

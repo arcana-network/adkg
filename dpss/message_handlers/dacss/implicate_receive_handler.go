@@ -91,7 +91,7 @@ func (msg *ImplicateReceiveMessage) Process(sender common.NodeDetails, self comm
 			log.Errorf("Error hashing acssData in implicate flow for ACSS round %s, err: %s", msg.ACSSRoundDetails.ToACSSRoundID(), err)
 			return
 		}
-		err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+		_, err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 			implicateInformation := common.ImplicateInformation{
 				SymmetricKey:    msg.SymmetricKey,
 				Proof:           msg.Proof,

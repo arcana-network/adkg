@@ -5,6 +5,7 @@
     "p2pPort": "1088",
     "tmP2PPort": "26672",
     "tmRPCPort": "26673",
+    "telemetryPort": "9098",
     "domain": "localhost:8088",
     "TLS": false,
     "dkgContractAddress": "0x7c20cB99e1F2CD1ECd1B425A51ff66D0f01E0Eda",

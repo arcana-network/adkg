@@ -10,6 +10,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/arcana-network/dkgnode/node"
+	"github.com/arcana-network/dkgnode/telemetry"
 )
 
 const (
@@ -161,7 +162,7 @@ func runCommand(cmd *cobra.Command, _ []string) error {
 	}
 
 	// log.Infof("config: %v", conf)
-	// go telemetry.StartClient()
+	go telemetry.StartClient(conf.TelemetryPort)
 	node.Start(conf)
 	return nil
 }

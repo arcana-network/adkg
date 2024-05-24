@@ -226,7 +226,7 @@ func TestAlreadyInImplicateFlow(t *testing.T) {
 	}
 
 	// Add both pieces of implicateInformation to the receiver's node state
-	err := node1.State().AcssStore.UpdateAccsState(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(msgOldCommittee.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ImplicateInformationSlice = []common.ImplicateInformation{implicateInfo1, implicateInfo2}
 	})
 

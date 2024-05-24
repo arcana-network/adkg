@@ -37,7 +37,7 @@ func TestSendReceiveShareRecoveryMsg(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	node1, _, acssRoundDetails, shareRecoveryMessage := shareRecoveryHappyPathSetup()
 
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		//To mimic the condition of A node having a valid share
 		state.ReceivedShare = &sharing.ShamirShare{
 			Id:    0,
@@ -298,7 +298,7 @@ func shareRecoveryHappyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNo
 
 	// The current node already completed the full RBC process and ended up with a valid share (ValidShareOutput = true)
 	hash, _ := common.HashAcssData(msgData)
-	err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 		state.ValidShareOutput = true
 	})

@@ -68,7 +68,7 @@ func (msg *ShareRecoveryMessage) Process(sender common.NodeDetails, self common.
 	}
 
 	// Set in the Node's state that we're in ShareRecovery phase
-	err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	acssState, err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ShareRecoveryOngoing = true
 	})
 	if err != nil {

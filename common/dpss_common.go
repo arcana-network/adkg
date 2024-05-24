@@ -649,7 +649,7 @@ func (m *AcssStateMap) Get(acssRoundID ACSSRoundID) (*AccsState, bool, error) {
 // and the old reference will still be nil after calling UpdateAccsState
 
 // Generic updater for a AcssState within the AcssStateMap
-func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStateUpdater) error {
+func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStateUpdater) (*AccsState, error) {
 	// Attempt to load the existing AccsState for the given acssRoundID
 	value, found := m.AcssStateForRound.Load(acssRoundID)
 	var existingState *AccsState
@@ -659,7 +659,7 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 		var ok bool
 		existingState, ok = value.(*AccsState)
 		if !ok {
-			return errors.New("value found, but type is not *AccsState")
+			return nil, errors.New("value found, but type is not *AccsState")
 		}
 	} else {
 		// If not found, create a new AccsState
@@ -684,7 +684,7 @@ func (m *AcssStateMap) UpdateAccsState(acssRoundID ACSSRoundID, updater AccsStat
 	// Store the updated or new AccsState back into the map
 	m.AcssStateForRound.Store(acssRoundID, existingState)
 
-	return nil
+	return existingState, nil
 }
 
 // Data that is needed to execute Implicate flow

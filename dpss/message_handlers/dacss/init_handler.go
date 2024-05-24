@@ -88,7 +88,7 @@ func (msg InitMessage) Process(sender common.NodeDetails, self common.PSSPartici
 		}
 
 		// store the random secret
-		err := self.State().AcssStore.UpdateAccsState(
+		_, err := self.State().AcssStore.UpdateAccsState(
 			acssRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RandomSecretShared[acssRoundDetails.ToACSSRoundID()] = &r

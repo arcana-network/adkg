@@ -200,7 +200,7 @@ func TestDealerPubkeyInvalid(t *testing.T) {
 
 	// Store hash of acssData in the receiver's node state
 	hash, _ := common.HashAcssData(acssData)
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {
@@ -255,7 +255,7 @@ func TestSenderPubkeyInvalid(t *testing.T) {
 
 	// Store hash of acssData in the receiver's node state
 	hash, _ := common.HashAcssData(acssData)
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {
@@ -312,7 +312,7 @@ func TestZKPVerificationFails(t *testing.T) {
 
 	// Store hash of acssData in the receiver's node state
 	hash, _ := common.HashAcssData(acssData)
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {
@@ -384,7 +384,7 @@ func TestPredicatePasses(t *testing.T) {
 	}
 	// Store hash of acssData in the receiver's node state
 	hash, _ := common.HashAcssData(msgData)
-	err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {
@@ -431,7 +431,7 @@ func happyPathSetup() (*testutils.PssTestNode, *testutils.PssTestNode, Implicate
 
 	// Store hash of acssData in the receiver's node state
 	hash, _ := common.HashAcssData(acssData)
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {

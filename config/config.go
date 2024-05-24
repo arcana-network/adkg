@@ -29,6 +29,7 @@ type Config struct {
 	P2PPort            string `json:"p2pPort"`
 	TMP2PPort          string `json:"tmP2PPort"`
 	TMRPCPort          string `json:"tmRPCPort"`
+	TelemetryPort      string `json:"telemetryPort`
 	Domain             string `json:"domain"`
 	GatewayURL         string `json:"gatewayUrl"`
 	PasswordlessUrl    string `json:"passwordlessUrl"`
@@ -99,6 +100,7 @@ func GetDefaultConfig() *Config {
 		P2PPort:            DefaultP2PPort,
 		TMP2PPort:          DefaultTmP2PPort,
 		TMRPCPort:          DefaultTmRPCPort,
+		TelemetryPort:      DefaultTelemetryPort,
 		ChainId:            "test-net-1",
 	}
 	return config

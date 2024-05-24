@@ -84,7 +84,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 	// If the ECHO message has been not received, then update the received ECHO
 	// and increase the counter.
 	// In case the node didn't have state for this acssRound, it will initiate one
-	err = self.State().AcssStore.UpdateAccsState(
+	acssState, err = self.State().AcssStore.UpdateAccsState(
 		m.ACSSRoundDetails.ToACSSRoundID(),
 		func(state *common.AccsState) {
 			state.RBCState.ReceivedEcho[sender.Index] = true
@@ -104,14 +104,6 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 
 	_, _, t := self.Params()
 
-	acssState, found, err := self.State().AcssStore.Get(m.ACSSRoundDetails.ToACSSRoundID())
-	if err != nil {
-		common.LogStateRetrieveError("DacssEchoMessage", "Process", err)
-		return
-	}
-	if !found {
-		common.LogStateNotFoundError("DacssEchoMessage", "Proces", found)
-	}
 	// This deals with Line 11 of the RBC protocol. If the ECHO count for the
 	// received message is 2t + 1, then send the READY message.
 	msgRegistry := acssState.RBCState.GetEchoStore(
@@ -126,7 +118,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
-		err = self.State().AcssStore.UpdateAccsState(
+		acssState, err = self.State().AcssStore.UpdateAccsState(
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true
@@ -148,7 +140,7 @@ func (m DacssEchoMessage) Process(sender common.NodeDetails, self common.PSSPart
 			common.LogErrorNewMessage("DacssEchoMessage", "Process", AcssReadyMessageType, err)
 			return
 		}
-		err = self.State().AcssStore.UpdateAccsState(
+		_, err = self.State().AcssStore.UpdateAccsState(
 			m.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 				state.RBCState.IsReadyMsgSent = true

@@ -80,7 +80,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		return
 	}
 
-	err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	acssState, err = self.State().AcssStore.UpdateAccsState(msg.ACSSRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = acssDataHash
 	})
 	if err != nil {
@@ -218,7 +218,7 @@ func (msg *AcssProposeMessage) Process(sender common.NodeDetails, self common.PS
 		}
 
 		//store own share and hash
-		err = self.State().AcssStore.UpdateAccsState(
+		_, err = self.State().AcssStore.UpdateAccsState(
 			msg.ACSSRoundDetails.ToACSSRoundID(),
 			func(state *common.AccsState) {
 

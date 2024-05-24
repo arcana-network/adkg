@@ -28,12 +28,12 @@ func IncrementShareReqFail() {
 	keyShareCalls.failure.Inc()
 }
 
-func StartClient() {
+func StartClient(port string) {
 
 	keysGenerated = NewKeysGeneratedCounter()
 	keysAssigned = NewKeysAssignedCounter()
 	keyShareCalls = NewSuccessShareReqCounter()
 
 	http.Handle("/metrics", promhttp.Handler())
-	log.Fatalln(http.ListenAndServe(":9090", nil))
+	log.Fatalln(http.ListenAndServe(":"+port, nil))
 }

@@ -70,7 +70,7 @@ func TestAlreadyHasShareMap(t *testing.T) {
 
 	// Assume the shareMap for this round was already received and stored in the Node 1's state
 	hash, _ := common.HashAcssData(msgData)
-	err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err = node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.AcssDataHash = hash
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func TestAlreadyInShareRecovery(t *testing.T) {
 	ephemeralKeypairDealer := common.GenerateKeyPair(testutils.TestCurve())
 	curve := testutils.TestCurve()
 
-	err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
+	_, err := node1.State().AcssStore.UpdateAccsState(acssRoundDetails.ToACSSRoundID(), func(state *common.AccsState) {
 		state.ShareRecoveryOngoing = true
 	})
 	if err != nil {
