@@ -122,7 +122,7 @@ func (v *VerifierService) Start() error {
 		firebaseProvider,
 		NewGlobalKeyVerifier(v),
 		NewCustomProvider(),
-		NewXProvider(),
+		// NewXProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil

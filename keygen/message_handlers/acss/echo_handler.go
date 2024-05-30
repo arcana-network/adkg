@@ -116,7 +116,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 	// Broadcast ready message if echo count > 2f + 1
 	if echoStore.Count >= ((2*f)+1) && !keygen.State.ReadySent {
 		// Broadcast Ready Message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+		readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
 		if err != nil {
 			log.Errorf("Could not create ready message: err=%s", err)
 			return

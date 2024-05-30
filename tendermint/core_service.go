@@ -3,7 +3,6 @@ package tendermint
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/avast/retry-go"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/arcana-network/dkgnode/eventbus"
 
@@ -61,7 +61,7 @@ func (t *TendermintService) IsRunning() bool {
 }
 
 func (t *TendermintService) Stop() error {
-	return nil
+	return t.node.Stop()
 }
 
 func (t *TendermintService) Start() error {
@@ -203,6 +203,7 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 	defaultConfig.ProxyApp = common.GetSocketAddress()
 
 	defaultConfig.Consensus.CreateEmptyBlocks = false
+	defaultConfig.LogLevel = "main:info,state:info,statesync:info,*:error"
 
 	defaultConfig.Mempool.Size = 20000
 
@@ -238,7 +239,12 @@ func verifyAndSaveConfig(defaultConfig *cfg.Config) error {
 
 func createTendermintNode(defaultConfig *cfg.Config) (*nm.Node, error) {
 	logr := log.New()
-	logr.SetOutput(io.Discard)
+	logr.SetOutput(&lumberjack.Logger{
+		Filename:   "/var/log/arcana/tm.log",
+		MaxSize:    500,
+		MaxBackups: 3,
+		MaxAge:     28,
+	})
 	logger := tmlog.NewTMLogger(logr.Writer())
 	n, err := nm.DefaultNewNode(defaultConfig, logger)
 	return n, err
