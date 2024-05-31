@@ -78,14 +78,14 @@ func (node *PssTestNode) Params() (n int, k int, t int) {
 }
 
 func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {
-	node.transport.MsgBroadcastSignal <- struct{}{}
 	node.transport.Broadcast(node.Details(), msg)
+	node.transport.MsgBroadcastSignal <- struct{}{}
 }
 
 func (node *PssTestNode) Send(n common.NodeDetails, msg common.PSSMessage) error {
 	log.Debugf("-----sending: from=%d, to=%d", node.Details().Index, n.Index)
-	node.transport.MsgSentSignal <- struct{}{}
 	node.transport.Send(node.Details(), n, msg)
+	node.transport.MsgSentSignal <- struct{}{}
 	return nil
 }
 

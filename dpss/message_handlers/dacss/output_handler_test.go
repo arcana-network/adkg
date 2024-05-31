@@ -87,9 +87,7 @@ func TestNotVerifiedCorrectly(test *testing.T) {
 
 	fakeMessage.Process(testNode.Details(), testNode)
 
-	// We wait here. We can't use the signal and channels mechanism because no
-	// message is sent in this case.
-	time.Sleep(2 * time.Second)
+	testNode.Transport().WaitForMessagesSent(n_old)
 
 	stateNode, found, err := testNode.State().AcssStore.Get(
 		correctMessage.AcssRoundDetails.ToACSSRoundID(),

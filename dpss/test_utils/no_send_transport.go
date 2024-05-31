@@ -41,12 +41,17 @@ func (transport *NoSendMockTransport) Init(nodesOld, nodesNew []*PssTestNode) {
 
 // Registers a message was broadcast by a node
 func (transport *NoSendMockTransport) Broadcast(sender common.NodeDetails, m common.PSSMessage) {
+	transport.Lock()
 	transport.BroadcastedMessages = append(transport.BroadcastedMessages, m)
+	transport.Unlock()
+
 }
 
 // Registers a message was sent from one node to another
 func (transport *NoSendMockTransport) Send(sender, receiver common.NodeDetails, msg common.PSSMessage) {
+	transport.Lock()
 	transport.sentMessages = append(transport.sentMessages, msg)
+	transport.Unlock()
 }
 
 // returns the sent messages through this transport

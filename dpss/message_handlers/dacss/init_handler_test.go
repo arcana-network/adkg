@@ -1,10 +1,11 @@
 package dacss
 
 import (
+	"bufio"
 	"crypto/rand"
 	"math/big"
+	"os"
 	"testing"
-	"time"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -88,6 +89,10 @@ func TestNewInitMessage(test *testing.T) {
 // Tests that if the node is from the new committee, it should do nothing.
 func TestNewCommitteeDoNothing(test *testing.T) {
 	log.SetLevel(log.DebugLevel)
+	// set the log output so we can assert the error msg
+	reader, writer, _ := os.Pipe()
+	log.SetOutput(writer)
+	scanner := bufio.NewScanner(reader)
 
 	defaultSetup := testutils.DefaultTestSetup()
 	testDealer := defaultSetup.GetSingleNewNodeFromTestSetup()
@@ -105,9 +110,15 @@ func TestNewCommitteeDoNothing(test *testing.T) {
 
 	go msg.Process(testDealer.Details(), testDealer)
 
-	// Wait a bit until all the goroutines are finished. We use time here
-	// because no message is sent.
-	time.Sleep(time.Second)
+	// Block until an error msg
+	scanner.Scan()
+	got := scanner.Text()
+	error_msg := "Self is expected to be an old node"
+	// The correct Error message should be log
+	assert.Contains(test, got, error_msg)
+	_ = reader.Close()
+	_ = writer.Close()
+	log.SetOutput(os.Stderr)
 
 	// The party should not send any message
 	recvMsgAmmount := len(transport.GetSentMessages())
