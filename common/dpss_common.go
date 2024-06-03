@@ -251,9 +251,6 @@ func (state *PSSState) GetTSet(n, t int) []int {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
-			if state.T[k] == 0 {
-				return []int{}
-			}
 			keysets = append(keysets, GetSetBits(n, state.T[k]))
 		}
 	}
