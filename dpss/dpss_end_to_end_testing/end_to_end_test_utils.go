@@ -8,6 +8,7 @@ import (
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	log "github.com/sirupsen/logrus"
@@ -92,6 +93,8 @@ func (processor DpssEndToEndMessageProcessor) ProcessDpssMessages(sender common.
 		dpss.ProcessMessageForType[*old_committee.PrivateRecMsg](PssMessage.Data, sender, node, old_committee.PrivateRecMessageType)
 	case old_committee.PublicRecMessageType:
 		dpss.ProcessMessageForType[*old_committee.PublicRecMsg](PssMessage.Data, sender, node, old_committee.PublicRecMessageType)
+	case new_committee.LocalComputationMessageType:
+		dpss.ProcessMessageForType[*new_committee.LocalComputationMsg](PssMessage.Data, sender, node, new_committee.LocalComputationMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", PssMessage.Type)
 
