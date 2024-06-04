@@ -26,14 +26,33 @@ type PssTestNode struct {
 	//shares of old/new committee
 	//false: old, true: new
 	shares map[bool]map[int64]*big.Int
+
+	uid     map[int]string
+	ushares map[int]curves.Scalar
 }
 
 func (n *PssTestNode) Transport() *NoSendMockTransport {
 	return n.transport
 }
+func (n *PssTestNode) DefaultBatchSize() int {
+	return 7
+}
 
 func (n *PssTestNode) State() *common.PSSNodeState {
 	return n.state
+}
+
+func (n *PssTestNode) StoreIndexToUser(index int, uid string, c common.CurveName) {
+	n.uid[index] = uid
+}
+func (n *PssTestNode) GetUID() map[int]string {
+	return n.uid
+}
+func (n *PssTestNode) GetRefreshedShares() map[int]curves.Scalar {
+	return n.ushares
+}
+func (n *PssTestNode) StoreShare(index int, share curves.Scalar, c common.CurveName) {
+	n.ushares[index] = share
 }
 
 func (n *PssTestNode) ID() int {
@@ -150,7 +169,9 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 		LongtermKey: keypair,
 		isFaulty:    isFaulty,
 
-		shares: make(map[bool]map[int64]*big.Int),
+		shares:  make(map[bool]map[int64]*big.Int),
+		uid:     make(map[int]string),
+		ushares: make(map[int]curves.Scalar),
 	}
 
 	return &node

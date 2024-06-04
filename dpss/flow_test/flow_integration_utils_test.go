@@ -165,6 +165,16 @@ func (node *PssTestNode2) Params() (n int, k int, t int) {
 	return node.committeeTestParams.N, node.committeeTestParams.K, node.committeeTestParams.T
 }
 
+func (n *PssTestNode2) StoreIndexToUser(index int, uid string, c common.CurveName) {
+	// TODO: Impl?
+}
+func (n *PssTestNode2) StoreShare(index int, share curves.Scalar, c common.CurveName) {
+	// TODO: Impl?
+}
+
+func (n *PssTestNode2) DefaultBatchSize() int {
+	return 0
+}
 func (node *PssTestNode2) Send(receiver common.NodeDetails, msg common.PSSMessage) error {
 	node.Transport.Send(node.Details(), receiver, msg)
 	return nil

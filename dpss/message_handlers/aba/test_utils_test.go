@@ -274,6 +274,16 @@ func (n *Node) GetPublicKeyFor(idx int, newCommittee bool) curves.Point {
 func (node *Node) GetMessageBroker() *common.MessageBroker {
 	return nil
 }
+func (n *Node) StoreIndexToUser(index int, uid string, c common.CurveName) {
+	// TODO: Impl?
+}
+func (n *Node) StoreShare(index int, share curves.Scalar, c common.CurveName) {
+	// TODO: Impl?
+}
+
+func (n *Node) DefaultBatchSize() int {
+	return 0
+}
 
 func (n *Node) Cleanup(id common.PSSID) {
 	n.cleanupKeygenStore(id)

@@ -51,8 +51,15 @@ type PSSParticipant interface {
 	// Get node details by id, only checks in list of old nodes
 	OldNodeDetailsByID(id int) (NodeDetails, error)
 	// Get B
+
 	// Get (G, H) for specific curve
 	CurveParams(curveName string) (curves.Point, curves.Point)
+	// Store index+curve -> uid
+	StoreIndexToUser(index int, uid string, c CurveName)
+	// Store index+curve -> share
+	StoreShare(index int, share curves.Scalar, c CurveName)
+	// Batch Size
+	DefaultBatchSize() int
 }
 
 // Constants for state naming. Used for loging.
@@ -225,16 +232,19 @@ type ACSSKeysetMap struct {
 // Shared data for a PSS Round
 type PSSState struct {
 	sync.Mutex
-	T              map[int]int // nodeIndex => verified keyset (limited to n-f)
-	TProposals     map[int]int // nodeIndex => unverified keyset
-	PSSID          string
-	KeysetMap      map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
-	KeysetProposed bool
-	ABAStarted     []int
-	ABAComplete    bool
-	Decisions      map[int]int
-	HIMStarted     bool
-	waiter         *Waiter
+	T                 map[int]int // nodeIndex => verified keyset (limited to n-f)
+	TProposals        map[int]int // nodeIndex => unverified keyset
+	PSSID             string
+	KeysetMap         map[int]*ACSSKeysetMap // acssCount => ACCKeysetMap
+	KeysetProposed    bool
+	ABAStarted        []int
+	ABAComplete       bool
+	Decisions         map[int]int
+	HIMStarted        bool
+	waiter            *Waiter
+	LocalComp         map[string]int
+	UserIDs           map[string]int
+	LocalCompReceived map[int]bool
 }
 
 func (state *PSSState) GetTSet(n, t int) []int {
@@ -261,9 +271,7 @@ func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) [
 	for i := range alpha {
 		val := state.KeysetMap[i]
 		for _, j := range T {
-			log.Debug("val.ShareStore", val.ShareStore, "curve", curve)
 			s := val.ShareStore[j]
-			log.Debug("s.value", s, j, val.ShareStore)
 			share, err := curve.Scalar.SetBytes(s.Value)
 			if err != nil {
 				log.Error("scalar.setBytes:", err)
@@ -318,25 +326,26 @@ type Waiter struct {
 func (w *Waiter) WaitForThresholdCompletion() chan int {
 	w.Lock()
 	defer w.Unlock()
-	c := make(chan int)
-	w.ThresholdCompletionWaiters = append(w.ThresholdCompletionWaiters, c)
-	return c
+	ch := make(chan int)
+	w.ThresholdCompletionWaiters = append(w.ThresholdCompletionWaiters, ch)
+	return ch
 }
 
 func (w *Waiter) WaitForTSet() chan []int {
 	w.Lock()
 	defer w.Unlock()
-	c := make(chan []int)
-	w.TSetWaiters = append(w.TSetWaiters, c)
-	return c
+	ch := make(chan []int)
+	w.TSetWaiters = append(w.TSetWaiters, ch)
+	return ch
 }
 
 func (w *Waiter) TriggerThreshold(T int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.ThresholdCompletionWaiters) > 0 {
-		for _, c := range w.ThresholdCompletionWaiters {
-			c <- T
+		for _, ch := range w.ThresholdCompletionWaiters {
+			ch <- T
+			close(ch)
 		}
 		w.ThresholdCompletionWaiters = w.ThresholdCompletionWaiters[:0]
 	}
@@ -346,8 +355,9 @@ func (w *Waiter) TriggerTSet(T []int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.TSetWaiters) > 0 {
-		for _, c := range w.TSetWaiters {
-			c <- T
+		for _, ch := range w.TSetWaiters {
+			ch <- T
+			close(ch)
 		}
 		w.TSetWaiters = w.TSetWaiters[:0]
 	}
@@ -450,12 +460,15 @@ func CountBit(n int) int {
 
 func GetDefaultPSSState(id string, w *Waiter) *PSSState {
 	s := PSSState{
-		PSSID:      id,
-		KeysetMap:  make(map[int]*ACSSKeysetMap),
-		T:          make(map[int]int),
-		TProposals: make(map[int]int),
-		Decisions:  make(map[int]int),
-		waiter:     w,
+		PSSID:             id,
+		KeysetMap:         make(map[int]*ACSSKeysetMap),
+		T:                 make(map[int]int),
+		TProposals:        make(map[int]int),
+		Decisions:         make(map[int]int),
+		waiter:            w,
+		UserIDs:           make(map[string]int),
+		LocalCompReceived: make(map[int]bool),
+		LocalComp:         make(map[string]int),
 	}
 	return &s
 }
@@ -743,6 +756,20 @@ func CreatePSSRound(pssID string, dealer NodeDetails, batchSize int) PSSRoundDet
 	}
 }
 
+func GetIndexFromPSSID(pssID string) int {
+	//FIXME: handle errors
+	split := strings.Split(pssID, Delimiter3)
+	if len(split) != 2 {
+		// ???
+	}
+	index, ok := new(big.Int).SetString(split[1], 16)
+	if !ok {
+		// ???
+	}
+
+	return int(index.Int64())
+}
+
 type PSSID string
 
 func GeneratePSSID(index big.Int) string {
@@ -841,6 +868,12 @@ func HashAcssData(data AcssData) ([]byte, error) {
 
 // PrivKeyShare represents a share of a private key.
 type PrivKeyShare struct {
-	UserIdOwner string              // Owner of the private key.
+	UserIdOwner string              // Owner, publicKey, appID for the assignment.
 	Share       sharing.ShamirShare // Share of the private key.
+}
+
+type UserData struct {
+	pk    []byte
+	id    string
+	appID string
 }

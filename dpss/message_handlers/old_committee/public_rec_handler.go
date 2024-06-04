@@ -2,6 +2,7 @@ package old_committee
 
 import (
 	"github.com/arcana-network/dkgnode/common"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
@@ -132,14 +133,20 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
 		}
 
+		pssState, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+		pssState.Lock()
 		self.State().ShareStore.Lock()
-		localComputationMsg, err := NewLocalComputationMsg(
+
+		T := pssState.GetTSet(n, t)
+		localComputationMsg, err := new_committee.NewLocalComputationMsg(
 			msg.DPSSBatchRecDetails,
 			msg.curveName,
 			polynomialCoefficient,
+			T,
 			self.State().ShareStore.GetUserIDs(),
 		)
 		self.State().ShareStore.Unlock()
+		pssState.Unlock()
 
 		if err != nil {
 			common.LogErrorNewMessage("PublicRecHandler", "Process", LocalComputationMessageType, err)

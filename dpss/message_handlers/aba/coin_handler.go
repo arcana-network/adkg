@@ -222,6 +222,12 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			}).Info("starting HIM")
 
 			T := pssState.GetTSet(n, f)
+			if len(T) < n-f {
+				c := self.State().Waiter.WaitForTSet()
+				pssState.Unlock()
+				T = <-c
+				pssState.Lock()
+			}
 			curve := common.CurveFromName(m.Curve)
 			numShares := m.RoundID.BatchSize
 
