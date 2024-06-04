@@ -8,6 +8,7 @@ import (
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/keyset"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	"github.com/arcana-network/dkgnode/eventbus"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -261,9 +262,8 @@ func (node *PSSNode) ProcessMessage(sender common.NodeDetails, message common.PS
 		ProcessMessageForType[*aba.Est2Message](message.Data, sender, node, aba.Est2MessageType)
 	case aba.InitMessageType:
 		ProcessMessageForType[*aba.InitMessage](message.Data, sender, node, aba.InitMessageType)
-	// FIXME add the actual local computation msgs, this is just a dummy
-	case old_committee.LocalComputationMessageType:
-		ProcessMessageForType[*old_committee.LocalComputationMsg](message.Data, sender, node, old_committee.LocalComputationMessageType)
+	case new_committee.LocalComputationMessageType:
+		ProcessMessageForType[*new_committee.LocalComputationMsg](message.Data, sender, node, new_committee.LocalComputationMessageType)
 	default:
 		log.Infof("No handler found. MsgType=%s", message.Type)
 	}

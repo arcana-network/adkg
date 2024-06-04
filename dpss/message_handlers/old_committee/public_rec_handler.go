@@ -149,7 +149,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		pssState.Unlock()
 
 		if err != nil {
-			common.LogErrorNewMessage("PublicRecHandler", "Process", LocalComputationMessageType, err)
+			common.LogErrorNewMessage("PublicRecHandler", "Process", new_committee.LocalComputationMessageType, err)
 			return
 		}
 

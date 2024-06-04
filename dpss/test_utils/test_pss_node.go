@@ -76,7 +76,6 @@ func (n *PssTestNode) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
 	return common.NodeDetails{}, errors.New("node not found in old committee")
 }
 
-// TODO we should probably flip this bool and have all bools either isOld or fromNew, to prevent confusion
 // This requires the testnode to actually have the new committee/old committee nodes
 func (n *PssTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Point {
 	nodes := n.Nodes(fromNewCommittee)

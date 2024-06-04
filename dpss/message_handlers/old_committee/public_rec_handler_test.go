@@ -8,6 +8,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
 	log "github.com/sirupsen/logrus"
@@ -72,7 +73,7 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 	// user IDs in the state of the sender node.
 	for _, message := range senderNode.Transport().GetBroadcastedMessages() {
 		// Get the information of the message.
-		var localCompMsg LocalComputationMsg
+		var localCompMsg new_committee.LocalComputationMsg
 		err := bijson.Unmarshal(message.Data, &localCompMsg)
 		assert.Nil(t, err)
 

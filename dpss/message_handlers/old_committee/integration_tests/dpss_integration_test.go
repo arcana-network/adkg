@@ -9,6 +9,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
 	testutils "github.com/arcana-network/dkgnode/dpss/test_utils"
 	"github.com/coinbase/kryptology/pkg/core/curves"
@@ -156,7 +157,7 @@ func TestDpss(t *testing.T) {
 	// Final check: the broadcasted LocalComputationMessages
 	localComputationMessages := make([]common.PSSMessage, 0)
 	for _, msg := range broadcastedMsgs {
-		if msg.Type == old_committee.LocalComputationMessageType {
+		if msg.Type == new_committee.LocalComputationMessageType {
 			localComputationMessages = append(localComputationMessages, msg)
 		}
 	}
