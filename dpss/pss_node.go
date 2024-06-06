@@ -2,6 +2,7 @@ package dpss
 
 import (
 	"errors"
+	"math/big"
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
@@ -166,9 +167,14 @@ func (node *PSSNode) CurveParams(curveName string) (curves.Point, curves.Point) 
 }
 func (n *PSSNode) StoreIndexToUser(index int, uid string, c common.CurveName) {
 	// TODO: Impl?
+	// Cant implement this, this needs to have uid, public key and appID also.
 }
 func (n *PSSNode) StoreShare(index int, share curves.Scalar, c common.CurveName) {
-	// TODO: Impl?
+	si := share.BigInt()
+	err := n.Broker().DBMethods().StoreCompletedPSSShare(*big.NewInt(int64(index)), *si, *si, c)
+	if err != nil {
+		log.WithError(err).Error("Node:StoreCompletedShare")
+	}
 }
 
 func (n *PSSNode) DefaultBatchSize() int {

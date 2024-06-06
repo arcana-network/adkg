@@ -167,9 +167,8 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 						"T":         pssState.T,
 					}).Debug("starting HIM")
 
-					T := pssState.GetTSet(n, f)
-					if len(T) < n-f {
-						ch := self.State().Waiter.WaitForTSet()
+					T, complete, ch := pssState.GetTSet(n, f)
+					if !complete {
 						pssState.Unlock()
 						T = <-ch
 						pssState.Lock()

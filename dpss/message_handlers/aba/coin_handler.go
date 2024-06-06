@@ -221,11 +221,10 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 				"Decisions": pssState.Decisions,
 			}).Info("starting HIM")
 
-			T := pssState.GetTSet(n, f)
-			if len(T) < n-f {
-				c := self.State().Waiter.WaitForTSet()
+			T, complete, ch := pssState.GetTSet(n, f)
+			if !complete {
 				pssState.Unlock()
-				T = <-c
+				T = <-ch
 				pssState.Lock()
 			}
 			curve := common.CurveFromName(m.Curve)

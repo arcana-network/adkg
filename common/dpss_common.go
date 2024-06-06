@@ -247,7 +247,7 @@ type PSSState struct {
 	LocalCompReceived map[int]bool
 }
 
-func (state *PSSState) GetTSet(n, t int) []int {
+func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
@@ -258,12 +258,12 @@ func (state *PSSState) GetTSet(n, t int) []int {
 	T := Union(keysets...)
 	sort.Ints(T)
 	if len(T) < n-t {
-		return []int{}
+		return []int{}, false, state.waiter.WaitForTSet()
 	}
 	T = T[:(n - t)]
 	// Check if listener exist, if they do send Tset and clear listener array
 	go state.waiter.TriggerTSet(T)
-	return T
+	return T, true, nil
 }
 
 func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) []curves.Scalar {
