@@ -231,7 +231,11 @@ func (m *CoinMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			numShares := m.RoundID.BatchSize
 
 			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
-			shares := pssState.GetSharesFromT(T, alpha, curve)
+			shares, err := pssState.GetSharesFromT(T, alpha, curve)
+			if err != nil {
+				log.Errorf("Error: CoinHandler: GetShares: %s", err)
+				return
+			}
 
 			msg, err := old_committee.NewDpssHimMessage(m.RoundID, shares, []byte{}, m.Curve)
 			if err != nil {

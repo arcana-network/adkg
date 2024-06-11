@@ -177,8 +177,11 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 					numShares := m.RoundID.BatchSize
 
 					alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
-					shares := pssState.GetSharesFromT(T, alpha, curve)
-
+					shares, err := pssState.GetSharesFromT(T, alpha, curve)
+					if err != nil {
+						log.Errorf("Error: AUX2: GetShares: %s", err)
+						return
+					}
 					msg, err := old_committee.NewDpssHimMessage(m.RoundID, shares, []byte{}, m.Curve)
 					if err != nil {
 						return

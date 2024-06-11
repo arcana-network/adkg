@@ -145,7 +145,11 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 
 		// msg.coefficients = s + r
 
-		shares := state.GetSharesFromT(msg.T, numShares, curve)
+		shares, err := state.GetSharesFromT(msg.T, numShares, curve)
+		if err != nil {
+			log.Errorf("Error: LocalComputation: GetShares: %s", err)
+			return
+		}
 
 		globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 
