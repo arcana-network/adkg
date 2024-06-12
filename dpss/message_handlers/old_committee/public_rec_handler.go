@@ -133,11 +133,16 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
 		}
 
-		pssState, _ := self.State().PSSStore.Get(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
+		pssState, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 		pssState.Lock()
 		self.State().ShareStore.Lock()
 
-		T := pssState.GetTSet(n, t)
+		T, complete, ch := pssState.GetTSet(n, t)
+		if !complete {
+			pssState.Unlock()
+			T = <-ch
+			pssState.Lock()
+		}
 		localComputationMsg, err := new_committee.NewLocalComputationMsg(
 			msg.DPSSBatchRecDetails,
 			msg.curveName,

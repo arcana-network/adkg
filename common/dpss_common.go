@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 	"strconv"
@@ -247,7 +248,7 @@ type PSSState struct {
 	LocalCompReceived map[int]bool
 }
 
-func (state *PSSState) GetTSet(n, t int) []int {
+func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
@@ -258,20 +259,26 @@ func (state *PSSState) GetTSet(n, t int) []int {
 	T := Union(keysets...)
 	sort.Ints(T)
 	if len(T) < n-t {
-		return []int{}
+		return []int{}, false, state.waiter.WaitForTSet()
 	}
 	T = T[:(n - t)]
 	// Check if listener exist, if they do send Tset and clear listener array
 	go state.waiter.TriggerTSet(T)
-	return T
+	return T, true, nil
 }
 
-func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) []curves.Scalar {
+func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) ([]curves.Scalar, error) {
 	shares := []curves.Scalar{}
 	for i := range alpha {
-		val := state.KeysetMap[i]
+		val, ok := state.KeysetMap[i]
+		if !ok {
+			return nil, fmt.Errorf("share not found for acss count = %d", i)
+		}
 		for _, j := range T {
-			s := val.ShareStore[j]
+			s, ok := val.ShareStore[j]
+			if !ok {
+				return nil, fmt.Errorf("share not found for acss count = %d & dealer=%d", i, j)
+			}
 			share, err := curve.Scalar.SetBytes(s.Value)
 			if err != nil {
 				log.Error("scalar.setBytes:", err)
@@ -280,7 +287,7 @@ func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) [
 			shares = append(shares, share)
 		}
 	}
-	return shares
+	return shares, nil
 }
 
 func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
