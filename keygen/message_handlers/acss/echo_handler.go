@@ -65,7 +65,7 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore: make(map[string]*common.CStore),
+		EchoStore: make(map[string]*common.EchoStore),
 	}
 
 	// Get or set if it doesn't exist
@@ -98,41 +98,46 @@ func (m EchoMessage) Process(sender common.KeygenNodeDetails, self common.DkgPar
 
 	// Get keygen store by serializing the share and hash of the message
 	cid := m.Fingerprint()
-	c := common.GetCStore(keygen, cid)
+	echoStore := keygen.GetEchoStore(cid, m.Share, m.Hash)
+	echoStore.Count = echoStore.Count + 1
 
 	// increment the echo messages received
-	c.EC = c.EC + 1
 	log.WithFields(log.Fields{
-		"echoCount":  c.EC,
-		"readyCount": c.RC,
-		"sender":     sender.Index,
-		"self":       self.ID(),
-		"roundID":    m.RoundID,
+		"echoCount": echoStore.Count,
+		"sender":    sender.Index,
+		"self":      self.ID(),
+		"roundID":   m.RoundID,
 	}).Debug("acss_echo_after")
 
 	_, _, f := self.Params()
 
+	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), echoStore.Count, (2*f + 1))
+
 	// Broadcast ready message if echo count > 2f + 1
-	log.Debugf("node=%d, echo_count=%d, required=%d", self.ID(), c.EC, (2*f + 1))
-	if c.EC >= ((2*f)+1) && !c.ReadySent {
+	if echoStore.Count >= ((2*f)+1) && !keygen.State.ReadySent {
 		// Broadcast Ready Message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
+		readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
 		if err != nil {
 			log.Errorf("Could not create ready message: err=%s", err)
 			return
 		}
-		c.ReadySent = true
+		keygen.State.ReadySent = true
 		go self.Broadcast(*readyMsg)
 	}
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
-		// Broadcast ready message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
-		if err != nil {
-			log.Errorf("Could not create ready message: err=%s", err)
-			return
+	if len(keygen.ReadyStore) >= f+1 && !keygen.State.ReadySent {
+		// Find a share with f+1 echo counts, ideally it should have only 1 (key,value) pair
+		echoStore := keygen.FindThresholdEchoStore(f + 1)
+		if echoStore != nil {
+			// Broadcast ready message
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
+			if err != nil {
+				log.Errorf("Could not create ready message: err=%s", err)
+				return
+			}
+			keygen.State.ReadySent = true
+			go self.Broadcast(*readyMsg)
 		}
-		c.ReadySent = true
-		go self.Broadcast(*readyMsg)
+
 	}
 }

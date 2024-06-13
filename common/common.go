@@ -260,8 +260,7 @@ type ConnectionDetailsResult struct {
 }
 
 func GetSocketAddress() string {
-	// return "unix://" + filepath.Join(config.GlobalConfig.BasePath, "dkg.sock")
-	return "unix://dkg.sock"
+	return "tcp://127.0.0.1:26658"
 }
 
 func DoesFileExist(fileName string) bool {

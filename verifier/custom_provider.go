@@ -12,7 +12,9 @@ import (
 	"github.com/arcana-network/dkgnode/config"
 	"github.com/imroc/req/v3"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	log "github.com/sirupsen/logrus"
 	"github.com/torusresearch/bijson"
 )
 
@@ -21,8 +23,8 @@ type CustomProvider struct {
 }
 
 type CustomProviderResponse struct {
-	JWKUrl   string            `json:"jwks_url"`
-	IDParam  string            `json:"id_param"`
+	JWKUrl   string            `json:"jwkUrl"`
+	IDParam  string            `json:"idParam"`
 	Params   map[string]string `json:"params"`
 	Issuer   string            `json:"issuer"`
 	Audience string            `json:"audience"`
@@ -60,31 +62,49 @@ func (t *CustomProvider) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	if err != nil {
 		return false, "", err
 	}
-	u.Path = "/api/v1/provider"
-	u.RawQuery = fmt.Sprintf("provider=%s&appId=%s", p.Provider, p.AppID)
+	u.Path = "/api/v2/provider"
+	u.RawQuery = fmt.Sprintf("provider=%s&appID=%s", p.Provider, p.AppID)
 	customProviderParams := CustomProviderResponse{}
-	_, err = req.R().SetBody(&customProviderParams).Post(u.String())
+	res, err := req.R().SetSuccessResult(&customProviderParams).Get(u.String())
 	if err != nil {
 		return false, "", err
 	}
 
+	if res.IsErrorState() {
+		return false, "", errors.New("invalid provider")
+	}
+
+	log.WithFields(log.Fields{
+		"url":      u.String(),
+		"response": customProviderParams,
+		"status":   res.StatusCode,
+		"token":    p.IDToken,
+	}).Debug("CustomProvider")
 	// Fetch JWK from JWKUrl
 	set, err := jwk.Fetch(context.Background(), customProviderParams.JWKUrl)
 	if err != nil {
+		log.WithError(err).WithField("url", customProviderParams.JWKUrl).Info("jwk.fetch: invalid jwkurl")
 		return false, "", errors.New("invalid jwk url")
 	}
 
 	// Verify signature via JWK
 	tok, err := jwt.Parse(
 		[]byte(p.IDToken),
-		jwt.WithKeySet(set),
+		jwt.WithKeySet(set, jws.WithRequireKid(false)),
+		jwt.WithValidate(true),
 	)
 	if err != nil {
-		return false, "", errors.New("invalid signature")
+		log.WithError(err).Info("jwt.Parse")
+		return false, "", fmt.Errorf("jwt parse error: %w", err)
+	}
+
+	if tok.IssuedAt().Before(time.Now().Add(-2 * time.Minute)) {
+		return false, "", errors.New("jwt older than 2 minute")
 	}
 
 	id, ok := tok.Get(customProviderParams.IDParam)
 	if !ok {
+		log.WithError(err).Info("tok.Get[IDParam]")
 		return false, "", errors.New("id is not set in provider")
 	}
 	idStr, ok := id.(string)
@@ -100,6 +120,7 @@ func (t *CustomProvider) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 	if tok.Audience()[0] != customProviderParams.Audience {
 		return false, "", errors.New("invalid audience")
 	}
+
 	// Verify according to data
 	for k, v := range customProviderParams.Params {
 		val, ok := tok.Get(k)
@@ -111,5 +132,5 @@ func (t *CustomProvider) Verify(rawPayload *bijson.RawMessage, params *common.Ve
 		}
 	}
 
-	return true, "", nil
+	return true, p.UserID, nil
 }

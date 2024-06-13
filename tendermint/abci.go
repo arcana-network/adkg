@@ -263,30 +263,36 @@ func (abci *ABCI) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndB
 	}
 
 	edBuffer := buffer / 10
-	maxEDKeyInit := maxKeyInit / 10
-	endED := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxEDKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+edBuffer)
-	log.WithFields(log.Fields{
-		"LastCreatedIndex":    int(abci.state.C25519State.LastCreatedIndex),
-		"LastUnassignedIndex": int(abci.state.C25519State.LastUnassignedIndex),
-	}).Info("EndBlock:ED25519")
-	for i := int(abci.state.C25519State.LastCreatedIndex); i < endED; i++ {
-		id := common.NewADKGID(*big.NewInt(int64(i)), common.ED25519)
-		round := common.RoundDetails{
-			ADKGID: id,
-			Dealer: abci.broker.ChainMethods().GetSelfIndex(),
-			Kind:   "acss",
-		}
-		msg, err := acss.NewShareMessage(
-			round.ID(),
-			common.ED25519,
-		)
-		if err != nil {
-			log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
-			continue
-		}
-		err = abci.broker.KeygenMethods().ReceiveMessage(*msg)
-		if err != nil {
-			log.WithError(err).Error("Could not receive keygenmessage share")
+	if int(abci.state.C25519State.LastCreatedIndex)-int(abci.state.C25519State.LastUnassignedIndex) < edBuffer {
+		maxEDKeyInit := maxKeyInit / 10
+		endED := MinOf(int(abci.state.C25519State.LastCreatedIndex)+maxEDKeyInit, int(abci.state.C25519State.LastUnassignedIndex)+edBuffer)
+		log.WithFields(log.Fields{
+			"LastCreatedIndex":    int(abci.state.C25519State.LastCreatedIndex),
+			"Buffer":              buffer,
+			"EDBuffer":            edBuffer,
+			"EndED":               endED,
+			"LastUnassignedIndex": int(abci.state.C25519State.LastUnassignedIndex),
+		}).Info("EndBlock:ED25519")
+		for j := int(abci.state.C25519State.LastCreatedIndex); j < endED; j++ {
+			log.Debugf("Starting ED25519 with index: %d", j)
+			id := common.NewADKGID(*big.NewInt(int64(j)), common.ED25519)
+			round := common.RoundDetails{
+				ADKGID: id,
+				Dealer: abci.broker.ChainMethods().GetSelfIndex(),
+				Kind:   "acss",
+			}
+			msg, err := acss.NewShareMessage(
+				round.ID(),
+				common.ED25519,
+			)
+			if err != nil {
+				log.WithError(err).Error("EndBlock:Acss.NewShareMessage")
+				continue
+			}
+			err = abci.broker.KeygenMethods().ReceiveMessage(*msg)
+			if err != nil {
+				log.WithError(err).Error("Could not receive keygenmessage share")
+			}
 		}
 	}
 	return abcitypes.ResponseEndBlock{}
@@ -529,4 +535,15 @@ func MinOf(vars ...int) int {
 	}
 
 	return min
+}
+func MaxOf(vars ...int) int {
+	max := vars[0]
+
+	for _, i := range vars {
+		if max < i {
+			max = i
+		}
+	}
+
+	return max
 }

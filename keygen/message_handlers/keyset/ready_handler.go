@@ -67,7 +67,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore: make(map[string]*common.CStore),
+		EchoStore: make(map[string]*common.EchoStore),
 	}
 
 	// Get or set if it doesn't exist
@@ -88,27 +88,23 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 
 	// Make sure the ready received from a node is set to true
 	keygen.State.ReceivedReady[sender.Index] = true
-
-	// Get keygen store by serializing the data of message
-	cid := m.Fingerprint()
-	c := common.GetCStore(keygen, cid)
-
 	keygen.ReadyStore = append(keygen.ReadyStore, m.Share)
 
-	// increment the ready messages received
-	c.RC = c.RC + 1
 	n, _, f := self.Params()
-	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, f+1, self.ID())
+	log.Debugf("ready_count=%d, threshold=%d, node=%d", len(keygen.ReadyStore), f+1, self.ID())
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
-		// Broadcast ready message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
-		if err != nil {
-			log.WithField("error", err).Error("NewKeysetProposeMessage")
-			return
+	if len(keygen.ReadyStore) >= f+1 && !keygen.State.ReadySent {
+		echoStore := keygen.FindThresholdEchoStore(f + 1)
+		if echoStore != nil {
+			// Broadcast ready message
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
+			if err != nil {
+				log.WithField("error", err).Error("NewKeysetProposeMessage")
+				return
+			}
+			keygen.State.ReadySent = true
+			go self.Broadcast(*readyMsg)
 		}
-		c.ReadySent = true
-		go self.Broadcast(*readyMsg)
 	}
 
 	if keygen.State.Phase == common.Ended {

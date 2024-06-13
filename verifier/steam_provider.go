@@ -2,7 +2,6 @@ package verifier
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -61,27 +60,22 @@ func (provider *SteamProvider) Verify(rawPayload *bijson.RawMessage, params *com
 	}
 
 	var body SteamAuthResponse
-	if _, err := req.R().
-		SetSuccessResult(&body).
-		Get(provider.Endpoint + p.IDToken); err != nil {
+	res, err := req.R().SetSuccessResult(&body).Get(provider.Endpoint + p.IDToken)
+	if err != nil {
 		return false, "", err
 	}
 
-	if err := verifySteamResponse(body, p.UserID, provider.Timeout, params.ClientID); err != nil {
-		return false, "", fmt.Errorf("verify_steam_response: %w", err)
+	if res.IsErrorState() {
+		return false, "", errors.New("steam auth api returned error")
+	}
+
+	if p.UserID != body.ID {
+		return false, "", errors.New("id not equal to body.steamid " + p.UserID + " " + body.ID)
+	}
+
+	if params.ClientID != body.AZP {
+		return false, "", errors.New("client id not equal to AZP " + params.ClientID + " " + body.AZP)
 	}
 
 	return true, p.UserID, nil
-}
-
-func verifySteamResponse(body SteamAuthResponse, verifierID string, timeout time.Duration, clientID string) error {
-	if strings.Compare(verifierID, body.ID) != 0 {
-		return errors.New("id not equal to body.steamid " + verifierID + " " + body.ID)
-	}
-
-	if strings.Compare(clientID, body.AZP) != 0 {
-		return errors.New("client id not equal to AZP " + clientID + " " + body.AZP)
-	}
-
-	return nil
 }

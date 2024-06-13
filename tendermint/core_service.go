@@ -61,7 +61,7 @@ func (t *TendermintService) IsRunning() bool {
 }
 
 func (t *TendermintService) Stop() error {
-	return nil
+	return t.node.Stop()
 }
 
 func (t *TendermintService) Start() error {
@@ -203,6 +203,7 @@ func getTendermintConfig(buildPath string, peers string) *cfg.Config {
 	defaultConfig.ProxyApp = common.GetSocketAddress()
 
 	defaultConfig.Consensus.CreateEmptyBlocks = false
+	defaultConfig.LogLevel = "main:info,state:info,statesync:info,*:error"
 
 	defaultConfig.Mempool.Size = 20000
 

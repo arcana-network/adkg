@@ -2,7 +2,6 @@ package acss
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 
 	"github.com/arcana-network/dkgnode/common"
@@ -39,21 +38,6 @@ func NewReadyMessage(id common.RoundID, s infectious.Share, hash []byte, curve c
 	return &msg, nil
 }
 
-func (m ReadyMessage) Fingerprint() string {
-	var bytes []byte
-	delimiter := common.Delimiter2
-	bytes = append(bytes, m.Hash...)
-	bytes = append(bytes, delimiter...)
-
-	bytes = append(bytes, m.Share.Data...)
-	bytes = append(bytes, delimiter...)
-
-	bytes = append(bytes, byte(m.Share.Number))
-	bytes = append(bytes, delimiter...)
-	hash := hex.EncodeToString(common.Keccak256(bytes))
-	return hash
-}
-
 func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgParticipant) {
 	log.Debugf("Received Ready message from %d on %d", sender.Index, self.ID())
 	// Get state from node
@@ -67,7 +51,7 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 			ReceivedReady: make(map[int]bool),
 			ReceivedEcho:  make(map[int]bool),
 		},
-		CStore: make(map[string]*common.CStore),
+		EchoStore: make(map[string]*common.EchoStore),
 	}
 
 	// Get or set if it doesn't exist
@@ -89,26 +73,24 @@ func (m ReadyMessage) Process(sender common.KeygenNodeDetails, self common.DkgPa
 	// Make sure the ready received from a node is set to true
 	keygen.State.ReceivedReady[sender.Index] = true
 
-	// Get keygen store by serializing the data of message
-	cid := m.Fingerprint()
-	c := common.GetCStore(keygen, cid)
-
 	keygen.ReadyStore = append(keygen.ReadyStore, m.Share)
 
 	// increment the ready messages received
-	c.RC = c.RC + 1
 	n, k, f := self.Params()
-	log.Debugf("cid=%v,ready_count=%d, threshold=%d, node=%d", cid, c.RC, k, self.ID())
+	log.Debugf("ready_count=%d, threshold=%d, node=%d", len(keygen.ReadyStore), k, self.ID())
 
-	if c.RC >= f+1 && !c.ReadySent && c.EC >= f+1 {
-		// Broadcast ready message
-		readyMsg, err := NewReadyMessage(m.RoundID, m.Share, m.Hash, m.Curve)
-		if err != nil {
-			log.Errorf("Could not created ready message at %d", self.ID())
-			return
+	if len(keygen.ReadyStore) >= f+1 && !keygen.State.ReadySent {
+		echoStore := keygen.FindThresholdEchoStore(f + 1)
+		if echoStore != nil {
+			// Broadcast ready message
+			readyMsg, err := NewReadyMessage(m.RoundID, echoStore.Share, echoStore.Hash, m.Curve)
+			if err != nil {
+				log.Errorf("Could not created ready message at %d", self.ID())
+				return
+			}
+			keygen.State.ReadySent = true
+			self.Broadcast(*readyMsg)
 		}
-		c.ReadySent = true
-		self.Broadcast(*readyMsg)
 	}
 
 	if keygen.State.Phase == common.Ended {

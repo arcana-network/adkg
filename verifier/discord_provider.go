@@ -60,9 +60,11 @@ func (d *DiscordVerifier) Verify(rawPayload *bijson.RawMessage, params *common.V
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.IDToken)).
 		SetSuccessResult(&body).
 		Get("https://discordapp.com/api/oauth2/@me")
+
 	if err != nil {
 		return false, "", err
 	}
+
 	if res.IsErrorState() {
 		return false, "", errors.New("discord_auth_error")
 	}
