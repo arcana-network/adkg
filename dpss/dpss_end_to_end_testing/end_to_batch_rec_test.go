@@ -294,6 +294,38 @@ func TestEndToBatchRec(t *testing.T) {
 	// n_old nodes
 	// ceil(B/(n-2t)) nr of batches
 	assert.Equal(t, int(nrBatches)*nOld, len(localComputationMessages))
+
+	// // *-------------- Local Computation check ------------------*
+
+	// //TODO: verify the below test code
+	// type ScalarMap map[int]curves.Scalar
+
+	// NewShare := make([]ScalarMap, 0)
+
+	// for _, node := range nodesNew {
+	// 	nShare := node.GetRefreshedShares()
+	// 	NewShare = append(NewShare, nShare)
+	// }
+
+	// shamir, err := sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
+	// assert.Nil(t, err)
+
+	// NewShareSingle := make([]*sharing.ShamirShare, 0)
+	// pssIndex := common.GetIndexFromPSSID(common.NewPssID(*big.NewInt(int64(pssIdInt))))
+
+	// for i := range nodesNew {
+	// 	keyIndex := (pssIndex * B) + 1
+	// 	share := NewShare[i][keyIndex]
+	// 	shamirShare := sharing.ShamirShare{
+	// 		Id:    uint32(i + 1),
+	// 		Value: share.Bytes(),
+	// 	}
+	// 	NewShareSingle = append(NewShareSingle, &shamirShare)
+	// }
+	// reconstructedSecretNew, err := shamir.Combine(NewShareSingle...)
+	// assert.Nil(t, err)
+	// assert.Equal(t, reconstructedSecretNew, secret[1])
+
 }
 
 // returns DACSS initMsg
