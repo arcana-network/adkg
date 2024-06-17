@@ -53,7 +53,7 @@ func TestPublicRecHandlerProcess(t *testing.T) {
 		}
 	}
 
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.ReconstructedUStore = points
@@ -126,7 +126,7 @@ func TestInvalidShares(t *testing.T) {
 	points[2] = curve.Scalar.Random(rand.Reader)
 	points[3] = curve.Scalar.Random(rand.Reader)
 
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.ReconstructedUStore = points
@@ -172,7 +172,7 @@ func TestNotEnoughShares(t *testing.T) {
 	}
 
 	// update the state with insufficient points
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.ReconstructedUStore = insufficientPoints

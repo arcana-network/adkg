@@ -193,14 +193,14 @@ func (store *BatchRecStoreMap) Get(id BatchRecID) (*BatchRecState, bool, error) 
 // UpdateBatchRecState updates the state stored under the provided ID. The updating
 // is defined by the updater function provided in the parameters. If the ID is not
 // stored in the
-func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater func(*BatchRecState)) error {
+func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater func(*BatchRecState)) (*BatchRecState, error) {
 	value, found := store.BatchReconStateForRound.Load(batchID)
 	var state *BatchRecState
 	if found {
 		var ok bool
 		state, ok = value.(*BatchRecState)
 		if !ok {
-			return errors.New("error retrieving the batch state to update it")
+			return nil, errors.New("error retrieving the batch state to update it")
 		}
 	} else {
 		state = &BatchRecState{
@@ -211,7 +211,7 @@ func (store *BatchRecStoreMap) UpdateBatchRecState(batchID BatchRecID, updater f
 
 	updater(state)
 	store.BatchReconStateForRound.Store(batchID, state)
-	return nil
+	return state, nil
 }
 
 /* ------- PSS state start ------- */

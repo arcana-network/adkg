@@ -49,19 +49,6 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	// accessed until the end of the function.
 	defer self.State().BatchReconStore.Unlock()
 
-	// Check if there are at least T + t = n - t shares received
-	recState, found, err := self.State().BatchReconStore.Get(
-		msg.DPSSBatchRecDetails.ToBatchRecID(),
-	)
-	if err != nil {
-		common.LogStateRetrieveError("PublicRecHandler", "Process", err)
-		return
-	}
-	if !found {
-		common.LogStateNotFoundError("PublicRecHandler", "Process", found)
-		return
-	}
-
 	// Deserialize the share.
 	curve := common.CurveFromName(msg.curveName)
 	share, err := curve.Scalar.SetBytes(msg.ReconstructedUShare)
@@ -76,7 +63,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 	}
 
 	// Store the reconstructedU in the local state.
-	err = self.State().BatchReconStore.UpdateBatchRecState(
+	recState, err := self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.ReconstructedUStore[sender.Index] = share
@@ -87,6 +74,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		return
 	}
 
+	// Check if there are at least T + t = n - t shares received
 	ReconstructedUCount := recState.CountReconstructedReceivedU()
 
 	n, _, t := self.Params()
@@ -158,7 +146,7 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			return
 		}
 
-		err = self.State().BatchReconStore.UpdateBatchRecState(
+		_, err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentLocalCompMsg = true

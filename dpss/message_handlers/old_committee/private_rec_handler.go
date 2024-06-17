@@ -49,7 +49,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	defer self.State().BatchReconStore.Unlock()
 
 	// Initialize state here if it is not initialized in the InitHanlder
-	err := self.State().BatchReconStore.UpdateBatchRecState(
+	_, err := self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(s *common.BatchRecState) {},
 	)
@@ -85,7 +85,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 	}
 
 	// Store the share in the local state.
-	err = self.State().BatchReconStore.UpdateBatchRecState(
+	recState, err = self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.UStore[sender.Index] = share
@@ -137,7 +137,7 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 			return
 		}
 
-		err = self.State().BatchReconStore.UpdateBatchRecState(
+		_, err = self.State().BatchReconStore.UpdateBatchRecState(
 			msg.DPSSBatchRecDetails.ToBatchRecID(),
 			func(state *common.BatchRecState) {
 				state.SentPubMsg = true

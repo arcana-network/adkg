@@ -23,7 +23,7 @@ func TestPrivateRecHandlerProcess(t *testing.T) {
 	testMsg, points, err := GetValidPrivateRecMsgAndPoints(senderNode, defaultSetup)
 	assert.Nil(t, err)
 
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.UStore = points
@@ -57,7 +57,7 @@ func TestInvalidShare(t *testing.T) {
 	points[1] = curve.Scalar.Random(rand.Reader)
 	points[2] = curve.Scalar.Random(rand.Reader)
 
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.UStore = points
@@ -98,7 +98,7 @@ func TestNotEnoughShare(t *testing.T) {
 	}
 
 	// update the state with insufficient points
-	err = senderNode.State().BatchReconStore.UpdateBatchRecState(
+	_, err = senderNode.State().BatchReconStore.UpdateBatchRecState(
 		getDPSSBatchRecDetails(senderNode).ToBatchRecID(),
 		func(state *common.BatchRecState) {
 			state.UStore = insufficientPoints
