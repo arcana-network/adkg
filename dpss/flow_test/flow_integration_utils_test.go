@@ -164,6 +164,9 @@ func (n *PssTestNode2) OldNodeDetailsByID(id int) (common.NodeDetails, error) {
 func (node *PssTestNode2) Params() (n int, k int, t int) {
 	return node.committeeTestParams.N, node.committeeTestParams.K, node.committeeTestParams.T
 }
+func (node *PssTestNode2) OldParams() (n int, k int, t int) {
+	return DefaultN_old, DefaultK_old, DefaultK_old - 1
+}
 
 func (n *PssTestNode2) StoreIndexToUser(index int, uid string, c common.CurveName) {
 	// TODO: Impl?

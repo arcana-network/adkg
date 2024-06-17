@@ -149,6 +149,13 @@ func (node *PSSNode) Params() (n, k, t int) {
 	return
 }
 
+func (node *PSSNode) OldParams() (n, k, t int) {
+	n = node.OldCommitteeNodes.N
+	k = node.OldCommitteeNodes.K
+	t = node.OldCommitteeNodes.T
+	return
+}
+
 // Broadcast broadcasts a message to the given committee determined by the flag
 // toNewCommittee.
 func (node *PSSNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {

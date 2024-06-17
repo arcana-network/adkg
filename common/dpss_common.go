@@ -30,6 +30,8 @@ type PSSParticipant interface {
 	// current node belongs. n = number of nodes, k = reconstruction threshold
 	// t = max number of malicious nodes.
 	Params() (n int, k int, t int)
+	// Called by new nodes in local computation to get B/n-2t
+	OldParams() (n int, k int, t int)
 	// Broadcast a message to the old or new committee. The committee is defined
 	// by the flag toNewCommittee.
 	Broadcast(toNewCommittee bool, msg PSSMessage)
@@ -243,9 +245,15 @@ type PSSState struct {
 	Decisions         map[int]int
 	HIMStarted        bool
 	waiter            *Waiter
-	LocalComp         map[string]int
+	LocalComp         map[int]*LocalComputation
 	UserIDs           map[string]int
-	LocalCompReceived map[int]bool
+	LocalCompReceived map[string]bool
+}
+
+type LocalComputation struct {
+	Hash         string
+	Count        int
+	Coefficients []string
 }
 
 func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
@@ -317,6 +325,25 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 			T = T & Tset[i]
 		}
 		if CountBit(T) >= threshold {
+			go state.waiter.TriggerThreshold(T)
+			return T, true
+		}
+	}
+	return 0, false
+}
+func (state *PSSState) CheckForAllCompletion(alpha, n int) (int, bool) {
+	T := 0
+	Tset := make([]int, 0)
+	if len(state.KeysetMap) == alpha {
+		for _, v := range state.KeysetMap {
+			Tset = append(Tset, v.TPrime)
+		}
+
+		T = Tset[0]
+		for i := 1; i < alpha; i += 1 {
+			T = T & Tset[i]
+		}
+		if CountBit(T) == n {
 			go state.waiter.TriggerThreshold(T)
 			return T, true
 		}
@@ -474,8 +501,8 @@ func GetDefaultPSSState(id string, w *Waiter) *PSSState {
 		Decisions:         make(map[int]int),
 		waiter:            w,
 		UserIDs:           make(map[string]int),
-		LocalCompReceived: make(map[int]bool),
-		LocalComp:         make(map[string]int),
+		LocalCompReceived: make(map[string]bool),
+		LocalComp:         make(map[int]*LocalComputation),
 	}
 	return &s
 }

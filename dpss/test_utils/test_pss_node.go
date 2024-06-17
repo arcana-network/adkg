@@ -35,7 +35,7 @@ func (n *PssTestNode) Transport() *NoSendMockTransport {
 	return n.transport
 }
 func (n *PssTestNode) DefaultBatchSize() int {
-	return 7
+	return 10
 }
 
 func (n *PssTestNode) State() *common.PSSNodeState {
@@ -93,6 +93,9 @@ func (n *PssTestNode) GetPublicKeyFor(idx int, fromNewCommittee bool) curves.Poi
 
 func (node *PssTestNode) Params() (n int, k int, t int) {
 	return node.committeeTestParams.N, node.committeeTestParams.K, node.committeeTestParams.T
+}
+func (node *PssTestNode) OldParams() (n int, k int, t int) {
+	return DefaultN_old, DefaultK_old, DefaultK_old - 1
 }
 
 func (node *PssTestNode) Broadcast(toNewCommittee bool, msg common.PSSMessage) {

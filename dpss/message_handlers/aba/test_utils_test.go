@@ -252,6 +252,9 @@ func (n *Node) AdjustParamN(new_n int) {
 func (n *Node) Params() (int, int, int) {
 	return n.n, n.k, n.k - 1
 }
+func (n *Node) OldParams() (int, int, int) {
+	return n.n, n.k, n.k - 1
+}
 
 var c = curves.K256()
 var randomScalar = c.Scalar.Random(rand.Reader)

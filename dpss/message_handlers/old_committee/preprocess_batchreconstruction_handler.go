@@ -101,6 +101,7 @@ func (msg *PreprocessBatchRecMessage) Process(sender common.NodeDetails, self co
 	batchSize := n - 2*t
 	nrBatches := int(math.Ceil(float64(numShares) / float64(batchSize)))
 	for i := range nrBatches {
+		log.Errorf("PREPROCESS: SELF=%d, BATCHCOUNT=%d", self.Details().Index, i)
 		dpssBatchDetails := common.DPSSBatchRecDetails{
 			PSSRoundDetails: msg.PSSRoundDetails,
 			BatchRecCount:   i,
