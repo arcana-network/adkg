@@ -246,7 +246,7 @@ type PSSState struct {
 	HIMStarted        bool
 	waiter            *Waiter
 	LocalComp         map[int]*LocalComputation
-	UserIDs           map[string]int
+	UserIDs           map[string]*LocalComputationUserIDS
 	LocalCompReceived map[string]bool
 }
 
@@ -254,6 +254,10 @@ type LocalComputation struct {
 	Hash         string
 	Count        int
 	Coefficients []string
+}
+type LocalComputationUserIDS struct {
+	ID    int
+	Count int
 }
 
 func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
@@ -500,7 +504,7 @@ func GetDefaultPSSState(id string, w *Waiter) *PSSState {
 		TProposals:        make(map[int]int),
 		Decisions:         make(map[int]int),
 		waiter:            w,
-		UserIDs:           make(map[string]int),
+		UserIDs:           make(map[string]*LocalComputationUserIDS),
 		LocalCompReceived: make(map[string]bool),
 		LocalComp:         make(map[int]*LocalComputation),
 	}

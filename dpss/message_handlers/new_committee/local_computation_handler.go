@@ -65,38 +65,45 @@ func getHash(input []curves.Scalar) string {
 }
 
 func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, self common.PSSParticipant) {
-	_, _, t := self.OldParams()
 
 	state, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 
 	state.Lock()
 	defer state.Unlock()
 
+	n, _, t := self.OldParams()
+	batchRecSize := n - 2*t
+
 	// This whole thing is being done seperately
 	// because all nodes might not have public key.
 	// They might have been offline during assignment.
 	for i, id := range msg.UserIds {
+		// positioning inside the batch rec batches
+		j := (batchRecSize * msg.DPSSBatchRecDetails.BatchRecCount) + i
 		if id != "" {
-			val, ok := state.UserIDs[id]
+			_, ok := state.UserIDs[id]
 			if !ok {
-				state.UserIDs[id] = 0
+				state.UserIDs[id] = &common.LocalComputationUserIDS{
+					Count: 0,
+					ID:    j,
+				}
 			}
 
-			if val == -1 {
+			if state.UserIDs[id].Count == -1 {
 				continue
 			}
 
-			state.UserIDs[id] = state.UserIDs[id] + 1
+			state.UserIDs[id].Count = state.UserIDs[id].Count + 1
 
-			if state.UserIDs[id] >= t+1 {
+			if state.UserIDs[id].Count >= t+1 {
 				// Assumption: All batch sizes are same except for the last batch
 				// pssID = 1, i = 97 => index = 1 * 300 + 97 = 397
 				batchSize := self.DefaultBatchSize()
 				pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
-				keyIndex := (pssIndex * batchSize) + i
+				keyIndex := (pssIndex * batchSize) + state.UserIDs[id].ID
 				// FIXME: this function needs to be created, where public key and appID?
 				self.StoreIndexToUser(keyIndex, id, msg.CurveName)
-				state.UserIDs[id] = -1 // -1 to denote already done
+				state.UserIDs[id].Count = -1 // -1 to denote already done
 
 			}
 		}
@@ -116,6 +123,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 
 	state.Lock()
 	defer state.Unlock()
+
 	curve := common.CurveFromName(msg.CurveName)
 
 	// id => sender+batchRecCount
@@ -126,6 +134,8 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	}
 
 	state.LocalCompReceived[id] = true
+
+	go msg.ProcessUserIDData(sender, self)
 
 	numShares := msg.DPSSBatchRecDetails.PSSRoundDetails.BatchSize
 	alpha := int(math.Ceil(float64(numShares) / float64(n-2*t)))
@@ -175,7 +185,6 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		}
 	}
 	// FIXME: This needs to be fixed.
-	go msg.ProcessUserIDData(sender, self)
 
 	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.CurveName))
