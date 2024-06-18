@@ -113,13 +113,15 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 		}
 
 		// sharing the coefficients
-		len := len(interpolatePoly.Coefficients)
-		polynomialCoefficient := make([][]byte, len)
+		length := len(interpolatePoly.Coefficients)
+		polynomialCoefficient := make([]string, length)
 
-		for i := 0; i < len; i++ {
-			polynomialCoefficient[i] = make([]byte, 32)
-			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].Bytes()
+		for i := 0; i < length; i++ {
+			// polynomialCoefficient[i] = make([]byte, 32)
+			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].BigInt().Text(16)
 		}
+
+		log.Errorf("PublicRecHandler: BatchCount=%d, Self=%d, CoefficientSize=%d", msg.DPSSBatchRecDetails.BatchRecCount, self.Details().Index, len(polynomialCoefficient))
 
 		pssState, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 		pssState.Lock()

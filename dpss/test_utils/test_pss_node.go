@@ -35,7 +35,7 @@ func (n *PssTestNode) Transport() *NoSendMockTransport {
 	return n.transport
 }
 func (n *PssTestNode) DefaultBatchSize() int {
-	return 10
+	return 300
 }
 
 func (n *PssTestNode) State() *common.PSSNodeState {

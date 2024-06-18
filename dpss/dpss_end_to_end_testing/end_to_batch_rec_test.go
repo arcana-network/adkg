@@ -25,7 +25,7 @@ func TestEndToBatchRec(t *testing.T) {
 	// this is set to panicLevel so that normal info logging can be avoided during test run
 	// and logging is done only if the program panics
 	// can be commented out when we want info logging
-	log.SetLevel(log.PanicLevel)
+	log.SetLevel(log.ErrorLevel)
 
 	//default setup and mock transport
 	TestSetUp, transport := DpssEndToEndTestSetup()
@@ -40,7 +40,7 @@ func TestEndToBatchRec(t *testing.T) {
 	// The old committee has shares of secrets
 	// 100 has passed, but 300 not
 	B := 300
-	_, _, shares, _ := GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld)
+	secret, _, shares, _ := GenerateSecretAndGetCommitmentAndShares(B, nOld, kOld)
 
 	// number of random secret scalar to be shared
 	nGenerations := int(math.Ceil(float64(B) / float64((nOld - 2*tOld))))
@@ -297,34 +297,35 @@ func TestEndToBatchRec(t *testing.T) {
 
 	// // *-------------- Local Computation check ------------------*
 
-	// //TODO: verify the below test code
-	// type ScalarMap map[int]curves.Scalar
+	//TODO: verify the below test code
+	type ScalarMap map[int]curves.Scalar
 
-	// NewShare := make([]ScalarMap, 0)
+	NewShare := make([]ScalarMap, 0)
 
-	// for _, node := range nodesNew {
-	// 	nShare := node.GetRefreshedShares()
-	// 	NewShare = append(NewShare, nShare)
-	// }
+	for _, node := range nodesNew {
+		nShare := node.GetRefreshedShares()
+		NewShare = append(NewShare, nShare)
+	}
 
-	// shamir, err := sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
-	// assert.Nil(t, err)
+	shamir, err := sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
+	assert.Nil(t, err)
 
-	// NewShareSingle := make([]*sharing.ShamirShare, 0)
-	// pssIndex := common.GetIndexFromPSSID(common.NewPssID(*big.NewInt(int64(pssIdInt))))
+	NewShareSingle := make([]*sharing.ShamirShare, 0)
+	pssIndex := common.GetIndexFromPSSID(common.NewPssID(*big.NewInt(int64(pssIdInt))))
 
-	// for i := range nodesNew {
-	// 	keyIndex := (pssIndex * B) + 1
-	// 	share := NewShare[i][keyIndex]
-	// 	shamirShare := sharing.ShamirShare{
-	// 		Id:    uint32(i + 1),
-	// 		Value: share.Bytes(),
-	// 	}
-	// 	NewShareSingle = append(NewShareSingle, &shamirShare)
-	// }
-	// reconstructedSecretNew, err := shamir.Combine(NewShareSingle...)
-	// assert.Nil(t, err)
-	// assert.Equal(t, reconstructedSecretNew, secret[1])
+	for i := range nodesNew {
+		keyIndex := (pssIndex * B) + 1
+		share := NewShare[i][keyIndex]
+		t.Logf("index=%d, keyIndex=%d, share=%v, node=%d", i, keyIndex, share, i+1)
+		shamirShare := sharing.ShamirShare{
+			Id:    uint32(i + 1),
+			Value: share.Bytes(),
+		}
+		NewShareSingle = append(NewShareSingle, &shamirShare)
+	}
+	reconstructedSecretNew, err := shamir.Combine(NewShareSingle...)
+	assert.Nil(t, err)
+	assert.Equal(t, reconstructedSecretNew, secret[1])
 
 }
 

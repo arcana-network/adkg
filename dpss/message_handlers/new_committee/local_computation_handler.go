@@ -111,7 +111,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	nrBatches := int(math.Ceil(float64(msg.DPSSBatchRecDetails.PSSRoundDetails.BatchSize) / float64(batchRecSize)))
 
 	batchCount := msg.DPSSBatchRecDetails.BatchRecCount
-	log.Errorf("LocalComputationProcess:: Sender=%d, BatchRecCount=%d, size=%d", sender.Index, msg.DPSSBatchRecDetails.BatchRecCount, len(msg.Coefficients))
+	log.Debugf("LocalComputationProcess:: Sender=%d, BatchRecCount=%d, size=%d", sender.Index, msg.DPSSBatchRecDetails.BatchRecCount, len(msg.Coefficients))
 	state, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 
 	state.Lock()
@@ -138,7 +138,6 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		coefficients = append(coefficients, s)
 	}
 
-	log.Errorf("?????0, msg.coefficient=%d", len(coefficients))
 	hash := getHash(coefficients)
 
 	_, ok := state.LocalComp[batchCount]
@@ -151,7 +150,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 
 	// If the first sender with this batchcount is wrong then upcoming
 	// correct ones might get ignored. maybe need to keep multiple values
-	// seems weird though. FIXME?
+	// seems weird though. FIXME??
 	if state.LocalComp[batchCount].Hash != hash {
 		return
 	}
@@ -175,24 +174,19 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 			return
 		}
 	}
-
+	// FIXME: This needs to be fixed.
 	go msg.ProcessUserIDData(sender, self)
 
-	log.Errorf("numShare=%d", numShares)
-
-	// All the n and t should be from old node set otherwise this calculation is wrong.
 	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.CurveName))
 
-	// msg.coefficients = s + r
-
-	log.Errorf("msg.T=%v, self=%d, matrixSize=%d", msg.T, self.Details().Index, matrixSize)
+	log.Debugf("msg.T=%v, self=%d, matrixSize=%d", msg.T, self.Details().Index, matrixSize)
 	shares, err := state.GetSharesFromT(msg.T, alpha, curve)
 	if err != nil {
 		log.Errorf("Error: LocalComputation: GetShares: %s", err)
 		return
 	}
-	log.Errorf("msg.T=%v, self=%d, matrixSize=%d, shareSize=%d", msg.T, self.Details().Index, matrixSize, len(shares))
+	log.Debugf("msg.T=%v, self=%d, matrixSize=%d, shareSize=%d", msg.T, self.Details().Index, matrixSize, len(shares))
 
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
 	if err != nil {
@@ -204,8 +198,6 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		).Error("LocalCompMessageHandler: Process")
 		return
 	}
-
-	log.Errorf("?????1, msg.coefficient=%d", len(coefficients))
 
 	rPrimeValues := globalRandomR[:numShares]
 
@@ -230,16 +222,15 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		newShare := sr.Sub(rPrimeValues[i])
 		refreshedShares = append(refreshedShares, newShare) // ((s + r) - r')
 	}
-	log.Error("?????2")
 
 	// Assumption: All batch sizes are same except for the last batch
 	// pssID = 1, i = 97 => index = 1 * 299 + 97 = 397
 	defaultBatchSize := self.DefaultBatchSize()
-	log.Errorf("DefaultBatchSize=%d, refreshedShareSize=%d", defaultBatchSize, len(refreshedShares))
+	log.Debugf("DefaultBatchSize=%d, refreshedShareSize=%d", defaultBatchSize, len(refreshedShares))
 	pssIndex := common.GetIndexFromPSSID(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 	for i, share := range refreshedShares {
 		keyIndex := (pssIndex * defaultBatchSize) + i
-		log.Errorf("self=%d, keyIndex=%d, share=%v", self.Details().Index, keyIndex, share)
+		log.Debugf("self=%d, keyIndex=%d, share=%v", self.Details().Index, keyIndex, share)
 		self.StoreShare(keyIndex, share, msg.CurveName)
 	}
 
