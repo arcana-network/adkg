@@ -184,7 +184,6 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 			return
 		}
 	}
-	// FIXME: This needs to be fixed.
 
 	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.CurveName))
@@ -192,6 +191,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	log.Debugf("msg.T=%v, self=%d, matrixSize=%d", msg.T, self.Details().Index, matrixSize)
 	shares, err := state.GetSharesFromT(msg.T, alpha, curve)
 	if err != nil {
+		// FIXME: Add waiting for shares.
 		log.Errorf("Error: LocalComputation: GetShares: %s", err)
 		return
 	}
@@ -242,5 +242,4 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		log.Debugf("self=%d, keyIndex=%d, share=%v", self.Details().Index, keyIndex, share)
 		self.StoreShare(keyIndex, share, msg.CurveName)
 	}
-
 }

@@ -255,6 +255,7 @@ type LocalComputation struct {
 	Count        int
 	Coefficients []string
 }
+
 type LocalComputationUserIDS struct {
 	ID    int
 	Count int
@@ -329,25 +330,6 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 			T = T & Tset[i]
 		}
 		if CountBit(T) >= threshold {
-			go state.waiter.TriggerThreshold(T)
-			return T, true
-		}
-	}
-	return 0, false
-}
-func (state *PSSState) CheckForAllCompletion(alpha, n int) (int, bool) {
-	T := 0
-	Tset := make([]int, 0)
-	if len(state.KeysetMap) == alpha {
-		for _, v := range state.KeysetMap {
-			Tset = append(Tset, v.TPrime)
-		}
-
-		T = Tset[0]
-		for i := 1; i < alpha; i += 1 {
-			T = T & Tset[i]
-		}
-		if CountBit(T) == n {
 			go state.waiter.TriggerThreshold(T)
 			return T, true
 		}
