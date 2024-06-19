@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/arcana-network/dkgnode/common"
-	kcommon "github.com/arcana-network/dkgnode/keygen/common"
+	dpsscommon "github.com/arcana-network/dkgnode/dpss/common"
 	"github.com/arcana-network/dkgnode/keygen/common/acss"
 	"github.com/torusresearch/bijson"
 
@@ -67,26 +67,25 @@ func (m ProposeMessage) Process(sender common.NodeDetails, self common.PSSPartic
 
 	alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 	TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
-	verified := Predicate(kcommon.IntToByteValue(TSet), m.Data)
+	verified := Predicate(dpsscommon.IntToByteValue(TSet), m.Data)
 
-	// FIXME: Calling below function to trigger listeners, can change func name
-	pssState.GetTSet(n, t)
 	// If verified, send echo to each node
 	if verified {
 		OnKeysetVerified(m.RoundID, m.Curve, m.Data, pssState, leader, self)
 	} else {
-		pssState.TProposals[sender.Index] = kcommon.ByteToIntValue(m.Data)
+		pssState.TProposals[sender.Index] = dpsscommon.ByteToIntValue(m.Data)
 	}
 }
 
 func OnKeysetVerified(roundID common.PSSRoundDetails, curve common.CurveName, keyset []byte,
 	pssState *common.PSSState, leader int, self common.PSSParticipant) {
 	if leader != self.Details().Index {
-		data := kcommon.ByteToIntValue(keyset)
+		data := dpsscommon.ByteToIntValue(keyset)
 		pssState.T[int(leader)] = data
 	}
 
-	n, k, _ := self.Params()
+	n, k, t := self.Params()
+	pssState.GetTSet(n, t)
 
 	// Create RS encoding
 	fec, err := infectious.NewFEC(k, n)

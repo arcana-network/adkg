@@ -164,8 +164,9 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 					binary.BigEndian.PutUint64(output[:], uint64(TSet))
 
 					round := common.PSSRoundDetails{
-						PssID:  msg.ACSSRoundDetails.PSSRoundDetails.PssID,
-						Dealer: self.Details(),
+						PssID:     msg.ACSSRoundDetails.PSSRoundDetails.PssID,
+						Dealer:    self.Details(),
+						BatchSize: msg.ACSSRoundDetails.PSSRoundDetails.BatchSize,
 					}
 					msg, err := keyset.NewProposeMessage(round, output[:], msg.CurveName)
 					if err != nil {

@@ -189,12 +189,10 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.CurveName))
 
 	log.Debugf("msg.T=%v, self=%d, matrixSize=%d", msg.T, self.Details().Index, matrixSize)
-	shares, err := state.GetSharesFromT(msg.T, alpha, curve)
-	if err != nil {
-		// FIXME: Add waiting for shares.
-		log.Errorf("Error: LocalComputation: GetShares: %s", err)
-		return
-	}
+	ch := state.WaitForSharesFromT(msg.T, alpha, curve)
+	state.Unlock()
+	shares := <-ch
+	state.Lock()
 	log.Debugf("msg.T=%v, self=%d, matrixSize=%d, shareSize=%d", msg.T, self.Details().Index, matrixSize, len(shares))
 
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)

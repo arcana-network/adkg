@@ -159,9 +159,32 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 
 	share, verifier, verified := sharing.Predicate(key, encryptedShare, msgData.Commitments, k, curve)
 
+	if !verified {
+		// Start the implicate flow
+		log.WithFields(
+			log.Fields{
+				"Message": "The predicate was not verified correctly",
+			},
+		).Error("DACSSOutputMessage: Process")
+
+		symmetricKey := key
+		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
+
+		implicateMsg, err := NewImplicateReceiveMessage(m.AcssRoundDetails, m.curveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey, msgData)
+
+		if err != nil {
+			common.LogErrorNewMessage("DACSSOutputMessage", "Process", ImplicateReceiveMessageType, err)
+			return
+		}
+
+		for _, node := range self.Nodes(self.IsNewNode()) {
+			go self.Send(node, *implicateMsg)
+		}
+		return
+	}
+
 	if verified && !state.CommitmentSent {
 		log.Debugf("acss_verified: share=%v", *share)
-		dealer := m.AcssRoundDetails.PSSRoundDetails.Dealer
 
 		// Set the state to reflect that RBC has ended.
 		_, err = self.State().AcssStore.UpdateAccsState(
@@ -185,41 +208,6 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 		if err != nil {
 			common.LogStateUpdateError("OutputHandler", "Process", common.AcssStateType, err)
 			return
-		}
-
-		{
-			// Storing this for easier fetch
-			// Waiting time for 1 unlock < waiting time for (B / n-2t) * n unlocks
-			pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(m.AcssRoundDetails.PSSRoundDetails.PssID)
-			if complete {
-				return
-			}
-
-			pssState.Lock()
-			defer pssState.Unlock()
-
-			keysetMap := pssState.GetKeysetMap(m.AcssRoundDetails.ACSSCount)
-			keysetMap.TPrime = dpsscommon.SetBit(keysetMap.TPrime, dealer.Index)
-			keysetMap.ShareStore[dealer.Index] = share
-			keysetMap.CommitmentStore[dealer.Index] = verifier.Commitments
-
-			// Check proposals and emit
-			numShares := m.AcssRoundDetails.PSSRoundDetails.BatchSize
-			alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
-			TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
-			for key, v := range pssState.TProposals {
-				if keyset.Predicate(dpsscommon.IntToByteValue(TSet), dpsscommon.IntToByteValue(v)) {
-					dealer, err := self.OldNodeDetailsByID(key)
-					if err != nil {
-						continue
-					}
-					roundID := common.CreatePSSRound(pssState.PSSID, dealer, m.AcssRoundDetails.PSSRoundDetails.BatchSize)
-					keyset.OnKeysetVerified(roundID, m.curveName, dpsscommon.IntToByteValue(v), pssState, key, self)
-					delete(pssState.TProposals, key)
-				}
-			}
-			// FIXME: Calling below function to trigger listeners, can change func name
-			pssState.GetTSet(n, t)
 		}
 
 		commitmentMsg, err := NewDacssCommitmentMessage(
@@ -280,27 +268,6 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 			).Info("DacssOutputMessage: Process")
 		}
 
-	} else if !verified {
-		// Start the implicate flow
-		log.WithFields(
-			log.Fields{
-				"Message": "The predicate was not verified correctly",
-			},
-		).Error("DACSSOutputMessage: Process")
-
-		symmetricKey := key
-		POKsymmetricKey := sharing.GenerateNIZKProof(curve, priv, pubKeyPoint, dealerKey, symmetricKey, curve.NewGeneratorPoint())
-
-		implicateMsg, err := NewImplicateReceiveMessage(m.AcssRoundDetails, m.curveName, symmetricKey.ToAffineCompressed(), POKsymmetricKey, msgData)
-
-		if err != nil {
-			common.LogErrorNewMessage("DACSSOutputMessage", "Process", ImplicateReceiveMessageType, err)
-			return
-		}
-
-		for _, node := range self.Nodes(self.IsNewNode()) {
-			go self.Send(node, *implicateMsg)
-		}
 	} else if state.CommitmentSent {
 		log.WithFields(
 			log.Fields{
@@ -308,5 +275,43 @@ func (m DacssOutputMessage) Process(sender common.NodeDetails, self common.PSSPa
 				"NodeIndex": self.Details().Index,
 			},
 		).Error("DACSSOutputMessage: Process")
+	}
+
+	{
+		// Storing this for easier fetch
+		// Waiting time for 1 unlock < waiting time for (B / n-2t) * n unlocks
+		dealer := m.AcssRoundDetails.PSSRoundDetails.Dealer
+
+		pssState, complete := self.State().PSSStore.GetOrSetIfNotComplete(m.AcssRoundDetails.PSSRoundDetails.PssID)
+		if complete {
+			return
+		}
+
+		pssState.Lock()
+		defer pssState.Unlock()
+
+		keysetMap := pssState.GetKeysetMap(m.AcssRoundDetails.ACSSCount)
+		keysetMap.TPrime = dpsscommon.SetBit(keysetMap.TPrime, dealer.Index)
+		keysetMap.ShareStore[dealer.Index] = share
+		keysetMap.CommitmentStore[dealer.Index] = verifier.Commitments
+
+		// Check if all shares received
+		pssState.CheckAllSharesReceivedFromT(common.CurveFromName(m.curveName))
+		// Check proposals and emit
+		numShares := m.AcssRoundDetails.PSSRoundDetails.BatchSize
+		alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
+		TSet, _ := pssState.CheckForThresholdCompletion(alpha, n-t)
+		for key, v := range pssState.TProposals {
+			if keyset.Predicate(dpsscommon.IntToByteValue(TSet), dpsscommon.IntToByteValue(v)) {
+				dealer, err := self.OldNodeDetailsByID(key)
+				if err != nil {
+					log.Error("Could not get old node details???")
+					continue
+				}
+				roundID := common.CreatePSSRound(pssState.PSSID, dealer, m.AcssRoundDetails.PSSRoundDetails.BatchSize)
+				keyset.OnKeysetVerified(roundID, m.curveName, dpsscommon.IntToByteValue(v), pssState, key, self)
+				delete(pssState.TProposals, key)
+			}
+		}
 	}
 }

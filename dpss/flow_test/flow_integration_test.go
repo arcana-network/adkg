@@ -85,7 +85,7 @@ func TestFlow(t *testing.T) {
 
 	for _, node := range testSetup.oldCommitteeNetwork {
 		state, _ := node.State().PSSStore.Get(pssID)
-		nodeTSet, _, _ := state.GetTSet(testSetup.OldCommitteeParams.N, testSetup.OldCommitteeParams.T)
+		nodeTSet, _ := state.GetTSet(testSetup.OldCommitteeParams.N, testSetup.OldCommitteeParams.T)
 		TSet = append(TSet, nodeTSet)
 	}
 

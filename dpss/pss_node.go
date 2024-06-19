@@ -59,10 +59,7 @@ func NewPSSNode(broker common.MessageBroker,
 	g := curves.K256().NewGeneratorPoint()
 	publicKey := g.Mul(privateKey)
 
-	w := &common.Waiter{
-		ThresholdCompletionWaiters: [](chan int){},
-		TSetWaiters:                [](chan []int){},
-	}
+	w := &common.Waiter{}
 	// Creates the new node.
 	newPSSNode := &PSSNode{
 		PssNodeTransport: transport,

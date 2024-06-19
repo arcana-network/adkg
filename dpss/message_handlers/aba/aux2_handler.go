@@ -167,12 +167,10 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 						"T":         pssState.T,
 					}).Debug("starting HIM")
 
-					T, complete, ch := pssState.GetTSet(n, f)
-					if !complete {
-						pssState.Unlock()
-						T = <-ch
-						pssState.Lock()
-					}
+					ch := pssState.WaitForTSet(n, f)
+					pssState.Unlock()
+					T := <-ch
+					pssState.Lock()
 					curve := common.CurveFromName(m.Curve)
 					numShares := m.RoundID.BatchSize
 

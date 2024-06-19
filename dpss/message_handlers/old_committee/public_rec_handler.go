@@ -121,18 +121,18 @@ func (msg *PublicRecMsg) Process(sender common.NodeDetails, self common.PSSParti
 			polynomialCoefficient[i] = interpolatePoly.Coefficients[i].BigInt().Text(16)
 		}
 
-		log.Errorf("PublicRecHandler: BatchCount=%d, Self=%d, CoefficientSize=%d", msg.DPSSBatchRecDetails.BatchRecCount, self.Details().Index, len(polynomialCoefficient))
+		log.Debugf("PublicRecHandler: BatchCount=%d, Self=%d, CoefficientSize=%d", msg.DPSSBatchRecDetails.BatchRecCount, self.Details().Index, len(polynomialCoefficient))
 
 		pssState, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
 		pssState.Lock()
 		self.State().ShareStore.Lock()
 
-		T, complete, ch := pssState.GetTSet(n, t)
-		if !complete {
-			pssState.Unlock()
-			T = <-ch
-			pssState.Lock()
-		}
+		ch := pssState.WaitForTSet(n, t)
+		pssState.Unlock()
+		//TODO: Add timeout?
+		T := <-ch
+		pssState.Lock()
+
 		localComputationMsg, err := new_committee.NewLocalComputationMsg(
 			msg.DPSSBatchRecDetails,
 			msg.curveName,

@@ -106,7 +106,7 @@ func (state *PSSNodeState) Clean(pssRound PSSRoundDetails) error {
 	}
 
 	state.ShareStore.NewShares = make([]curves.Scalar, 0)
-	state.ShareStore.OldShares = make([]PrivKeyShare, 0)
+	// state.ShareStore.OldShares = make([]PrivKeyShare, 0)
 
 	return nil
 }
@@ -248,6 +248,8 @@ type PSSState struct {
 	LocalComp         map[int]*LocalComputation
 	UserIDs           map[string]*LocalComputationUserIDS
 	LocalCompReceived map[string]bool
+	LocalCompT        []int
+	LocalCompAlpha    int
 }
 
 type LocalComputation struct {
@@ -261,7 +263,7 @@ type LocalComputationUserIDS struct {
 	Count int
 }
 
-func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
+func (state *PSSState) GetTSet(n, t int) ([]int, bool) {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
@@ -272,12 +274,39 @@ func (state *PSSState) GetTSet(n, t int) ([]int, bool, chan []int) {
 	T := Union(keysets...)
 	sort.Ints(T)
 	if len(T) < n-t {
-		return []int{}, false, state.waiter.WaitForTSet()
+		return []int{}, false
 	}
 	T = T[:(n - t)]
 	// Check if listener exist, if they do send Tset and clear listener array
-	go state.waiter.TriggerTSet(T)
-	return T, true, nil
+
+	waiter := state.waiter.GetWaiter(state.PSSID)
+	go waiter.TriggerTSet(T)
+	return T, true
+}
+
+func (state *PSSState) WaitForTSet(n, t int) chan []int {
+	ch := make(chan []int)
+	keysets := make([][]int, 0)
+	for k, v := range state.Decisions {
+		if v == 1 {
+			keysets = append(keysets, GetSetBits(n, state.T[k]))
+		}
+	}
+
+	T := Union(keysets...)
+	sort.Ints(T)
+	waiter := state.waiter.GetWaiter(state.PSSID)
+	if len(T) < n-t {
+		waiter.WaitForTSet(ch)
+		return ch
+	}
+	T = T[:(n - t)]
+	// Check if listener exist, if they do send Tset and clear listener array
+	go func() {
+		ch <- T
+		go waiter.TriggerTSet(T)
+	}()
+	return ch
 }
 
 func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) ([]curves.Scalar, error) {
@@ -301,6 +330,49 @@ func (state *PSSState) GetSharesFromT(T []int, alpha int, curve *curves.Curve) (
 		}
 	}
 	return shares, nil
+}
+
+func (state *PSSState) WaitForSharesFromT(T []int, alpha int, curve *curves.Curve) chan []curves.Scalar {
+	shares := []curves.Scalar{}
+	ch := make(chan []curves.Scalar)
+	for i := range alpha {
+		val, ok := state.KeysetMap[i]
+		if !ok {
+			state.LocalCompT = T
+			state.LocalCompAlpha = alpha
+			w := state.waiter.GetWaiter(state.PSSID)
+			w.WaitForAllShares(ch)
+			return ch
+		}
+		for _, j := range T {
+			s, ok := val.ShareStore[j]
+			if !ok {
+				state.LocalCompT = T
+				state.LocalCompAlpha = alpha
+				w := state.waiter.GetWaiter(state.PSSID)
+				w.WaitForAllShares(ch)
+				return ch
+			}
+			share, err := curve.Scalar.SetBytes(s.Value)
+			if err != nil {
+				log.Error("scalar.setBytes:", err)
+				continue
+			}
+			shares = append(shares, share)
+		}
+	}
+	go func() {
+		ch <- shares
+	}()
+	return ch
+}
+func (state *PSSState) CheckAllSharesReceivedFromT(curve *curves.Curve) {
+	val, err := state.GetSharesFromT(state.LocalCompT, state.LocalCompAlpha, curve)
+	if err != nil {
+		return
+	}
+	w := state.waiter.GetWaiter(state.PSSID)
+	go w.TriggerHasAllShares(val)
 }
 
 func (state *PSSState) GetKeysetMap(id int) *ACSSKeysetMap {
@@ -330,7 +402,8 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 			T = T & Tset[i]
 		}
 		if CountBit(T) >= threshold {
-			go state.waiter.TriggerThreshold(T)
+			w := state.waiter.GetWaiter(state.PSSID)
+			go w.TriggerThreshold(T)
 			return T, true
 		}
 	}
@@ -338,12 +411,26 @@ func (state *PSSState) CheckForThresholdCompletion(alpha, threshold int) (int, b
 }
 
 type Waiter struct {
+	sync.Map
+}
+
+type WaiterData struct {
 	sync.Mutex
 	ThresholdCompletionWaiters [](chan int)
 	TSetWaiters                [](chan []int)
+	TSetShareWaiters           [](chan []curves.Scalar)
 }
 
-func (w *Waiter) WaitForThresholdCompletion() chan int {
+func (w *Waiter) GetWaiter(id string) *WaiterData {
+	val, _ := w.LoadOrStore(id, &WaiterData{})
+	wd, ok := val.(*WaiterData)
+	if !ok {
+		return nil
+		// ????
+	}
+	return wd
+}
+func (w *WaiterData) WaitForThresholdCompletion() chan int {
 	w.Lock()
 	defer w.Unlock()
 	ch := make(chan int)
@@ -351,33 +438,54 @@ func (w *Waiter) WaitForThresholdCompletion() chan int {
 	return ch
 }
 
-func (w *Waiter) WaitForTSet() chan []int {
+func (w *WaiterData) WaitForAllShares(ch chan []curves.Scalar) {
 	w.Lock()
 	defer w.Unlock()
-	ch := make(chan []int)
-	w.TSetWaiters = append(w.TSetWaiters, ch)
-	return ch
+	w.TSetShareWaiters = append(w.TSetShareWaiters, ch)
 }
 
-func (w *Waiter) TriggerThreshold(T int) {
+func (w *WaiterData) WaitForTSet(ch chan []int) {
+	w.Lock()
+	defer w.Unlock()
+	w.TSetWaiters = append(w.TSetWaiters, ch)
+}
+
+func (w *WaiterData) TriggerThreshold(T int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.ThresholdCompletionWaiters) > 0 {
 		for _, ch := range w.ThresholdCompletionWaiters {
-			ch <- T
-			close(ch)
+			go func() {
+				ch <- T
+				close(ch)
+			}()
 		}
 		w.ThresholdCompletionWaiters = w.ThresholdCompletionWaiters[:0]
 	}
 }
+func (w *WaiterData) TriggerHasAllShares(shares []curves.Scalar) {
+	w.Lock()
+	defer w.Unlock()
+	if len(w.TSetShareWaiters) > 0 {
+		for _, ch := range w.TSetShareWaiters {
+			go func() {
+				ch <- shares
+				close(ch)
+			}()
+		}
+		w.TSetShareWaiters = w.TSetShareWaiters[:0]
+	}
+}
 
-func (w *Waiter) TriggerTSet(T []int) {
+func (w *WaiterData) TriggerTSet(T []int) {
 	w.Lock()
 	defer w.Unlock()
 	if len(w.TSetWaiters) > 0 {
 		for _, ch := range w.TSetWaiters {
-			ch <- T
-			close(ch)
+			go func() {
+				ch <- T
+				close(ch)
+			}()
 		}
 		w.TSetWaiters = w.TSetWaiters[:0]
 	}
