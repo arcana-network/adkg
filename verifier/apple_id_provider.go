@@ -41,11 +41,11 @@ type AppleIDKeyList struct {
 	} `json:"keys"`
 }
 
-func NewAppleIDProvider() (*AppleIDProvider, error) {
+func NewAppleIDProvider() *AppleIDProvider {
 	f := &AppleIDProvider{
 		Leeway: 120 * time.Second,
 	}
-	return f, nil
+	return f
 }
 
 func (f *AppleIDProvider) getKeys() (map[string]crypto.PublicKey, error) {
