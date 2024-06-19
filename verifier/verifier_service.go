@@ -123,6 +123,7 @@ func (v *VerifierService) Start() error {
 		NewGlobalKeyVerifier(v),
 		NewCustomProvider(),
 		// NewXProvider(),
+		NewAppleIDProvider(),
 	}
 	v.providerMap = NewProviderMap(providers)
 	return nil
