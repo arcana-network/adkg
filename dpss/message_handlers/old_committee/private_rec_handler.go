@@ -58,19 +58,6 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		return
 	}
 
-	// Check if there are at least d + t + 1 = 2t + 1 shares received
-	recState, found, err := self.State().BatchReconStore.Get(
-		msg.DPSSBatchRecDetails.ToBatchRecID(),
-	)
-	if err != nil {
-		common.LogStateRetrieveError("PrivateRecHandler", "Process", err)
-		return
-	}
-	if !found {
-		common.LogStateNotFoundError("PrivateRecHandler", "Process", found)
-		return
-	}
-
 	// Deserialize the share.
 	curve := common.CurveFromName(msg.curveName)
 	share, err := curve.Scalar.SetBytes(msg.UShare)
@@ -84,8 +71,20 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		return
 	}
 
+	// Check if there are at least d + t + 1 = 2t + 1 shares received
+	_, found, err := self.State().BatchReconStore.Get(
+		msg.DPSSBatchRecDetails.ToBatchRecID(),
+	)
+	if err != nil {
+		common.LogStateRetrieveError("PrivateRecHandler", "Process", err)
+		return
+	}
+	if !found {
+		common.LogStateNotFoundError("PrivateRecHandler", "Process", found)
+		return
+	}
 	// Store the share in the local state.
-	recState, err = self.State().BatchReconStore.UpdateBatchRecState(
+	recState, err := self.State().BatchReconStore.UpdateBatchRecState(
 		msg.DPSSBatchRecDetails.ToBatchRecID(),
 		func(recState *common.BatchRecState) {
 			recState.UStore[sender.Index] = share
@@ -119,7 +118,8 @@ func (msg *PrivateRecMsg) Process(sender common.NodeDetails, self common.PSSPart
 		if !doMatch {
 			log.WithFields(
 				log.Fields{
-					"Message": "shares does not coincide on the interpolationg polynomial",
+					"Message": "shares does not coincide on the interpolating polynomial",
+					"Error":   err,
 				},
 			).Error("PrivateRecMsg: Process")
 			return

@@ -152,7 +152,6 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 				if pssState.KeysetProposed {
 					return
 				}
-
 				numShares := msg.ACSSRoundDetails.PSSRoundDetails.BatchSize
 				alpha := int(math.Ceil(float64(numShares) / float64((n - 2*t))))
 				TSet, completed := pssState.CheckForThresholdCompletion(alpha, n-t)
@@ -160,6 +159,7 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 					pssState.T[self.Details().Index] = TSet
 					// FIXME: Calling below function to trigger listeners, can change func name
 					pssState.GetTSet(n, t)
+					pssState.KeysetProposed = true
 					var output [8]byte
 					binary.BigEndian.PutUint64(output[:], uint64(TSet))
 
@@ -174,7 +174,6 @@ func (msg *DacssCommitmentMessage) Process(sender common.NodeDetails, self commo
 						return
 					}
 					go self.Broadcast(false, *msg)
-					pssState.KeysetProposed = true
 				}
 			}
 

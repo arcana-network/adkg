@@ -81,14 +81,13 @@ func (msg *DpssHimMessage) Process(sender common.NodeDetails, self common.PSSPar
 		common.CurveFromName(msg.CurveName),
 		matrixSize,
 	)
-
 	if err != nil {
 		log.WithFields(
 			log.Fields{
 				"Error":   err,
 				"Message": "Error while decompressing the shares",
 			},
-		)
+		).Error("HIM: DecompressScalars")
 	}
 	hiMatrix := sharing.CreateHIM(
 		matrixSize,

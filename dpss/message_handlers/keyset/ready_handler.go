@@ -128,6 +128,7 @@ func (m ReadyMessage) Process(sender common.NodeDetails, self common.PSSParticip
 			log.Debugf("HashCompare, hash=%v, mHash=%v", hash, m.Hash)
 
 			if bytes.Equal(hash, m.Hash) {
+				state.RBCState.Phase = common.Ended
 				outputMsg, err := NewOutputMessage(m.RoundID, M, m.Curve)
 				if err != nil {
 					log.WithField("error", err).Error("NewKeysetProposeMessage")

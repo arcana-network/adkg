@@ -188,11 +188,10 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	matrixSize := int(math.Ceil(float64(numShares)/float64(n-2*t))) * (n - t)
 	hiMatrix := sharing.CreateHIM(matrixSize, common.CurveFromName(msg.CurveName))
 
-	log.Debugf("msg.T=%v, self=%d, matrixSize=%d", msg.T, self.Details().Index, matrixSize)
+	log.Debugf("msg.T=%v, self=%d", msg.T, self.Details().Index)
 	ch := state.WaitForSharesFromT(msg.T, alpha, curve)
 	state.Unlock()
 	shares := <-ch
-	state.Lock()
 	log.Debugf("msg.T=%v, self=%d, matrixSize=%d, shareSize=%d", msg.T, self.Details().Index, matrixSize, len(shares))
 
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
@@ -207,7 +206,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	}
 
 	rPrimeValues := globalRandomR[:numShares]
-
+	state.Lock()
 	combinedCoefficients := []curves.Scalar{}
 	for i := range nrBatches {
 		val := state.LocalComp[i]

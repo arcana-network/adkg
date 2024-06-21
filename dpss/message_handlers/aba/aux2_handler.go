@@ -65,17 +65,6 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 	aux2Len2 := len(store.Values("aux2", r, 2))
 	bin2 := store.GetBin("bin2", r)
 
-	log.WithFields(log.Fields{
-		"round":    m.RoundID,
-		"aux2Len0": aux2Len0,
-		"aux2-0":   store.Values("aux2", r, 0),
-		"aux2Len1": aux2Len1,
-		"aux2-1":   store.Values("aux2", r, 1),
-		"aux2Len2": aux2Len2,
-		"aux2-2":   store.Values("aux2", r, 2),
-		"bin2":     bin2,
-	}).Debugf("Process():%s", Aux2MessageType)
-
 	var values2 []int
 
 	if Contains(bin2, 1) && aux2Len1 >= n-f {
@@ -89,10 +78,6 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 	} else if (aux2Len2+aux2Len1) >= n-f && Contains(bin2, 1) && Contains(bin2, 2) {
 		values2 = append(values2, 1, 2)
 	}
-	log.WithFields(log.Fields{
-		"values2": values2,
-		"round":   m.RoundID,
-	}).Debugf("Process():%s", Aux2MessageType)
 	if len(values2) > 0 {
 		if len(values2) == 1 {
 			w := values2[0]
@@ -115,18 +100,7 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 
 				pssState.Lock()
 				defer pssState.Unlock()
-				log.WithFields(log.Fields{
-					"completed":     pssState.ABAComplete,
-					"round":         m.RoundID,
-					"self":          self.Details().Index,
-					"Decisions":     pssState.Decisions,
-					"ABAStarted":    pssState.ABAStarted,
-					"completeCount": len(pssState.Decisions),
-				}).Debug("pssState:Aux2Handler")
 
-				log.WithFields(log.Fields{
-					"Decisions": pssState.Decisions,
-				}).Debugf("Node %d decided on round %v=%d", self.Details().Index, m.RoundID, w)
 				leader := m.RoundID.Dealer.Index
 				// Set decision to 0 or 1
 				if _, ok := pssState.Decisions[leader]; ok {
@@ -159,22 +133,15 @@ func (m Aux2Message) Process(sender common.NodeDetails, self common.PSSParticipa
 
 				// If all rounds ABA'd to 0 or 1, set ABA complete to true and send init HIM
 				if n == len(pssState.Decisions) && !pssState.HIMStarted {
-					log.WithFields(log.Fields{
-						"roundID":   m.RoundID,
-						"f":         f,
-						"node":      self.Details().Index,
-						"Decisions": pssState.Decisions,
-						"T":         pssState.T,
-					}).Debug("starting HIM")
-
 					ch := pssState.WaitForTSet(n, f)
 					pssState.Unlock()
 					T := <-ch
 					pssState.Lock()
 					curve := common.CurveFromName(m.Curve)
-					numShares := m.RoundID.BatchSize
 
+					numShares := m.RoundID.BatchSize
 					alpha := int(math.Ceil(float64(numShares) / float64((n - 2*f))))
+
 					shares, err := pssState.GetSharesFromT(T, alpha, curve)
 					if err != nil {
 						log.Errorf("Error: AUX2: GetShares: %s", err)

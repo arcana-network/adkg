@@ -267,6 +267,10 @@ func (state *PSSState) GetTSet(n, t int) ([]int, bool) {
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
+			_, ok := state.T[k]
+			if !ok {
+				return []int{}, false
+			}
 			keysets = append(keysets, GetSetBits(n, state.T[k]))
 		}
 	}
@@ -286,16 +290,21 @@ func (state *PSSState) GetTSet(n, t int) ([]int, bool) {
 
 func (state *PSSState) WaitForTSet(n, t int) chan []int {
 	ch := make(chan []int)
+	waiter := state.waiter.GetWaiter(state.PSSID)
 	keysets := make([][]int, 0)
 	for k, v := range state.Decisions {
 		if v == 1 {
-			keysets = append(keysets, GetSetBits(n, state.T[k]))
+			val, ok := state.T[k]
+			if !ok {
+				waiter.WaitForTSet(ch)
+				return ch
+			}
+			keysets = append(keysets, GetSetBits(n, val))
 		}
 	}
 
 	T := Union(keysets...)
 	sort.Ints(T)
-	waiter := state.waiter.GetWaiter(state.PSSID)
 	if len(T) < n-t {
 		waiter.WaitForTSet(ch)
 		return ch

@@ -115,7 +115,7 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 
 	for _, recvrNode := range self.Nodes(self.IsNewNode()) {
 		shareBytes := uShares[recvrNode.Index-1].Bytes()
-		pubRecMsg, err := NewPrivateRecMsg(
+		privRecMsg, err := NewPrivateRecMsg(
 			msg.DPSSBatchRecDetails,
 			msg.Curve,
 			shareBytes,
@@ -125,6 +125,6 @@ func (msg *InitRecMessage) Process(sender common.NodeDetails, self common.PSSPar
 			return
 		}
 
-		go self.Send(recvrNode, *pubRecMsg)
+		go self.Send(recvrNode, *privRecMsg)
 	}
 }

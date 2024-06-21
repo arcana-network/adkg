@@ -9,6 +9,7 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
+	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
@@ -131,7 +132,7 @@ func TestEndToBatchRec(t *testing.T) {
 		<-done
 	}
 
-	time.Sleep(25 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	// DACSS Checks
 
@@ -222,9 +223,55 @@ func TestEndToBatchRec(t *testing.T) {
 	// Batch Reconstruction handler Checks
 	// TODO: can be checked once MBVA is added
 
+	broadcastMsgs := transport.GetBroadcastedMessages()
+	receivedMsgs := transport.GetReceivedMessages()
+	sentMsgs := transport.GetSentMessages()
+
+	est1MessageCount := 0
+	aux1MessageCount := 0
+	aux2MessageCount := 0
+	auxsetMessageCount := 0
+	est2MessageCount := 0
+
+	for _, msg := range broadcastMsgs {
+		if msg.Type == aba.Est1MessageType {
+			est1MessageCount++
+		}
+		if msg.Type == aba.Est2MessageType {
+			est2MessageCount++
+		}
+		if msg.Type == aba.Aux1MessageType {
+			aux1MessageCount++
+		}
+		if msg.Type == aba.Aux2MessageType {
+			aux2MessageCount++
+		}
+		if msg.Type == aba.AuxsetMessageType {
+			auxsetMessageCount++
+		}
+	}
+
+	himMessageCount := 0
+	for _, msg := range receivedMsgs {
+		if msg.Type == old_committee.DpssHimHandlerType {
+			himMessageCount++
+		}
+	}
+	t.Logf("HIMMessageCount = %d", himMessageCount)
+
+	// Total message should be n * n * n - for each keysets n^2 messages are sent so n *n^2.
+	// Broadcast stores sending to n as 1 so counts will be n * n instead of n * n * n
+	t.Logf("Est1Messages = %d", est1MessageCount)
+	// assert.True(t, est1MessageCount > nOld*nOld)
+	// assert.Equal(t, nOld*nOld, est2MessageCount)
+	// assert.Equal(t, nOld*nOld, aux1MessageCount)
+	// assert.Equal(t, nOld*nOld, aux2MessageCount)
+	// assert.Equal(t, nOld*nOld, auxsetMessageCount)
+
+	// TODO: Add coin handler cases
+
 	// Check step 1: Each HimHandler invocation should send 1 preprocess message
 	// in total we expect n PreProcessMessages
-	sentMsgs := transport.GetSentMessages()
 	preprocessRecMessages := make([]common.PSSMessage, 0)
 
 	for _, msg := range sentMsgs {
@@ -310,23 +357,24 @@ func TestEndToBatchRec(t *testing.T) {
 	shamir, err := sharing.NewShamir(testutils.DefaultK_new, testutils.DefaultN_new, curves.K256())
 	assert.Nil(t, err)
 
-	NewShareSingle := make([]*sharing.ShamirShare, 0)
 	pssIndex := common.GetIndexFromPSSID(common.NewPssID(*big.NewInt(int64(pssIdInt))))
 
-	for i := range nodesNew {
-		keyIndex := (pssIndex * B) + 1
-		share := NewShare[i][keyIndex]
-		t.Logf("index=%d, keyIndex=%d, share=%v, node=%d", i, keyIndex, share, i+1)
-		shamirShare := sharing.ShamirShare{
-			Id:    uint32(i + 1),
-			Value: share.Bytes(),
+	for j := range B {
+		NewShareSingle := make([]*sharing.ShamirShare, 0)
+		keyIndex := (pssIndex * B) + j
+		for i := range nodesNew {
+			share := NewShare[i][keyIndex]
+			shamirShare := sharing.ShamirShare{
+				Id:    uint32(i + 1),
+				Value: share.Bytes(),
+			}
+			NewShareSingle = append(NewShareSingle, &shamirShare)
 		}
-		NewShareSingle = append(NewShareSingle, &shamirShare)
+		reconstructedSecretNew, err := shamir.Combine(NewShareSingle...)
+		assert.Nil(t, err)
+		t.Logf("Index=%d", j)
+		assert.Equal(t, reconstructedSecretNew.BigInt().Text(16), secret[j].BigInt().Text(16))
 	}
-	reconstructedSecretNew, err := shamir.Combine(NewShareSingle...)
-	assert.Nil(t, err)
-	assert.Equal(t, reconstructedSecretNew, secret[1])
-
 }
 
 // returns DACSS initMsg

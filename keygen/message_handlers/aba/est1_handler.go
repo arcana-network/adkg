@@ -59,11 +59,11 @@ func (m Est1Message) Process(sender common.NodeDetails, self common.DkgParticipa
 	estLength := len(store.Values("est", r, v))
 	log.Debugf("EstCount: %d, required: %d, round: %v", estLength, f+1, m.RoundID)
 	if estLength >= f+1 && !store.Sent("est", r, v) {
+		store.SetSent("est", r, v)
 		msg, err := NewEst1Message(m.RoundID, v, r, m.Curve)
 		if err != nil {
 			return
 		}
-		store.SetSent("est", r, v)
 		self.Broadcast(*msg)
 	}
 
