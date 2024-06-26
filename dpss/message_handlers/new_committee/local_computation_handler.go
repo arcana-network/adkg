@@ -64,16 +64,8 @@ func getHash(input []curves.Scalar) string {
 	return hash
 }
 
-func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, self common.PSSParticipant) {
-
-	state, _ := self.State().PSSStore.GetOrSetIfNotComplete(msg.DPSSBatchRecDetails.PSSRoundDetails.PssID)
-
-	state.Lock()
-	defer state.Unlock()
-
-	n, _, t := self.OldParams()
-	batchRecSize := n - 2*t
-
+func (msg *LocalComputationMsg) ProcessUserIDData(state *common.PSSState, batchRecSize int, self common.PSSParticipant) {
+	_, _, t := self.OldParams()
 	// This whole thing is being done seperately
 	// because all nodes might not have public key.
 	// They might have been offline during assignment.
@@ -104,7 +96,6 @@ func (msg *LocalComputationMsg) ProcessUserIDData(sender common.NodeDetails, sel
 				// FIXME: this function needs to be created, where public key and appID?
 				self.StoreIndexToUser(keyIndex, id, msg.CurveName)
 				state.UserIDs[id].Count = -1 // -1 to denote already done
-
 			}
 		}
 	}
@@ -133,9 +124,8 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 		return
 	}
 
+	msg.ProcessUserIDData(state, batchRecSize, self)
 	state.LocalCompReceived[id] = true
-
-	go msg.ProcessUserIDData(sender, self)
 
 	numShares := msg.DPSSBatchRecDetails.PSSRoundDetails.BatchSize
 	alpha := int(math.Ceil(float64(numShares) / float64(n-2*t)))
@@ -192,6 +182,7 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	ch := state.WaitForSharesFromT(msg.T, alpha, curve)
 	state.Unlock()
 	shares := <-ch
+	state.Lock()
 	log.Debugf("msg.T=%v, self=%d, matrixSize=%d, shareSize=%d", msg.T, self.Details().Index, matrixSize, len(shares))
 
 	globalRandomR, err := sharing.HimMultiplication(hiMatrix, shares)
@@ -206,7 +197,6 @@ func (msg *LocalComputationMsg) Process(sender common.NodeDetails, self common.P
 	}
 
 	rPrimeValues := globalRandomR[:numShares]
-	state.Lock()
 	combinedCoefficients := []curves.Scalar{}
 	for i := range nrBatches {
 		val := state.LocalComp[i]

@@ -9,7 +9,6 @@ import (
 
 	"github.com/arcana-network/dkgnode/common"
 	"github.com/arcana-network/dkgnode/common/sharing"
-	"github.com/arcana-network/dkgnode/dpss/message_handlers/aba"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/dacss"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/new_committee"
 	"github.com/arcana-network/dkgnode/dpss/message_handlers/old_committee"
@@ -217,58 +216,41 @@ func TestEndToBatchRec(t *testing.T) {
 	}
 
 	// --------------------------------------
-	// TODO: Add MBVA Checks here(if needed)
+	// MBVA Checks here
 	// --------------------------------------
 
-	// Batch Reconstruction handler Checks
-	// TODO: can be checked once MBVA is added
+	// ABA: Each node should have the exact same TSet at the end of ABA phase
+	pssID := common.NewPssID(*big.NewInt(int64(pssIdInt)))
+	tsets := [][]int{}
+	for _, node := range nodesOld {
+		n, _, t := node.Params()
+		state, _ := node.State().PSSStore.Get(pssID)
+		state.Lock()
+		val, _ := state.GetTSet(n, t)
+		tsets = append(tsets, val)
+		state.Unlock()
+	}
 
-	broadcastMsgs := transport.GetBroadcastedMessages()
+	assert.True(t, len(tsets) == nOld)
+	s := tsets[0]
+
+	for i := 1; i < len(tsets); i++ {
+		assert.ElementsMatch(t, s, tsets[i])
+	}
+
 	receivedMsgs := transport.GetReceivedMessages()
 	sentMsgs := transport.GetSentMessages()
 
-	est1MessageCount := 0
-	aux1MessageCount := 0
-	aux2MessageCount := 0
-	auxsetMessageCount := 0
-	est2MessageCount := 0
-
-	for _, msg := range broadcastMsgs {
-		if msg.Type == aba.Est1MessageType {
-			est1MessageCount++
-		}
-		if msg.Type == aba.Est2MessageType {
-			est2MessageCount++
-		}
-		if msg.Type == aba.Aux1MessageType {
-			aux1MessageCount++
-		}
-		if msg.Type == aba.Aux2MessageType {
-			aux2MessageCount++
-		}
-		if msg.Type == aba.AuxsetMessageType {
-			auxsetMessageCount++
-		}
-	}
-
+	// Each node sends itself a HIM message
 	himMessageCount := 0
 	for _, msg := range receivedMsgs {
 		if msg.Type == old_committee.DpssHimHandlerType {
 			himMessageCount++
 		}
 	}
-	t.Logf("HIMMessageCount = %d", himMessageCount)
+	assert.True(t, himMessageCount == nOld)
 
-	// Total message should be n * n * n - for each keysets n^2 messages are sent so n *n^2.
-	// Broadcast stores sending to n as 1 so counts will be n * n instead of n * n * n
-	t.Logf("Est1Messages = %d", est1MessageCount)
-	// assert.True(t, est1MessageCount > nOld*nOld)
-	// assert.Equal(t, nOld*nOld, est2MessageCount)
-	// assert.Equal(t, nOld*nOld, aux1MessageCount)
-	// assert.Equal(t, nOld*nOld, aux2MessageCount)
-	// assert.Equal(t, nOld*nOld, auxsetMessageCount)
-
-	// TODO: Add coin handler cases
+	// Batch Reconstruction handler Checks
 
 	// Check step 1: Each HimHandler invocation should send 1 preprocess message
 	// in total we expect n PreProcessMessages

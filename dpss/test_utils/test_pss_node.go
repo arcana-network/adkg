@@ -29,13 +29,21 @@ type PssTestNode struct {
 
 	uid     map[int]string
 	ushares map[int]curves.Scalar
+
+	defaultBatchSize int
 }
 
 func (n *PssTestNode) Transport() *NoSendMockTransport {
 	return n.transport
 }
 func (n *PssTestNode) DefaultBatchSize() int {
-	return 300
+	if n.defaultBatchSize == 0 {
+		return 300
+	}
+	return n.defaultBatchSize
+}
+func (n *PssTestNode) SetDefaultBatchSize(size int) {
+	n.defaultBatchSize = size
 }
 
 func (n *PssTestNode) State() *common.PSSNodeState {
@@ -167,10 +175,9 @@ func NewEmptyNode(index int, keypair common.KeyPair, noSendTransport *NoSendMock
 		transport:   noSendTransport,
 		LongtermKey: keypair,
 		isFaulty:    isFaulty,
-
-		shares:  make(map[bool]map[int64]*big.Int),
-		uid:     make(map[int]string),
-		ushares: make(map[int]curves.Scalar),
+		shares:      make(map[bool]map[int64]*big.Int),
+		uid:         make(map[int]string),
+		ushares:     make(map[int]curves.Scalar),
 	}
 
 	return &node
